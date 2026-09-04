@@ -53,27 +53,41 @@ function boot() {
 /** Use the relay if one is answering; otherwise two windows on this device. */
 async function chooseTransport(room, solo) {
   if (solo) return new SoloTransport();
+
+  // An explicit ?server= is a promise that a relay is there, so just use it.
   const given = qs.get('server');
-  const sameOrigin = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/relay';
-  const url = given || (location.protocol.indexOf('http') === 0 ? sameOrigin : null);
-  if (url) {
-    const ok = await probe(url);
-    if (ok) return new WsTransport(url, room);
+  if (given) return new WsTransport(given, room);
+
+  // Otherwise ask over plain HTTP whether this host has one. A 404 is a
+  // perfectly normal answer (a static host has no relay) and costs nothing;
+  // opening a doomed WebSocket would fill the console with red instead.
+  if (location.protocol.indexOf('http') !== 0) return new LocalTransport(room);
+  if (await hasRelay()) {
+    return new WsTransport((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/relay', room);
   }
   return new LocalTransport(room);
 }
 
-function probe(url) {
-  return new Promise((resolve) => {
-    let done = false;
-    let ws;
-    const finish = (v) => { if (done) return; done = true; try { if (ws) { ws.onclose = null; ws.close(); } } catch (e) { /* ignore */ } resolve(v); };
-    try { ws = new WebSocket(url + '?probe=1'); } catch (e) { return resolve(false); }
-    ws.onopen = () => finish(true);
-    ws.onerror = () => finish(false);
-    ws.onclose = () => finish(false);
-    setTimeout(() => finish(false), 2200);
-  });
+const RELAY_KEY = 'olw.relay.' + location.host;
+
+function hasRelay() {
+  if (typeof fetch !== 'function') return Promise.resolve(false);
+  // remembered from last time, so a static host is not asked twice
+  try {
+    const seen = localStorage.getItem(RELAY_KEY);
+    if (seen === 'yes') return Promise.resolve(true);
+    if (seen === 'no') return Promise.resolve(false);
+  } catch (e) { /* no storage, just ask */ }
+
+  const remember = (v) => {
+    try { localStorage.setItem(RELAY_KEY, v ? 'yes' : 'no'); } catch (e) { /* fine */ }
+    return v;
+  };
+  const ask = fetch('rooms', { method: 'GET' })
+    .then(r => remember(r.ok && (r.headers.get('content-type') || '').indexOf('json') >= 0))
+    .catch(() => remember(false));
+  const giveUp = new Promise(r => setTimeout(() => r(false), 1500));
+  return Promise.race([ask, giveUp]);
 }
 
 /* ------------------------------------------------------------------ */

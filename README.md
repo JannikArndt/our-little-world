@@ -38,7 +38,10 @@ Three ways to play:
   trying things out.
 
 There is no build step. The whole game is static files; any web server (or
-GitHub Pages) will do. The relay is only needed for two separate devices.
+GitHub Pages) will do. On load the page asks the host over plain HTTP whether it
+has a relay and remembers the answer, so a static host costs one 404 on the
+first visit and nothing afterwards. The relay is only needed for two separate
+devices.
 
 Useful query parameters: `?room=kitchen`, `?role=A|B|BOTH`,
 `?server=wss://your-relay/relay`.

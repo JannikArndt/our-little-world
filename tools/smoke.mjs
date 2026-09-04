@@ -280,6 +280,9 @@ async function main() {
   await pb.goto(BASE + '/?room=duo&role=B');
   await pb.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
   await pb.waitForTimeout(2500);
+  const how = await pa.evaluate(() => window.OLW.session.transport.constructor.name);
+  console.log('transport when the relay is running:', how);
+  if (how !== 'WsTransport') throw new Error('the relay was not used');
 
   await pa.evaluate(() => {
     window.OLW.world.players.A.res.wood = 5;

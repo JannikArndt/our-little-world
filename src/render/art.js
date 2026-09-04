@@ -507,10 +507,16 @@ export function drawBridge(ctx, br, time) {
   ctx.fillStyle = '#7d5730';
   ctx.fillRect(x0 - 6, y0 + 1, x1 - x0 + 12, 3);
   ctx.fillRect(x0 - 6, y1 - 4, x1 - x0 + 12, 3);
-  // rails
+  // rails, one along each side
   ctx.strokeStyle = '#7d5730'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(x0 - 6, y0 - 1); ctx.lineTo(x1 + 6, y0 - 1); ctx.stroke();
-  for (let x = x0 - 4; x < x1 + 6; x += 14) ctx.fillRect(x, y0 - 5, 2.4, 6);
+  ctx.beginPath();
+  ctx.moveTo(x0 - 6, y0 - 1); ctx.lineTo(x1 + 6, y0 - 1);
+  ctx.moveTo(x0 - 6, y1 + 1); ctx.lineTo(x1 + 6, y1 + 1);
+  ctx.stroke();
+  for (let x = x0 - 4; x < x1 + 6; x += 14) {
+    ctx.fillRect(x, y0 - 5, 2.4, 6);
+    ctx.fillRect(x, y1 - 1, 2.4, 6);
+  }
 
   if (br.damaged) {
     const mx = (x0 + x1) / 2;

@@ -96,19 +96,28 @@ async function main() {
   await step(page, '07-workshop-bubble', 400);
   await page.click('text=Saw wood into planks');
   await step(page, '08-sawmill', 500);
-  // place two cuts at 4 and 8
+  // cut the log the way this log's order asks for
+  const planksBefore = await api(() => window.OLW.world.players.A.res.plank);
+  const order = await api(() => window.OLW._saw);
+  console.log('the order:', order.pieces + ' x ' + order.size);
   const cv = await page.$('.panel canvas');
   const box = await cv.boundingBox();
-  const at = (u) => ({ x: box.x + box.width * ((40 + (400 / 12) * u) / 480), y: box.y + box.height * (92 / 200) });
-  await page.mouse.click(at(4).x, at(4).y);
-  await page.mouse.click(at(8).x, at(8).y);
+  const at = (u) => ({ x: box.x + box.width * ((96 + 24 * u) / 480), y: box.y + box.height * (128 / 236) });
+  for (let i = 1; i < order.pieces; i++) {
+    const pt = at(i * order.size);
+    await page.mouse.click(pt.x, pt.y);
+  }
   await step(page, '09-cuts', 300);
   await page.click('text=Saw it');
   await step(page, '10-sawn', 1800);
-  const planks = await api(() => window.OLW.world.players.A.res.plank);
-  console.log('planks:', planks);
-  if (planks < 3) throw new Error('the sawmill produced nothing');
-  await page.click('text=Done');
+  const planks = await api(() => window.OLW.world.players.A.res.plank) - planksBefore;
+  console.log('planks from this log:', planks, '(the order was', order.pieces + ')');
+  if (planks !== order.pieces) throw new Error('cutting to the order did not fill it');
+  // a second log has to be measured again: no "same again" shortcut
+  await page.click('text=The next log');
+  const order2 = await api(() => window.OLW._saw);
+  console.log('the next log asks for:', order2.pieces + ' x ' + order2.size);
+  await page.locator('.panel .row .btn.soft').last().click();
 
   // bridge
   await api(() => { const w = window.OLW.world; w.players.A.res.plank = 9; w.players.A.res.stone = 9; });

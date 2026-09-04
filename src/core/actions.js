@@ -108,7 +108,7 @@ export function applyAction(w, a) {
       const ws = w.buildings.find(b => b.type === 'workshop');
       if (ws) { ws.spin = w.tick; fx(w, 'float', ws.x + 2, ws.y - 0.2, '+' + a.planks + ' 🪚'); }
       tally(w, a.role, 'saw');
-      journal(w, '🪚', 'j.sawed', { n: a.planks });
+      if (a.planks > 0) journal(w, '🪚', 'j.sawed', { n: a.planks });
       clearAsk(w, 'saw', null);
       return true;
     }

@@ -3,48 +3,50 @@
 //   mill:    wheat -> bread   (turn the stone, then bake)
 
 import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overlay.js';
-import { C, rr } from '../render/art.js';
+import { C, rr, glyph } from '../render/art.js';
 import { tr, trn } from '../core/i18n.js';
+import { makeRng } from '../core/rng.js';
 
 const LOG_UNITS = 12;
 const MIN_PLANK = 3;
+// Orders that use the whole log: 2 sixes, 3 fours, 4 threes.
+const ORDERS = [[2, 6], [3, 4], [4, 3]];
+const W = 480, H = 236;
+const X0 = 96, X1 = 384, U = (X1 - X0) / LOG_UNITS, Y = 128;
+const STACK_L = 48, STACK_R = 432;
 
 /* ------------------------------------------------------------------ */
 /* sawmill                                                            */
 /* ------------------------------------------------------------------ */
 
 export function openSawmill(game) {
-  const w = game.world;
-  const have = w.players[game.role].res.wood;
   const p = openPanel({ title: tr('saw.title'), lead: tr('saw.lead') });
 
-  if (have < 1) {
+  const wood = () => game.world.players[game.role].res.wood;
+  const planks = () => game.world.players[game.role].res.plank;
+
+  if (wood() < 1) {
     p.body.appendChild(el('p', 'lead', tr('saw.noWood')));
     const r = p.row(); r.appendChild(p.button(tr('ui.alright'), 'soft', () => p.close()));
     return;
   }
 
-  const cv = makeCanvas(480, 200);
+  const cv = makeCanvas(W, H);
   p.body.appendChild(cv.canvas);
 
-  let cuts = [];              // unit positions, 1..11
-  let sawing = 0;             // 0..1 blade sweep
-  let result = null;
+  // Every log comes with its own order, so nobody can cut the same thing twice
+  // without thinking about it.
+  const rng = makeRng((game.world.tick * 2654435761) ^ game.world.seed);
+  let order = null, cuts = [], sawing = 0, result = null, flying = [];
 
-  const X0 = 40, X1 = 440, Y = 92, U = (X1 - X0) / LOG_UNITS;
-
-  onPointer(cv.canvas, 480, 200, {
-    down(pt) {
-      if (result || sawing) return;
-      const u = Math.round((pt.x - X0) / U);
-      if (u < 1 || u > LOG_UNITS - 1) return;
-      const i = cuts.indexOf(u);
-      if (i >= 0) cuts.splice(i, 1);
-      else if (cuts.length < 3) cuts.push(u);
-      cuts.sort((a, b) => a - b);
-      describe();
-    },
-  });
+  function newOrder() {
+    const pick = ORDERS[Math.floor(rng() * ORDERS.length)];
+    order = { pieces: pick[0], size: pick[1] };
+    game._saw = order;                 // so a test can read what was asked for
+    cuts = []; sawing = 0; result = null; flying = [];
+    describe();
+    buttons();
+  }
 
   function pieces() {
     const edges = [0].concat(cuts, [LOG_UNITS]);
@@ -53,81 +55,140 @@ export function openSawmill(game) {
     return out;
   }
 
+  const right = () => pieces().filter(n => n === order.size).length;
+
   function describe() {
-    const ps = pieces();
-    if (!cuts.length) { p.readout(tr('saw.place')); sawBtn.disabled = true; return; }
-    sawBtn.disabled = false;
-    const good = ps.filter(n => n >= MIN_PLANK).length;
-    const even = ps.every(n => n === ps[0]);
-    p.readout(tr('saw.pieces', {
-      lens: ps.join(' + '), total: LOG_UNITS,
-      result: good ? trn('saw.planks', good, { n: good }) : tr('saw.noPlanks'),
-    }) + (even ? tr('saw.even') : ''));
+    if (result) return;
+    p.readout(cuts.length
+      ? trn('saw.sofar', right(), { n: right(), pieces: order.pieces, size: order.size })
+      : trn('saw.order', order.pieces, { n: order.pieces, size: order.size }));
   }
 
-  const row = p.row();
-  const sawBtn = p.button(tr('saw.go'), '', () => {
-    if (result || sawing) return;
-    sawing = 0.0001;
-    sawBtn.disabled = true;
+  onPointer(cv.canvas, W, H, {
+    down(pt) {
+      if (result || sawing) return;
+      const u = Math.round((pt.x - X0) / U);
+      if (u < 1 || u > LOG_UNITS - 1) return;
+      const i = cuts.indexOf(u);
+      if (i >= 0) cuts.splice(i, 1);
+      else if (cuts.length < LOG_UNITS / MIN_PLANK) cuts.push(u);
+      cuts.sort((a, b) => a - b);
+      describe();
+      buttons();
+    },
   });
-  sawBtn.disabled = true;
-  row.appendChild(sawBtn);
-  const back = p.button(tr('ui.notNow'), 'soft', () => { stop(); p.close(); });
-  back.style.flex = '0 0 auto';
-  row.appendChild(back);
 
-  describe();
+  /* ---- buttons ---- */
+  const row = p.row();
+  let sawBtn = null, nextBtn = null;
 
-  function drawLog(t) {
+  function buttons() {
+    row.innerHTML = '';
+    if (!result) {
+      sawBtn = p.button(tr('saw.go'), '', () => { if (!sawing && cuts.length) { sawing = 0.0001; buttons(); } });
+      sawBtn.disabled = !cuts.length || !!sawing;
+      row.appendChild(sawBtn);
+    } else if (wood() > 0) {
+      // No shortcut: the next log is a new order and has to be measured again.
+      nextBtn = p.button(tr('saw.nextLog'), 'go', () => newOrder());
+      row.appendChild(nextBtn);
+    }
+    const done = p.button(result ? tr('ui.done') : tr('ui.notNow'), 'soft', () => { stop(); p.close(); });
+    done.style.flex = '0 0 auto';
+    row.appendChild(done);
+  }
+
+  newOrder();
+
+  /* ---- drawing ---- */
+  function plank(ctx, x, y, w, h, ok) {
+    ctx.fillStyle = ok ? C.wood : '#8e7550';
+    rr(ctx, x, y, w, h, 5); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.18)';
+    rr(ctx, x + 2, y + 3, Math.max(2, w - 5), Math.max(2, h * 0.26), 3); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,80,45,.35)'; ctx.lineWidth = 1;
+    for (let g = 1; g < 3; g++) {
+      ctx.beginPath();
+      ctx.moveTo(x + 4, y + (h / 3) * g); ctx.lineTo(x + w - 5, y + (h / 3) * g);
+      ctx.stroke();
+    }
+  }
+
+  function stack(ctx, x, label, n, colour) {
+    const show = Math.min(n, 6);
+    for (let i = 0; i < show; i++) {
+      ctx.fillStyle = colour;
+      rr(ctx, x - 26, 176 - i * 11, 52, 9, 3); ctx.fill();
+      ctx.strokeStyle = 'rgba(120,80,45,.3)'; ctx.lineWidth = 1;
+      rr(ctx, x - 26, 176 - i * 11, 52, 9, 3); ctx.stroke();
+    }
+    ctx.fillStyle = '#43372a';
+    ctx.font = '800 17px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(n), x, 199);
+    glyph(ctx, label, x, 216, 18);
+  }
+
+  function draw(t) {
     const ctx = cv.ctx;
-    ctx.clearRect(0, 0, 480, 200);
-    ctx.fillStyle = '#efe4cd'; ctx.fillRect(0, 0, 480, 200);
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#efe4cd'; ctx.fillRect(0, 0, W, H);
 
-    // bench
-    ctx.fillStyle = '#c9b38c'; rr(ctx, 20, 120, 440, 18, 6); ctx.fill();
-
-    const ps = pieces();
-    let x = X0;
-    const gap = result ? Math.min(10, sawing * 10) : 0;
-    for (let i = 0; i < ps.length; i++) {
-      const wgt = ps[i] * U;
-      const ok = ps[i] >= MIN_PLANK;
-      const drop = result && !ok ? Math.min(26, sawing * 40) : 0;
+    // the order, drawn at the same scale as the log so you can compare lengths
+    const wide = order.pieces * order.size * U + (order.pieces - 1) * 5;
+    let ox = Math.max(102, (W - wide) / 2);   // clear of the words on the left
+    ctx.fillStyle = '#43372a';
+    ctx.font = '800 15px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(tr('saw.wanted'), 14, 26);
+    ctx.font = '800 19px -apple-system, system-ui, sans-serif';
+    ctx.fillText(order.pieces + ' × ' + order.size, 14, 52);
+    for (let i = 0; i < order.pieces; i++) {
+      const w = order.size * U;
       ctx.save();
-      ctx.translate(i * gap, drop);
-      ctx.fillStyle = ok ? C.wood : '#8e7550';
-      rr(ctx, x, Y - 16, wgt - 1, 32, 5); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,.18)';
-      rr(ctx, x + 2, Y - 13, wgt - 5, 8, 3); ctx.fill();
-      ctx.strokeStyle = 'rgba(120,80,45,.35)'; ctx.lineWidth = 1;
-      for (let g = 0; g < 3; g++) {
-        ctx.beginPath();
-        ctx.moveTo(x + 4, Y - 8 + g * 8); ctx.lineTo(x + wgt - 5, Y - 8 + g * 8 + (g === 1 ? 2 : 0));
-        ctx.stroke();
-      }
-      if (result) {
-        ctx.font = '700 13px -apple-system, system-ui, sans-serif';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillStyle = ok ? '#fffdf8' : 'rgba(255,255,255,.7)';
-        ctx.fillText(ok ? '🪚' : '🔥', x + wgt / 2, Y);
-      }
+      ctx.globalAlpha = 0.5;
+      plank(ctx, ox, 30, w, 26, true);
       ctx.restore();
-      x += wgt;
+      ctx.strokeStyle = '#5d9150'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+      rr(ctx, ox, 30, w, 26, 5); ctx.stroke(); ctx.setLineDash([]);
+      ox += w + 5;
     }
 
-    // the ruler
+    // bench
+    ctx.fillStyle = '#c9b38c'; rr(ctx, X0 - 14, Y + 26, (X1 - X0) + 28, 14, 6); ctx.fill();
+
+    // the log, cut where you said
+    const ps = pieces();
+    let x = X0;
+    for (let i = 0; i < ps.length; i++) {
+      const w = ps[i] * U;
+      const ok = ps[i] === order.size;
+      let dx = 0, dy = 0, alpha = 1;
+      if (result) {
+        const f = flying[i] || { ok: ok, at: 0 };
+        if (ok) { dx = (STACK_R - (x + w / 2)) * f.at; dy = (170 - Y) * f.at; alpha = 1 - f.at * 0.8; }
+        else { dy = f.at * 60; alpha = 1 - f.at; }
+      }
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, alpha);
+      ctx.translate(dx, dy);
+      plank(ctx, x, Y - 15, w - 1, 30, ok);
+      if (result) glyph(ctx, ok ? '🪚' : '🔥', x + w / 2, Y, 15);
+      ctx.restore();
+      x += w;
+    }
+
+    // the ruler underneath
     ctx.strokeStyle = 'rgba(67,55,42,.35)'; ctx.lineWidth = 1;
-    ctx.font = '10px -apple-system, system-ui, sans-serif';
+    ctx.font = '11px -apple-system, system-ui, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     ctx.fillStyle = 'rgba(67,55,42,.6)';
     for (let u = 0; u <= LOG_UNITS; u++) {
       const px = X0 + u * U;
-      ctx.beginPath(); ctx.moveTo(px, Y + 20); ctx.lineTo(px, Y + 20 + (u % 3 === 0 ? 8 : 4)); ctx.stroke();
-      if (u % 3 === 0) ctx.fillText(String(u), px, Y + 31);
+      ctx.beginPath(); ctx.moveTo(px, Y + 18); ctx.lineTo(px, Y + 18 + (u % order.size === 0 ? 9 : 4)); ctx.stroke();
+      if (u % order.size === 0) ctx.fillText(String(u), px, Y + 29);
     }
 
-    // pending cut marks
     if (!result) {
       for (const u of cuts) {
         const px = X0 + u * U;
@@ -138,13 +199,17 @@ export function openSawmill(game) {
       }
     }
 
-    // the blade sweeping across
+    // what you have on either side: wood going down, planks going up
+    stack(ctx, STACK_L, '🪵', wood(), C.wood);
+    stack(ctx, STACK_R, '🪚', planks(), '#e3c98f');
+
+    // the blade
     if (sawing > 0 && sawing < 1) {
       const bx = X0 - 30 + (X1 - X0 + 60) * sawing;
       ctx.save();
       ctx.translate(bx, Y - 40);
       ctx.fillStyle = '#cfd4d8';
-      rr(ctx, -5, 0, 10, 60, 3); ctx.fill();
+      rr(ctx, -5, 0, 10, 58, 3); ctx.fill();
       ctx.fillStyle = '#8e959b';
       for (let i = 0; i < 8; i++) ctx.fillRect(-6, 6 + i * 7, 12, 2);
       ctx.restore();
@@ -152,7 +217,7 @@ export function openSawmill(game) {
       for (let i = 0; i < 6; i++) {
         const a = i * 1.05 + sawing * 12;
         ctx.beginPath();
-        ctx.arc(bx + Math.cos(a) * 16, Y + 18 + Math.sin(a) * 10, 1.6, 0, Math.PI * 2);
+        ctx.arc(bx + Math.cos(a) * 16, Y + 16 + Math.sin(a) * 10, 1.6, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -160,36 +225,27 @@ export function openSawmill(game) {
 
   const stop = loop((t, dt) => {
     cv.fit();
-    if (sawing > 0 && sawing < 1.6) {
+    if (sawing > 0 && sawing < 1) {
       sawing += dt / 900;
-      if (sawing >= 1 && !result) settle();
+      if (sawing >= 1) settle();
     }
-    drawLog(t);
+    for (const f of flying) if (f.at < 1) f.at = Math.min(1, f.at + dt / 700);
+    draw(t);
   });
 
   function settle() {
     const ps = pieces();
-    const planks = Math.min(3, ps.filter(n => n >= MIN_PLANK).length);
-    const even = ps.every(n => n === ps[0]) && planks === ps.length;
-    result = { planks: Math.max(1, planks), even };
-    game.dispatch({ type: 'saw.run', role: game.role, wood: 1, planks: result.planks });
+    const good = ps.filter(n => n === order.size).length;
+    result = { good: good, scraps: ps.length - good };
+    flying = ps.map(n => ({ ok: n === order.size, at: 0 }));
+    game.dispatch({ type: 'saw.run', role: game.role, wood: 1, planks: good });
 
-    const scraps = ps.length - planks;
-    p.readout(even
-      ? tr('saw.perfect', { count: ps.length, size: ps[0], planks: result.planks })
-      : tr(scraps === 1 ? 'saw.mixed1' : 'saw.mixed', { planks: result.planks, scraps: scraps }));
-
-    row.innerHTML = '';
-    const left = game.world.players[game.role].res.wood;
-    if (left > 0) {
-      row.appendChild(p.button(tr('saw.sameAgain', { n: Math.min(4, left) }), 'go', () => {
-        const n = Math.min(4, game.world.players[game.role].res.wood);
-        for (let i = 0; i < n; i++) game.dispatch({ type: 'saw.run', role: game.role, wood: 1, planks: result.planks });
-        stop(); p.close();
-        message(tr('msg.morePlanks', { n: n * result.planks }));
-      }));
-    }
-    row.appendChild(p.button(tr('ui.done'), 'soft', () => { stop(); p.close(); }));
+    p.readout(good === order.pieces
+      ? tr('saw.perfect', { n: good, size: order.size })
+      : good > 0
+        ? trn('saw.some', good, { n: good, scraps: result.scraps })
+        : tr('saw.none'));
+    buttons();
   }
 }
 

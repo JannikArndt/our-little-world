@@ -154,8 +154,8 @@ notices opens the same card.
 
 | | |
 |---|---|
-| 🪓 **Fell a tree** | Pick which way it falls. It goes where you cut it — unless you drop it into the wind, and then it goes wherever it likes. |
-| 🪚 **Saw a log** | Place saw cuts. Pieces of three marks or more become planks; anything shorter is kindling. Even cuts, better planks. |
+| 🪓 **Fell a tree** | Pick which way it falls, then swing the axe by tapping the trunk. It goes where you cut it — unless you drop it into the wind, and then it goes wherever it likes. |
+| 🪚 **Saw a log** | Every log arrives with an order — three pieces of four, two of six, four of three — drawn above the log at the same scale. Pieces that match become planks and land on the stack; the rest is kindling. Each log is measured on its own. |
 | 🌉 **Build the bridge** | Stand piers in the river. A beam reaches two gaps on its own; three sags; four goes in the water, taking a villager with it. Try it before you build it — trying costs nothing. |
 | 🏠 **Design a house** | Put a door, windows, beds, a stove and a table on a floor plan. The family stands outside and tells you, with their faces, what living there would be like — dark, freezing, cramped, or a bed nobody can reach. |
 | 🐑 **Look after a sheep** | She does not say what she wants. She droops, or eyes the river, or gets very woolly. Drag over what you think she needs. Wrong guesses are funny and free. |

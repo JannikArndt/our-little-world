@@ -61,7 +61,8 @@ await p.waitForTimeout(500);
 await scan('chop');
 await p.screenshot({ path: out + '63-de-chop.png' });
 await p.click('text=nach unten');
-for (let i = 0; i < 3; i++) await p.click('text=Hacken');
+const trunk = await p.locator('.panel canvas').boundingBox();
+for (let i = 0; i < 3; i++) { await p.mouse.click(trunk.x + trunk.width * 0.5, trunk.y + trunk.height * 0.5); await p.waitForTimeout(160); }
 await p.waitForTimeout(2500);
 await scan('after chop');
 

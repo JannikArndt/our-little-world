@@ -4,7 +4,7 @@
 
 import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overlay.js';
 import { T, TILE, tileAt, inBounds } from '../core/grid.js';
-import { C, drawTree, drawStump, drawHouse, drawSite, drawWorkshop } from '../render/art.js';
+import { C, glyph, drawTree, drawStump, drawHouse, drawSite, drawWorkshop } from '../render/art.js';
 import { makeRng } from '../core/rng.js';
 import { tr } from '../core/i18n.js';
 
@@ -47,7 +47,7 @@ export function openChop(game, tree) {
   const pad = el('div', 'row');
   p.panel.appendChild(pad);
 
-  let chosen = null, chops = 0, falling = 0, done = false, shake = 0;
+  let chosen = null, chops = 0, falling = 0, done = false, shake = 0, nudge = 0;
 
   const dirBtns = {};
   for (const d of ['W', 'N', 'S', 'E']) {
@@ -59,23 +59,25 @@ export function openChop(game, tree) {
   }
 
   const row2 = p.row();
-  const chopBtn = p.button(tr('chop.chop'), '', () => {
-    if (done || !chosen) return;
+  const leave = p.button(tr('chop.leave'), 'soft', () => { stop(); p.close(); });
+  row2.appendChild(leave);
+
+  let swing = 0, chips = [];
+
+  function chop() {
+    if (done) return;
+    if (!chosen) { p.readout(tr('chop.chooseFirst')); nudge = 1; return; }
+    swing = 1; shake = 1;
     chops++;
-    shake = 1;
+    for (let i = 0; i < 7; i++)
+      chips.push({ x: 0, y: 0, vx: (Math.random() - 0.5) * 3.2, vy: -1.4 - Math.random() * 1.6, life: 1 });
     if (chops >= 3) {
       done = true;
-      chopBtn.disabled = true;
       falling = 0.0001;
     } else {
       p.readout(tr('chop.chips', { n: 3 - chops }));
     }
-  });
-  chopBtn.disabled = true;
-  row2.appendChild(chopBtn);
-  const leave = p.button(tr('chop.leave'), 'soft', () => { stop(); p.close(); });
-  leave.style.flex = '0 0 auto';
-  row2.appendChild(leave);
+  }
 
   p.readout(tr('chop.wind', { dir: tr('chop.compass.' + windDir), arrow: ARROW[windDir] }));
 
@@ -88,7 +90,6 @@ export function openChop(game, tree) {
     if (done) return;
     chosen = d; chops = 0;
     for (const k in dirBtns) dirBtns[k].className = 'btn ' + (k === d ? '' : 'soft') + ' small';
-    chopBtn.disabled = false;
     p.readout(tr('chop.notch', { side: tr('chop.side.' + d) }));
   }
 
@@ -138,7 +139,18 @@ export function openChop(game, tree) {
     } else if (shake > 0) {
       ctx.rotate(Math.sin(t * 0.06) * 0.05 * shake);
     }
+    // front and centre: this is the trunk you are swinging at
+    ctx.translate(0, 9); ctx.scale(1.35, 1.35); ctx.translate(0, -9);
     drawTree(ctx, { x: -0.5, y: -0.5, kind: tree.kind, sway: 0 }, falling > 0 ? 0 : t);
+    if (chosen && !done) {                        // the notch, on the side it will fall
+      const [nx, ny] = DIRS[chosen];
+      ctx.fillStyle = '#f0e0c0';
+      ctx.beginPath();
+      ctx.moveTo(nx * 3.5, 7 + ny * 1.5);
+      ctx.lineTo(nx * 3.5 + (ny ? 4 : 0), 11 + ny * 1.5);
+      ctx.lineTo(nx * 3.5 + (ny ? -4 : nx * 4), 9 + ny * 3.5);
+      ctx.closePath(); ctx.fill();
+    }
     ctx.restore();
     ctx.restore();
 
@@ -169,13 +181,42 @@ export function openChop(game, tree) {
         ctx.strokeStyle = 'rgba(67,55,42,.3)'; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.arc(mx, my, 22, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         ctx.globalAlpha = 1;
-        ctx.font = '18px system-ui, "Apple Color Emoji", sans-serif';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        const glyph = around[d] === 'water' ? '🌊' : around[d] === 'house' ? '🏠'
+        const mark = around[d] === 'water' ? '🌊' : around[d] === 'house' ? '🏠'
           : around[d] === 'tree' ? '🌳' : around[d] === 'edge' ? '🪨' : ARROW[d];
-        ctx.fillText(glyph, mx, my);
+        glyph(ctx, mark, mx, my, 18);
       }
     }
+
+    // the axe waits beside the trunk, and swings when you tap it
+    if (!done) {
+      ctx.save();
+      ctx.translate(ox - 40, oy + 34);   // down and to the left, clear of the four choices
+      ctx.rotate(-0.5 + Math.sin(Math.min(1, 1 - swing) * Math.PI) * 1.5 * (swing > 0 ? 1 : 0));
+      glyph(ctx, '🪓', 0, 0, 34);
+      ctx.restore();
+      if (!chosen || nudge > 0) {
+        ctx.save();
+        ctx.globalAlpha = 0.9;
+        ctx.fillStyle = nudge > 0 ? '#c05b4d' : 'rgba(67,55,42,.75)';
+        ctx.font = '700 13px -apple-system, system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(tr('chop.pickSide'), 170, 286);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = 'rgba(67,55,42,.75)';
+        ctx.font = '700 13px -apple-system, system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(tr('chop.tapTrunk'), 170, 286);
+      }
+    }
+
+    // wood chips fly off the trunk
+    for (const c of chips) {
+      ctx.globalAlpha = Math.max(0, c.life);
+      ctx.fillStyle = '#e2c894';
+      ctx.fillRect(ox + c.x - 2, oy + c.y - 2, 4, 3);
+    }
+    ctx.globalAlpha = 1;
   }
 
   function fellDir() {
@@ -191,12 +232,17 @@ export function openChop(game, tree) {
         const mx = ox + DIRS[d][0] * MARK, my = oy + DIRS[d][1] * MARK;
         if ((pt.x - mx) * (pt.x - mx) + (pt.y - my) * (pt.y - my) < 30 * 30) { choose(d); return; }
       }
+      if ((pt.x - ox) * (pt.x - ox) + (pt.y - oy) * (pt.y - oy) < 46 * 46) chop();
     },
   });
 
   const stop = loop((t, dt) => {
     cv.fit();
     if (shake > 0) shake = Math.max(0, shake - dt / 260);
+    if (swing > 0) swing = Math.max(0, swing - dt / 240);
+    if (nudge > 0) nudge = Math.max(0, nudge - dt / 900);
+    for (const c of chips) { c.x += c.vx; c.y += c.vy; c.vy += 0.22; c.life -= dt / 700; }
+    chips = chips.filter(c => c.life > 0);
     if (falling > 0 && falling < 1.35) {
       falling += dt / 620;
       if (falling >= 1 && !p._settled) {

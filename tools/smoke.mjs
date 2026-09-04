@@ -72,9 +72,12 @@ async function main() {
   await page.click('text=Fell this tree');
   await step(page, '05-chop', 600);
   await page.click('text=up');
-  await page.click('text=🪓 Chop');
-  await page.click('text=🪓 Chop');
-  await page.click('text=🪓 Chop');
+  // three swings at the trunk itself, in the middle of the picture
+  const trunk = await page.locator('.panel canvas').boundingBox();
+  for (let i = 0; i < 3; i++) {
+    await page.mouse.click(trunk.x + trunk.width * 0.5, trunk.y + trunk.height * 0.5);
+    await page.waitForTimeout(160);
+  }
   await step(page, '06-chopped', 2200);
 
   const wood = await api(() => window.OLW.world.players.A.res.wood);

@@ -142,7 +142,24 @@ async function main() {
   await step(page, '17-sheep-bubble', 400);
   await page.click('text=Look after her');
   await step(page, '18-care', 700);
+  // tapping an item is enough — no dragging required
+  const cbox = await (await page.$('.panel canvas')).boundingBox();
+  const item = (i) => ({ x: cbox.x + cbox.width * ((60 + i * 100) / 420), y: cbox.y + cbox.height * (258 / 300) });
+  const fluffBefore = await api(() => window.OLW.world.sheep[0].fluff);
+  await page.mouse.click(item(2).x, item(2).y);          // the shears
+  await page.waitForTimeout(1100);
+  const fluffAfter = await api(() => window.OLW.world.sheep[0].fluff);
+  console.log('shearing by tapping: fluff', fluffBefore, '->', fluffAfter);
+  if (!(fluffAfter < fluffBefore)) throw new Error('tapping an item did nothing');
+  await step(page, '18b-sheared', 400);
   await page.click('text=Done');
+
+  // roads are not restricted to a starting point any more
+  await api(() => {
+    const g = window.OLW;
+    g.world.players.B.res.stone = 9;
+    g.setMode(null);
+  });
 
   // farming: sow and water
   await api(() => {

@@ -10,7 +10,7 @@ import { openSawmill, openMill } from '../minigames/sawmill.js';
 import { openBridge, openRepair } from '../minigames/bridge.js';
 import { openHouse } from '../minigames/house.js';
 import { openCare } from '../minigames/care.js';
-import { roadMode, sheepMode, waterMode } from '../minigames/modes.js';
+import { roadMode, sheepMode } from '../minigames/modes.js';
 import { openGive } from './share.js';
 
 /* ------------------------------------------------------------------ */
@@ -163,7 +163,14 @@ function actionsFor(game, h) {
       if (!can(w, r, 'farm')) return { title: 'A field plot', hint, actions: [askAction(game, 'farm', p.id, 'work the field')] };
       if (p.state === 'empty') A.push({ label: '🌱 Sow it', fn: () => game.dispatch({ type: 'plot.plant', role: r, plotId: p.id, watered: false }) });
       if (p.state === 'ripe') A.push({ label: '🌾 Cut the wheat', fn: () => game.dispatch({ type: 'plot.harvest', role: r, plotId: p.id }) });
-      A.push({ label: '🪣 Fetch water', cls: 'soft', fn: () => game.setMode(waterMode(game)) });
+      if (p.state !== 'empty') {
+        A.push({ label: '💧 Water it', cls: p.water <= 8 ? '' : 'soft', fn: () => game.dispatch({ type: 'plot.water', role: r, plotId: p.id }) });
+        const dry = w.plots.filter(q => q.state !== 'empty' && q.water <= 30);
+        if (dry.length > 1) A.push({
+          label: '💧 Water all ' + dry.length + ' thirsty plots', cls: 'soft',
+          fn: () => { for (const q of dry) game.dispatch({ type: 'plot.water', role: r, plotId: q.id }); },
+        });
+      }
       return { title: 'A field plot', hint, actions: A };
     }
 
@@ -207,7 +214,7 @@ function actionsFor(game, h) {
       return { title: 'The river', hint: 'Cold, quick, and in the way.', actions: [] };
 
     default: {
-      if (can(w, r, 'road')) A.push({ label: '🛤️ Lay a road from here', fn: () => game.setMode(roadMode(game)) });
+      if (can(w, r, 'road')) A.push({ label: '🛤️ Build a road', fn: () => game.setMode(roadMode(game)) });
       else A.push(askAction(game, 'road', null, 'build a road'));
       return { title: 'Open ground', hint: 'Roads make everybody quicker.', actions: A };
     }

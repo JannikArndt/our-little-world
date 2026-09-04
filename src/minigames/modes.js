@@ -15,16 +15,28 @@ export function roadMode(game) {
   const key = (x, y) => x + ',' + y;
   const seen = {};
 
-  const add = (x, y) => {
+  const put = (x, y) => {
     if (!inBounds(x, y) || seen[key(x, y)]) return;
     const t = tileAt(game.world, x, y);
     if (t === T.WATER || t === T.ROAD || t === T.BRIDGE) return;
     if (!walkable(game.world, x, y)) return;
-    if (tiles.length && Math.abs(tiles[tiles.length - 1].x - x) + Math.abs(tiles[tiles.length - 1].y - y) > 2) return;
     if (Math.ceil((tiles.length + 1) / 2) > has()) { mode.hint = 'That is all the stone you have.'; return; }
     seen[key(x, y)] = 1;
     tiles.push({ x, y });
     mode.hint = null;
+  };
+
+  // A finger moves faster than the tile it is over, so fill in the tiles
+  // between the last one and this one. No other restriction: draw anywhere.
+  const add = (x, y) => {
+    const last = tiles[tiles.length - 1];
+    if (last) {
+      const steps = Math.max(Math.abs(x - last.x), Math.abs(y - last.y));
+      for (let i = 1; i < steps; i++)
+        put(Math.round(last.x + (x - last.x) * (i / steps)),
+            Math.round(last.y + (y - last.y) * (i / steps)));
+    }
+    put(x, y);
   };
 
   const mode = {
@@ -32,7 +44,7 @@ export function roadMode(game) {
     title: '🛤️ Laying a road',
     hint: null,
     say() {
-      return 'Drag across the ground. <b>' + tiles.length + '</b> step' + (tiles.length === 1 ? '' : 's') +
+      return 'Draw anywhere you like. <b>' + tiles.length + '</b> step' + (tiles.length === 1 ? '' : 's') +
              ' · costs <b>' + cost() + ' 🪨</b> of your ' + has() +
              (mode.hint ? ' — ' + mode.hint : '');
     },
@@ -94,47 +106,6 @@ export function sheepMode(game, sheep) {
       ctx.restore();
     },
     buttons: [{ label: 'Never mind', cls: 'soft', fn() { game.setMode(null); } }],
-  };
-  return mode;
-}
-
-/* ------------------------------------------------------------------ */
-/* the watering can                                                   */
-/* ------------------------------------------------------------------ */
-
-const CAN = 3;
-
-export function waterMode(game) {
-  let drops = 0;
-  const mode = {
-    kind: 'water',
-    title: '🪣 Watering the field',
-    say() {
-      return drops > 0
-        ? 'The can holds <b>' + drops + '</b> more ' + (drops === 1 ? 'plot' : 'plots') + '. Tap a plot.'
-        : 'The can is empty. Tap the <b>river</b> to fill it (it holds ' + CAN + ').';
-    },
-    down(tx, ty) {
-      const w = game.world;
-      if (tileAt(w, tx, ty) === T.WATER) { drops = CAN; message('🪣 Filled — ' + CAN + ' plots\' worth.'); return; }
-      const p = w.plots.find(p => tx >= p.x && tx < p.x + 2 && ty >= p.y && ty < p.y + 2);
-      if (!p) return;
-      if (p.state === 'empty') { message('Nothing planted here yet.'); return; }
-      if (drops <= 0) { message('The can is empty. Fill it at the river.'); return; }
-      if (game.dispatch({ type: 'plot.water', role: game.role, plotId: p.id })) drops--;
-    },
-    overlay(ctx) {
-      const w = game.world;
-      ctx.save();
-      for (const p of w.plots) {
-        if (p.state === 'empty' || p.water > 30) continue;
-        ctx.strokeStyle = 'rgba(110,180,215,.9)'; ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.strokeRect(p.x * TILE + 2, p.y * TILE + 2, TILE * 2 - 4, TILE * 2 - 4);
-      }
-      ctx.restore();
-    },
-    buttons: [{ label: 'Done', cls: 'soft', fn() { game.setMode(null); } }],
   };
   return mode;
 }

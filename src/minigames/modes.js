@@ -21,7 +21,7 @@ export function roadMode(game) {
     const t = tileAt(game.world, x, y);
     if (t === T.WATER || t === T.ROAD || t === T.BRIDGE) return;
     if (!walkable(game.world, x, y)) return;
-    if (Math.ceil((tiles.length + 1) / 2) > has()) { mode.hint = tr('road.noStone'); return; }
+    if (Math.ceil((tiles.length + 1) / 2) > has()) { mode.hint = tr('road.noMore'); return; }
     seen[key(x, y)] = 1;
     tiles.push({ x, y });
     mode.hint = null;
@@ -45,8 +45,14 @@ export function roadMode(game) {
     title: tr('road.title'),
     hint: null,
     say() {
-      return trn('road.say', tiles.length, { n: tiles.length, cost: cost(), have: has() }) +
+      if (!tiles.length) return tr('road.draw');
+      return trn('road.steps', tiles.length, { n: tiles.length }) +
              (mode.hint ? ' — ' + mode.hint : '');
+    },
+    // The same counted picture the panels use: one stone per stone.
+    costItems() {
+      if (!tiles.length) return null;
+      return [{ icon: '🪨', need: cost(), have: has() }];
     },
     down(tx, ty) { add(tx, ty); },
     drag(tx, ty) { add(tx, ty); },
@@ -67,8 +73,8 @@ export function roadMode(game) {
       ctx.restore();
     },
     buttons: [
-      { label: tr('road.lay'), cls: 'go', fn() {
-        if (!tiles.length) return;
+      { label: tr('road.lay'), cls: 'go', enabled: () => tiles.length > 0 && cost() <= has(), fn() {
+        if (!tiles.length || cost() > has()) return;
         if (game.dispatch({ type: 'road.build', role: game.role, tiles: tiles.slice() })) {
           message(tr('msg.roadLaid', { n: tiles.length }));
         }

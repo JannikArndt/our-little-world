@@ -5,7 +5,7 @@
 import { TILE, T, tileAt } from '../core/grid.js';
 import { ROLE, can, roleName } from '../core/world.js';
 import { tr, trn } from '../core/i18n.js';
-import { el, message } from './overlay.js';
+import { el, message, renderCost } from './overlay.js';
 import { openChop } from '../minigames/chop.js';
 import { openSawmill, openMill } from '../minigames/sawmill.js';
 import { openBridge, openRepair } from '../minigames/bridge.js';
@@ -214,9 +214,12 @@ function actionsFor(game, h) {
       return { title: tr('w.river'), hint: tr('w.riverHint'), actions: [] };
 
     default: {
-      if (can(w, r, 'road')) A.push({ label: tr('w.buildRoad'), fn: () => game.setMode(roadMode(game)) });
-      else A.push(askAction(game, 'road', null));
-      return { title: tr('w.ground'), hint: tr('w.groundHint'), actions: A };
+      const stone = w.players[r].res.stone;
+      if (can(w, r, 'road') && stone > 0) A.push({ label: tr('w.buildRoad'), fn: () => game.setMode(roadMode(game)) });
+      if (!can(w, r, 'road')) A.push(askAction(game, 'road', null));
+      // Offering a button that cannot work teaches nothing; say what is missing.
+      const hint = can(w, r, 'road') && stone === 0 ? tr('w.roadNoStone') : tr('w.groundHint');
+      return { title: tr('w.ground'), hint, actions: A };
     }
   }
 }
@@ -237,7 +240,7 @@ export function renderModeBar(game) {
   }
   if (stage.className.indexOf('has-mode') < 0) stage.className += ' has-mode';
   if (!modeBar) {
-    modeBar = el('div');
+    modeBar = el('div', 'mode-bar');
     modeBar.style.cssText = 'position:absolute;left:8px;right:8px;bottom:8px;background:#fffdf8;' +
       'border:2px solid #d9c9ae;border-radius:16px;padding:8px 10px;box-shadow:0 6px 18px rgba(67,55,42,.2);' +
       'pointer-events:auto;z-index:20;max-width:520px;margin:0 auto;';
@@ -246,9 +249,11 @@ export function renderModeBar(game) {
     modeBar._title.style.cssText = 'font-weight:800;font-size:15px;margin-bottom:2px;';
     modeBar._say = el('div');
     modeBar._say.style.cssText = 'font-size:13px;color:#7a6a56;min-height:18px;';
+    modeBar._cost = el('div');
     modeBar._row = el('div', 'row');
     modeBar.appendChild(modeBar._title);
     modeBar.appendChild(modeBar._say);
+    modeBar.appendChild(modeBar._cost);
     modeBar.appendChild(modeBar._row);
     modeBar._for = null;
   }
@@ -256,13 +261,19 @@ export function renderModeBar(game) {
     modeBar._for = game.mode;
     modeBar._title.textContent = game.mode.title;
     modeBar._row.innerHTML = '';
+    modeBar._btns = [];
     for (const b of game.mode.buttons || []) {
       const btn = el('button', 'btn small ' + (b.cls || ''), b.label);
-      btn.addEventListener('click', () => { b.fn(); renderModeBar(game); });
+      btn.addEventListener('click', () => { if (!btn.disabled) b.fn(); renderModeBar(game); });
       modeBar._row.appendChild(btn);
+      modeBar._btns.push({ spec: b, el: btn });
     }
   }
   modeBar._say.innerHTML = game.mode.say ? game.mode.say() : '';
+  const items = game.mode.costItems ? game.mode.costItems() : null;
+  if (items && items.length) renderCost(modeBar._cost, items);
+  else modeBar._cost.innerHTML = '';
+  for (const b of modeBar._btns || []) b.el.disabled = b.spec.enabled ? !b.spec.enabled() : false;
 }
 
 /* ------------------------------------------------------------------ */

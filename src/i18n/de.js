@@ -36,6 +36,8 @@ export const de = {
   'ui.partnerTap': '{role} — zum Teilen tippen',
   'ui.have': 'hast',
   'ui.need': 'brauchst',
+  'ui.stillMissing_one': 'fehlt noch',
+  'ui.stillMissing_other': 'fehlen noch',
   'ui.cost': 'hast {have}, brauchst {need}',
 
   /* ---- Tageszeit ---- */
@@ -169,6 +171,7 @@ export const de = {
   'w.riverHint': 'Kalt, schnell und im Weg.',
   'w.ground': 'Freies Gelände',
   'w.groundHint': 'Wege machen alle schneller.',
+  'w.roadNoStone': 'Ein Weg besteht aus Steinen, und du hast keine. Am Flussufer liegen welche.',
   'w.buildRoad': '🛤️ Einen Weg bauen',
   'w.and': ' und ',
 
@@ -302,9 +305,10 @@ export const de = {
 
   /* ---- Wege und Führen ---- */
   'road.title': '🛤️ Einen Weg anlegen',
-  'road.say_one': 'Zeichne, wo du willst. <b>{n}</b> Schritt · kostet <b>{cost} 🪨</b> von deinen {have}',
-  'road.say_other': 'Zeichne, wo du willst. <b>{n}</b> Schritte · kostet <b>{cost} 🪨</b> von deinen {have}',
-  'road.noStone': 'Mehr Steine hast du nicht.',
+  'road.draw': 'Zeichne den Weg mit dem Finger — wo du willst.',
+  'road.steps_one': '<b>1</b> Schritt Weg',
+  'road.steps_other': '<b>{n}</b> Schritte Weg',
+  'road.noMore': 'Mehr Steine hast du nicht.',
   'road.lay': 'Anlegen',
   'herd.title': '🐑 Wohin soll {name}?',
   'herd.say': 'Tipp eine Stelle in der Welt an — dann läuft sie hin, wenn sie hinkommt.',

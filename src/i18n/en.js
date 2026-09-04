@@ -36,6 +36,8 @@ export const en = {
   'ui.partnerTap': '{role} — tap to share',
   'ui.have': 'have',
   'ui.need': 'need',
+  'ui.stillMissing_one': 'still missing',
+  'ui.stillMissing_other': 'still missing',
   'ui.cost': 'have {have}, need {need}',
 
   /* ---- time of day ---- */
@@ -169,6 +171,7 @@ export const en = {
   'w.riverHint': 'Cold, quick, and in the way.',
   'w.ground': 'Open ground',
   'w.groundHint': 'Roads make everybody quicker.',
+  'w.roadNoStone': 'A road is made of stone, and you have none. There are stones on the river bank.',
   'w.buildRoad': '🛤️ Build a road',
   'w.and': ' and ',
 
@@ -302,9 +305,10 @@ export const en = {
 
   /* ---- road and herding ---- */
   'road.title': '🛤️ Laying a road',
-  'road.say_one': 'Draw anywhere you like. <b>{n}</b> step · costs <b>{cost} 🪨</b> of your {have}',
-  'road.say_other': 'Draw anywhere you like. <b>{n}</b> steps · costs <b>{cost} 🪨</b> of your {have}',
-  'road.noStone': 'That is all the stone you have.',
+  'road.draw': 'Draw the road with your finger — anywhere you like.',
+  'road.steps_one': '<b>1</b> step of road',
+  'road.steps_other': '<b>{n}</b> steps of road',
+  'road.noMore': 'That is all the stone you have.',
   'road.lay': 'Lay it',
   'herd.title': '🐑 Where should {name} go?',
   'herd.say': 'Tap a spot in the world and she will walk there — if she can get to it.',

@@ -276,7 +276,13 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
 .btn:active { -webkit-transform: translateY(2px); transform: translateY(2px); }
 .btn.soft { background: #fffdf8; border-color: var(--line); font-weight: 700; }
 .btn.go { background: var(--keeper); border-color: #4a7841; color: #fff; }
-.btn[disabled] { opacity: .45; }
+/* A button you cannot use should not look like one you can: it loses its
+   colour entirely rather than just fading. */
+.btn[disabled], .btn.go[disabled] {
+  opacity: 1; background: #ece7dc; border-color: #dcd3c2; color: #a2937e;
+  box-shadow: none;
+}
+.btn[disabled]:active { -webkit-transform: none; transform: none; }
 .btn.small { -webkit-box-flex: 0; -ms-flex: none; flex: none; min-height: 44px; font-size: 15px; padding: 0 14px; }
 
 .tools { display: -webkit-box; display: -ms-flexbox; display: flex; -ms-flex-wrap: wrap; flex-wrap: wrap; margin: 8px -4px 0; }
@@ -333,8 +339,14 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
   -webkit-box-flex: 0; -ms-flex: none; flex: none;
   margin-left: 10px; font-size: 16px; color: var(--ink-soft); white-space: nowrap;
 }
-.cost-txt b { font-size: 20px; color: var(--danger); }
-.cost-row.ok .cost-txt b { color: var(--keeper); }
+.cost-txt b { font-size: 20px; }
+.cost-txt b.n-have { color: var(--danger); }
+.cost-txt b.n-need { color: var(--ink); }
+.cost-row.ok .cost-txt b.n-have { color: var(--keeper); }
+.cost-short {
+  margin: 4px 4px 0; font-size: 15px; color: var(--danger); font-weight: 700;
+}
+.cost-short b { font-size: 19px; }
 
 .readout { font-size: 15px; color: var(--ink-soft); margin: 8px 6px 0; min-height: 22px; }
 .readout b { color: var(--ink); }

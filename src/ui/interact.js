@@ -3,7 +3,8 @@
 // player — which is usually the more interesting option.
 
 import { TILE, T, tileAt } from '../core/grid.js';
-import { ROLE, can } from '../core/world.js';
+import { ROLE, can, roleName } from '../core/world.js';
+import { tr, trn } from '../core/i18n.js';
 import { el, message } from './overlay.js';
 import { openChop } from '../minigames/chop.js';
 import { openSawmill, openMill } from '../minigames/sawmill.js';
@@ -35,7 +36,7 @@ function showBubble(sx, sy, opts) {
     btn.addEventListener('click', (e) => { e.stopPropagation(); closeBubble(); a.fn(); });
     b.appendChild(btn);
   }
-  const close = el('button', 'ghost', 'close');
+  const close = el('button', 'ghost', tr('ui.close'));
   close.addEventListener('click', (e) => { e.stopPropagation(); closeBubble(); });
   b.appendChild(close);
   layer.appendChild(b);
@@ -79,14 +80,13 @@ function hit(w, wx, wy) {
 /* actions                                                            */
 /* ------------------------------------------------------------------ */
 
-function askAction(game, cap, targetId, what) {
-  const other = ROLE[game.other];
+function askAction(game, cap, targetId) {
   return {
-    label: '🙋 Ask the ' + other.name + ' to ' + what,
+    label: tr('ask.label', { role: roleName(game.other), what: tr('verb.' + cap) }),
     cls: 'soft',
     fn() {
       game.dispatch({ type: 'ask', from: game.role, to: game.other, cap, targetId: targetId || null });
-      message('Asked the ' + other.name + '. Tell them out loud too — it is more fun.');
+      message(tr('ask.sent', { role: roleName(game.other) }));
     },
   };
 }
@@ -97,126 +97,126 @@ function actionsFor(game, h) {
   switch (h.kind) {
 
     case 'tree': {
-      const t = h.o;
-      if (t.state !== 'standing') return { title: 'A stump', hint: 'Something might grow here one day.', actions: [] };
-      if (can(w, r, 'fell')) A.push({ label: '🪓 Fell this tree', fn: () => openChop(game, t) });
-      else A.push(askAction(game, 'fell', t.id, 'fell this tree'));
-      return { title: 'A tree', hint: 'Wood comes from here. Watch where it falls.', actions: A };
+      const tree = h.o;
+      if (tree.state !== 'standing') return { title: tr('w.stump'), hint: tr('w.stumpHint'), actions: [] };
+      if (can(w, r, 'fell')) A.push({ label: tr('w.fell'), fn: () => openChop(game, tree) });
+      else A.push(askAction(game, 'fell', tree.id));
+      return { title: tr('w.tree'), hint: tr('w.treeHint'), actions: A };
     }
 
     case 'log':
       return {
-        title: 'A fallen log', hint: 'Worth ' + h.o.wood + ' wood. Somebody will carry it in — or you can.',
-        actions: [{ label: '🪵 Take it to the workshop', fn: () => game.dispatch({ type: 'log.collect', role: r, id: h.o.id }) }],
+        title: tr('w.log'), hint: tr('w.logHint', { n: h.o.wood }),
+        actions: [{ label: tr('w.logTake'), fn: () => game.dispatch({ type: 'log.collect', role: r, id: h.o.id }) }],
       };
 
     case 'stones':
       return {
-        title: 'Stones by the water', hint: h.o.count + ' left. The river brings more.',
+        title: tr('w.stones'), hint: tr('w.stonesHint', { n: h.o.count }),
         actions: h.o.count > 0
-          ? [{ label: '🪨 Pick one up', fn: () => game.dispatch({ type: 'stone.take', role: r, id: h.o.id }) }]
+          ? [{ label: tr('w.stoneTake'), fn: () => game.dispatch({ type: 'stone.take', role: r, id: h.o.id }) }]
           : [],
       };
 
     case 'larder': {
       const mine = w.players[r].res.food;
       return {
-        title: 'The village basket', hint: '🍞 ' + w.larder.food + ' inside. Hungry people come here.',
+        title: tr('w.larder'), hint: tr('w.larderHint', { n: w.larder.food }),
         actions: mine > 0
-          ? [{ label: '🍞 Put ' + Math.min(3, mine) + ' food in', fn: () => game.dispatch({ type: 'larder.give', from: r, n: Math.min(3, mine) }) },
-             { label: '🤝 Share differently', cls: 'soft', fn: () => openGive(game) }]
-          : [{ label: '🤝 Share something', cls: 'soft', fn: () => openGive(game) }],
+          ? [{ label: tr('w.larderPut', { n: Math.min(3, mine) }), fn: () => game.dispatch({ type: 'larder.give', from: r, n: Math.min(3, mine) }) },
+             { label: tr('w.shareDifferently'), cls: 'soft', fn: () => openGive(game) }]
+          : [{ label: tr('w.shareSomething'), cls: 'soft', fn: () => openGive(game) }],
       };
     }
 
     case 'sheep': {
       const s = h.o;
-      const wants = s.mood === 'hungry' ? 'She looks hungry.' : s.mood === 'thirsty' ? 'She keeps looking at the river.'
-        : s.mood === 'woolly' ? 'That is a lot of wool.' : 'She seems content.';
-      if (can(w, r, 'care')) A.push({ label: '💚 Look after her', fn: () => openCare(game, s) });
-      else A.push(askAction(game, 'care', s.id, 'look after her'));
-      if (can(w, r, 'herd')) A.push({ label: '🐑 Take her somewhere', cls: 'soft', fn: () => game.setMode(sheepMode(game, s)) });
+      const wants = tr(s.mood === 'hungry' ? 'w.sheepHungry' : s.mood === 'thirsty' ? 'w.sheepThirsty'
+        : s.mood === 'woolly' ? 'w.sheepWoolly' : 'w.sheepOk');
+      if (can(w, r, 'care')) A.push({ label: tr('w.care'), fn: () => openCare(game, s) });
+      else A.push(askAction(game, 'care', s.id));
+      if (can(w, r, 'herd')) A.push({ label: tr('w.herd'), cls: 'soft', fn: () => game.setMode(sheepMode(game, s)) });
       return { title: s.name, hint: wants, actions: A };
     }
 
     case 'villager': {
       const v = h.o;
-      const hint = v.hunger > 72 ? 'Hungry. There should be bread in the basket.'
-        : !v.homeId ? 'Sleeping by the fire. There is no bed for ' + v.name + ' yet.'
-        : v.carrying ? 'Carrying a log to the workshop.'
-        : 'Getting on with the day.';
-      if (!v.homeId) A.push({ label: '🏠 Find a plot to build on', cls: 'soft', fn: () => game.pointAtSite() });
+      const hint = v.hunger > 72 ? tr('w.villagerHungry')
+        : !v.homeId ? tr('w.villagerHomeless', { name: v.name })
+        : v.carrying ? tr('w.villagerCarrying')
+        : tr('w.villagerFine');
+      if (!v.homeId) A.push({ label: tr('w.findPlot'), cls: 'soft', fn: () => game.pointAtSite() });
       if (v.hunger > 72 && w.players[r].res.food > 0)
-        A.push({ label: '🍞 Put food in the basket', fn: () => game.dispatch({ type: 'larder.give', from: r, n: Math.min(2, w.players[r].res.food) }) });
+        A.push({ label: tr('w.putFood'), fn: () => game.dispatch({ type: 'larder.give', from: r, n: Math.min(2, w.players[r].res.food) }) });
       return { title: v.name, hint, actions: A };
     }
 
     case 'deer':
-      return { title: 'A deer', hint: 'It watches you for a moment, then goes back to the grass.', actions: [] };
+      return { title: tr('w.deer'), hint: tr('w.deerHint'), actions: [] };
 
     case 'plot': {
       const p = h.o;
-      const hint = p.state === 'empty' ? 'Bare soil.'
-        : p.state === 'ripe' ? 'Golden and ready.'
-        : p.water <= 8 ? 'Thirsty. It has stopped growing.'
-        : Math.round(p.growth) + '% grown.';
-      if (!can(w, r, 'farm')) return { title: 'A field plot', hint, actions: [askAction(game, 'farm', p.id, 'work the field')] };
-      if (p.state === 'empty') A.push({ label: '🌱 Sow it', fn: () => game.dispatch({ type: 'plot.plant', role: r, plotId: p.id, watered: false }) });
-      if (p.state === 'ripe') A.push({ label: '🌾 Cut the wheat', fn: () => game.dispatch({ type: 'plot.harvest', role: r, plotId: p.id }) });
+      const hint = p.state === 'empty' ? tr('w.plotEmpty')
+        : p.state === 'ripe' ? tr('w.plotRipe')
+        : p.water <= 8 ? tr('w.plotDry')
+        : tr('w.plotGrowing', { n: Math.round(p.growth) });
+      if (!can(w, r, 'farm')) return { title: tr('w.plot'), hint, actions: [askAction(game, 'farm', p.id)] };
+      if (p.state === 'empty') A.push({ label: tr('w.sow'), fn: () => game.dispatch({ type: 'plot.plant', role: r, plotId: p.id, watered: false }) });
+      if (p.state === 'ripe') A.push({ label: tr('w.reap'), fn: () => game.dispatch({ type: 'plot.harvest', role: r, plotId: p.id }) });
       if (p.state !== 'empty') {
-        A.push({ label: '💧 Water it', cls: p.water <= 8 ? '' : 'soft', fn: () => game.dispatch({ type: 'plot.water', role: r, plotId: p.id }) });
+        A.push({ label: tr('w.water'), cls: p.water <= 8 ? '' : 'soft', fn: () => game.dispatch({ type: 'plot.water', role: r, plotId: p.id }) });
         const dry = w.plots.filter(q => q.state !== 'empty' && q.water <= 30);
         if (dry.length > 1) A.push({
-          label: '💧 Water all ' + dry.length + ' thirsty plots', cls: 'soft',
+          label: tr('w.waterAll', { n: dry.length }), cls: 'soft',
           fn: () => { for (const q of dry) game.dispatch({ type: 'plot.water', role: r, plotId: q.id }); },
         });
       }
-      return { title: 'A field plot', hint, actions: A };
+      return { title: tr('w.plot'), hint, actions: A };
     }
 
     case 'building': {
       const b = h.o;
       if (b.state === 'site') {
-        if (can(w, r, 'house')) A.push({ label: '🏠 Build a house here', fn: () => openHouse(game, b) });
-        else A.push(askAction(game, 'house', b.id, 'build a house here'));
-        return { title: 'An empty plot', hint: b.newFamily ? 'The new family marked this out.' : 'Somebody could live here.', actions: A };
+        if (can(w, r, 'house')) A.push({ label: tr('w.buildHouse'), fn: () => openHouse(game, b) });
+        else A.push(askAction(game, 'house', b.id));
+        return { title: tr('w.site'), hint: tr(b.newFamily ? 'w.siteNewFamily' : 'w.siteHint'), actions: A };
       }
       if (b.type === 'workshop') {
-        if (can(w, r, 'saw')) A.push({ label: '🪚 Saw wood into planks', fn: () => openSawmill(game) });
-        else A.push(askAction(game, 'saw', null, 'saw some planks'));
-        if (can(w, r, 'mill')) A.push({ label: '🌀 Grind wheat into bread', cls: 'soft', fn: () => openMill(game) });
-        else A.push(askAction(game, 'mill', null, 'make some bread'));
-        return { title: 'The workshop', hint: 'Wood goes in one end, planks come out the other.', actions: A };
+        if (can(w, r, 'saw')) A.push({ label: tr('w.sawHere'), fn: () => openSawmill(game) });
+        else A.push(askAction(game, 'saw', null));
+        if (can(w, r, 'mill')) A.push({ label: tr('w.millHere'), cls: 'soft', fn: () => openMill(game) });
+        else A.push(askAction(game, 'mill', null));
+        return { title: tr('w.workshop'), hint: tr('w.workshopHint'), actions: A };
       }
       const who = (b.residents || []).map(id => (w.villagers.find(v => v.id === id) || {}).name).filter(Boolean);
       const spare = (b.beds || 0) - (b.residents || []).length;
       return {
-        title: b.name || 'A house',
-        hint: (who.length ? who.join(' and ') + ' live' + (who.length === 1 ? 's' : '') + ' here. ' : '') +
-              (spare > 0 ? spare + ' spare bed' + (spare === 1 ? '' : 's') + '.' : 'Full.'),
+        title: tr('w.house'),
+        hint: (who.length ? trn('w.livesHere', who.length, { names: who.join(tr('w.and')) }) : '') +
+              (spare > 0 ? trn('w.spareBed', spare, { n: spare }) : tr('w.full')),
         actions: [],
       };
     }
 
     case 'crossing': {
       if (w.bridge.damaged) {
-        if (can(w, r, 'bridge')) A.push({ label: '🔧 Mend the bridge', fn: () => openRepair(game) });
-        else A.push(askAction(game, 'bridge', null, 'mend the bridge'));
-        return { title: 'The bridge', hint: 'A plank is missing. Nobody will cross it like that.', actions: A };
+        if (can(w, r, 'bridge')) A.push({ label: tr('w.mendBridge'), fn: () => openRepair(game) });
+        else A.push(askAction(game, 'bridge', null));
+        return { title: tr('w.bridge'), hint: tr('w.bridgeBrokenHint'), actions: A };
       }
-      if (w.bridge.built) return { title: 'The bridge', hint: 'Solid. People and sheep use it all day.', actions: [] };
-      if (can(w, r, 'bridge')) A.push({ label: '🌉 Build a bridge here', fn: () => openBridge(game) });
-      else A.push(askAction(game, 'bridge', null, 'build a bridge here'));
-      return { title: 'The narrow crossing', hint: 'The river is ' + w.bridge.site.span + ' steps wide here. This is the best place.', actions: A };
+      if (w.bridge.built) return { title: tr('w.bridge'), hint: tr('w.bridgeFine'), actions: [] };
+      if (can(w, r, 'bridge')) A.push({ label: tr('w.buildBridge'), fn: () => openBridge(game) });
+      else A.push(askAction(game, 'bridge', null));
+      return { title: tr('w.crossing'), hint: tr('w.crossingHint', { n: w.bridge.site.span }), actions: A };
     }
 
     case 'water':
-      return { title: 'The river', hint: 'Cold, quick, and in the way.', actions: [] };
+      return { title: tr('w.river'), hint: tr('w.riverHint'), actions: [] };
 
     default: {
-      if (can(w, r, 'road')) A.push({ label: '🛤️ Build a road', fn: () => game.setMode(roadMode(game)) });
-      else A.push(askAction(game, 'road', null, 'build a road'));
-      return { title: 'Open ground', hint: 'Roads make everybody quicker.', actions: A };
+      if (can(w, r, 'road')) A.push({ label: tr('w.buildRoad'), fn: () => game.setMode(roadMode(game)) });
+      else A.push(askAction(game, 'road', null));
+      return { title: tr('w.ground'), hint: tr('w.groundHint'), actions: A };
     }
   }
 }

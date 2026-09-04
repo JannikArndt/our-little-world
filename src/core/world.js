@@ -4,36 +4,42 @@
 
 import { GW, GH, T, idx, inBounds, rebuildBlocked } from './grid.js';
 import { rnd, rndInt, rndRange } from './rng.js';
+import { tr } from './i18n.js';
 
-export const SCHEMA = 5;
+export const SCHEMA = 6;
 export const TICK_MS = 100;                 // one simulation step
 export const BLOCK_TICKS = 5 * 60 * 10;     // a five minute play block
 
 export const RESOURCES = [
-  { key: 'wood',  icon: '🪵', name: 'wood' },
-  { key: 'plank', icon: '🪚', name: 'planks' },
-  { key: 'stone', icon: '🪨', name: 'stone' },
-  { key: 'wheat', icon: '🌾', name: 'wheat' },
-  { key: 'food',  icon: '🍞', name: 'food' },
-  { key: 'wool',  icon: '🧶', name: 'wool' },
+  { key: 'wood',  icon: '🪵' },
+  { key: 'plank', icon: '🪚' },
+  { key: 'stone', icon: '🪨' },
+  { key: 'wheat', icon: '🌾' },
+  { key: 'food',  icon: '🍞' },
+  { key: 'wool',  icon: '🧶' },
 ];
 
 export const ROLE = {
-  A: { id: 'A', emoji: '🔨', name: 'Builder', colour: '#c8783c' },
-  B: { id: 'B', emoji: '🌿', name: 'Keeper',  colour: '#5d9150' },
+  A: { id: 'A', emoji: '🔨', colour: '#c8783c' },
+  B: { id: 'B', emoji: '🌿', colour: '#5d9150' },
 };
 
 export const CAPS = {
-  fell:   { icon: '🪓', name: 'felling trees',   owner: 'A' },
-  saw:    { icon: '🪚', name: 'the sawmill',     owner: 'A' },
-  bridge: { icon: '🌉', name: 'bridge building', owner: 'A' },
-  house:  { icon: '🏠', name: 'house building',  owner: 'A' },
-  mill:   { icon: '🌀', name: 'the mill',        owner: 'A' },
-  herd:   { icon: '🐑', name: 'moving animals',  owner: 'B' },
-  care:   { icon: '💚', name: 'looking after animals', owner: 'B' },
-  road:   { icon: '🛤️', name: 'road building',   owner: 'B' },
-  farm:   { icon: '🌱', name: 'farming',         owner: 'B' },
+  fell:   { icon: '🪓', owner: 'A' },
+  saw:    { icon: '🪚', owner: 'A' },
+  bridge: { icon: '🌉', owner: 'A' },
+  house:  { icon: '🏠', owner: 'A' },
+  mill:   { icon: '🌀', owner: 'A' },
+  herd:   { icon: '🐑', owner: 'B' },
+  care:   { icon: '💚', owner: 'B' },
+  road:   { icon: '🛤️', owner: 'B' },
+  farm:   { icon: '🌱', owner: 'B' },
 };
+
+/** Names live in the language tables, not in the world. */
+export function roleName(id) { return tr('role.' + id + '.short'); }
+export function capName(key) { return tr('cap.' + key); }
+export function resName(key) { return tr('res.' + key); }
 
 const VILLAGER_NAMES = ['Anna', 'Bo', 'Mira', 'Ted'];
 const VILLAGER_COLOURS = ['#d96a5f', '#4f83b8', '#b47ec0', '#4f9c8a'];

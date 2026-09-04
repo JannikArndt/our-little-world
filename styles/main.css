@@ -55,6 +55,13 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
 }
 
 .start-card { width: 100%; max-width: 560px; text-align: center; padding: 8px 0 24px; }
+.lang-row { text-align: right; margin: 0 6px 4px; }
+.lang-btn {
+  min-height: 40px; padding: 0 14px; margin-left: 6px;
+  background: #fffdf8; border: 2px solid var(--line); border-radius: 999px;
+  font-size: 15px; font-weight: 600;
+}
+.lang-btn.on { border-color: var(--builder); background: #fff2e4; }
 
 .title {
   font-size: 40px; line-height: 1.05; margin: 8px 0 6px;

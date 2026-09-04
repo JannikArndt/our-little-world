@@ -3,16 +3,17 @@
 
 import { el, openPanel, message, messages, clearMessages } from './overlay.js';
 import { openGive } from './share.js';
-import { RESOURCES, ROLE, CAPS, blockProgress } from '../core/world.js';
+import { RESOURCES, ROLE, CAPS, capName, roleName, blockProgress } from '../core/world.js';
+import { tr, trn } from '../core/i18n.js';
 import { nextTimeHint } from '../core/events.js';
 import { currentProblem } from '../core/guide.js';
 
 const PHASE = [
-  [0.00, 'early morning'],
-  [0.22, 'mid morning'],
-  [0.48, 'midday'],
-  [0.72, 'afternoon'],
-  [0.88, 'evening'],
+  [0.00, 'time.earlyMorning'],
+  [0.22, 'time.midMorning'],
+  [0.48, 'time.midday'],
+  [0.72, 'time.afternoon'],
+  [0.88, 'time.evening'],
 ];
 
 export class Hud {
@@ -39,10 +40,10 @@ export class Hud {
     document.getElementById('historyChip').addEventListener('click', () => this.showHistory());
     document.getElementById('sunbar').addEventListener('click', () => {
       const w = g.world;
-      if (!w.block.active) { message('The play block is finished. Everything is saved.'); return; }
+      if (!w.block.active) { message(tr('time.finished')); return; }
       const left = Math.max(0, w.block.length - (w.tick - w.block.startTick));
       const mins = Math.floor(left / 600), secs = Math.floor((left % 600) / 10);
-      message('About ' + (mins ? mins + ' min ' : '') + secs + ' s of this morning left. No hurry.');
+      message(tr('time.left', { mins: mins ? mins + ' min ' : '', secs: secs }));
     });
   }
 
@@ -82,7 +83,7 @@ export class Hud {
     const chip = document.getElementById('roleChip');
     chip.setAttribute('data-role', g.role);
     document.getElementById('roleChipEmoji').textContent = ROLE[g.role].emoji;
-    document.getElementById('roleChipName').textContent = g.canSwap ? ROLE[g.role].name + ' ⇄' : ROLE[g.role].name;
+    document.getElementById('roleChipName').textContent = g.canSwap ? roleName(g.role) + ' ⇄' : roleName(g.role);
 
     const p = blockProgress(w);
     const sun = document.getElementById('sunArc');
@@ -91,20 +92,19 @@ export class Hud {
     const width = this._barW;
     sun.style.transform = 'translateX(' + (6 + width * p) + 'px) translateY(' + (Math.sin(p * Math.PI) * -3) + 'px)';
     bar.querySelector('.sky').style.opacity = String(Math.max(0, (p - 0.7) / 0.3) * 0.85);
-    let phase = 'a quiet moment';
-    if (w.block.active) { for (const [at, name] of PHASE) if (p >= at) phase = name; }
-    else phase = w.block.endedAt !== null ? 'the day is done' : 'not started';
-    document.getElementById('sunLabel').textContent = phase;
+    let phase = 'time.quiet';
+    if (w.block.active) { for (const [at, key] of PHASE) if (p >= at) phase = key; }
+    else phase = w.block.endedAt !== null ? 'time.done' : 'time.notStarted';
+    document.getElementById('sunLabel').textContent = tr(phase);
 
     const partner = w.players[g.other];
     const online = g.partnerOnline;
     const ps = document.getElementById('partnerState');
     ps.textContent = partner.busy ? partner.busy
-      : online ? ROLE[g.other].name + ' is here'
-      : ROLE[g.other].name + ' — tap to share';
+      : tr(online ? 'ui.partnerHere' : 'ui.partnerTap', { role: roleName(g.other) });
     document.getElementById('partnerChip').firstChild.nodeValue = ROLE[g.other].emoji + ' ';
 
-    document.getElementById('finishBtn').textContent = w.block.active ? '🌇 Finish' : '🌅 New morning';
+    document.getElementById('finishBtn').textContent = tr(w.block.active ? 'ui.finish' : 'ui.newMorning');
 
     this.renderNotices();
   }
@@ -120,7 +120,7 @@ export class Hud {
       if (a.to !== g.role) continue;
       wanted['ask_' + a.id] = {
         icon: '🙋', kind: 'ask',
-        text: 'The ' + ROLE[a.from].name + ' asks: can you ' + verbFor(a.cap) + '?',
+        text: tr('ask.notice', { role: roleName(a.from), what: tr('verb.' + a.cap) }),
         onTap: () => {
           g.dispatch({ type: 'ask.clear', id: a.id });
           g.goToAsk(a);
@@ -128,7 +128,7 @@ export class Hud {
       };
     }
     for (const n of w.notices) {
-      wanted[n.id] = { icon: n.icon, kind: n.kind, text: n.text, onTap: () => { g.goToNotice(n); this.showGuide(); } };
+      wanted[n.id] = { icon: n.icon, kind: n.kind, text: tr(n.key, n.vars), onTap: () => { g.goToNotice(n); this.showGuide(); } };
     }
 
     for (const id in this.noticeEls) {
@@ -178,64 +178,66 @@ export class Hud {
     p.body.appendChild(list);
 
     const r = p.row();
-    r.appendChild(p.button(first ? '☀️ Off we go' : 'Right, got it', 'go', () => p.close()));
+    r.appendChild(p.button(tr(first ? 'ui.offWeGo' : 'ui.gotIt'), 'go', () => p.close()));
     if (!first && pr.id !== 'calm') {
-      r.appendChild(p.button('👀 Where?', 'soft', () => { p.close(); g.showMe(pr.id); }));
+      r.appendChild(p.button(tr('ui.where'), 'soft', () => { p.close(); g.showMe(pr.id); }));
     }
     return p;
   }
 
   /** Everything the world has said, newest first. */
   showHistory() {
-    const p = openPanel({ title: '📜 What has happened', lead: 'Every message, newest first.' });
+    const p = openPanel({ title: tr('hist.title'), lead: tr('hist.lead') });
     const list = messages().slice().reverse();
-    if (!list.length) p.body.appendChild(el('p', 'lead', 'Nothing yet. The world has been quiet.'));
+    if (!list.length) p.body.appendChild(el('p', 'lead', tr('hist.empty')));
     const now = Date.now();
     for (const m of list.slice(0, 30)) {
       const line = el('div', 'hist-line');
       const mins = Math.floor((now - m.at) / 60000);
-      line.appendChild(el('span', 't', mins < 1 ? 'just now' : mins + ' min ago'));
+      line.appendChild(el('span', 't', mins < 1 ? tr('hist.justNow') : tr('hist.minsAgo', { n: mins })));
       line.appendChild(document.createTextNode(m.text));
       p.body.appendChild(line);
     }
     const r = p.row();
-    r.appendChild(p.button('Close', 'soft', () => p.close()));
+    r.appendChild(p.button(tr('ui.close'), 'soft', () => p.close()));
   }
 
   /* ---------------- what each of us knows ---------------- */
 
   showRoleCard() {
     const g = this.game, w = g.world;
-    const p = openPanel({ title: ROLE[g.role].emoji + ' You are the ' + ROLE[g.role].name, lead: 'What you know how to do:' });
+    const p = openPanel({ title: tr('teach.title', { emoji: ROLE[g.role].emoji, role: roleName(g.role) }), lead: tr('teach.lead') });
     const mine = Object.keys(w.players[g.role].caps);
     const theirs = Object.keys(w.players[g.other].caps);
     const list = el('div');
-    for (const c of mine) list.appendChild(el('p', 'summary-line', CAPS[c].icon + '  ' + cap(CAPS[c].name)));
+    for (const c of mine) list.appendChild(el('p', 'summary-line', CAPS[c].icon + '  ' + cap(capName(c))));
     p.body.appendChild(list);
 
     const canTeach = theirs.filter(c => !w.players[g.role].caps[c]);
     const iCanTeach = mine.filter(c => !w.players[g.other].caps[c] && (w.players[g.role].done[teachKey(c)] || 0) >= 2);
     if (iCanTeach.length) {
       const card = el('div', 'teach-card');
-      card.appendChild(el('b', '', '👐 You could show the ' + ROLE[g.other].name + ' how to do this'));
+      card.appendChild(el('b', '', tr('teach.can', { role: roleName(g.other) })));
       p.body.appendChild(card);
       for (const c of iCanTeach) {
-        const b = el('button', 'btn small soft', CAPS[c].icon + ' teach ' + CAPS[c].name);
+        const b = el('button', 'btn small soft', tr('teach.button', { icon: CAPS[c].icon, what: capName(c) }));
         b.style.margin = '6px 4px 0';
         b.addEventListener('click', () => {
           g.dispatch({ type: 'teach', from: g.role, to: g.other, cap: c });
           p.close();
-          message('👐 You showed them how. Now you both know ' + CAPS[c].name + '.');
+          message(tr('teach.done', { what: capName(c) }));
         });
         card.appendChild(b);
       }
     } else if (canTeach.length) {
-      p.body.appendChild(el('p', 'lead', 'The ' + ROLE[g.other].name + ' knows things you do not: ' +
-        canTeach.map(c => CAPS[c].icon + ' ' + CAPS[c].name).join(', ') + '. Ask them to show you.'));
+      p.body.appendChild(el('p', 'lead', tr('teach.theyKnow', {
+        role: roleName(g.other),
+        list: canTeach.map(c => CAPS[c].icon + ' ' + capName(c)).join(', '),
+      })));
     }
 
     const r = p.row();
-    r.appendChild(p.button('Alright', 'soft', () => p.close()));
+    r.appendChild(p.button(tr('ui.alright'), 'soft', () => p.close()));
   }
 
   /* ---------------- the end of a play block ---------------- */
@@ -243,16 +245,16 @@ export class Hud {
   showSummary() {
     const g = this.game, w = g.world;
     const p = openPanel({
-      title: '🌇 The morning is finished',
-      lead: 'Our little world is safe. Everything we made is saved.',
+      title: tr('sum.title'),
+      lead: tr('sum.lead'),
       center: true,
     });
 
     const lines = summarise(w);
-    if (!lines.length) lines.push({ icon: '🌤️', text: 'we mostly watched the world go by' });
+    if (!lines.length) lines.push({ icon: '🌤️', text: tr('sum.nothing') });
     const box = el('div');
     box.style.cssText = 'margin:6px 0 2px;';
-    box.appendChild(el('p', 'lead center', 'Today we…'));
+    box.appendChild(el('p', 'lead center', tr('sum.today')));
     for (const l of lines) {
       const line = el('div', 'summary-line');
       line.innerHTML = '<span class="s-ico">' + l.icon + '</span>' + escapeHtml(l.text);
@@ -262,28 +264,27 @@ export class Hud {
 
     const who = [];
     const housed = w.villagers.filter(v => v.homeId).length;
-    who.push(housed + ' of ' + w.villagers.length + ' have a bed');
-    who.push('🍞 ' + w.larder.food + ' in the basket');
+    who.push(tr('sum.beds', { n: housed, total: w.villagers.length }));
+    who.push(tr('sum.basket', { n: w.larder.food }));
     const content = w.sheep.filter(s => s.mood === 'ok').length;
-    who.push(content ? content + ' of ' + w.sheep.length + ' sheep are content'
-                     : '🐑 the sheep would still like a hand');
+    who.push(content ? tr('sum.sheepOk', { n: content, total: w.sheep.length }) : tr('sum.sheepNeed'));
     p.body.appendChild(el('p', 'lead center', who.join(' · ')));
 
     const hint = nextTimeHint(w);
     const nt = el('div', 'next-time');
-    nt.appendChild(el('b', '', 'Next time'));
-    nt.appendChild(el('span', '', hint.icon + '  ' + hint.text));
+    nt.appendChild(el('b', '', tr('sum.nextTime')));
+    nt.appendChild(el('span', '', hint.icon + '  ' + tr(hint.key)));
     p.body.appendChild(nt);
 
     const r = p.row();
-    r.appendChild(p.button('☀️ Another five minutes', 'go', () => {
+    r.appendChild(p.button(tr('sum.again'), 'go', () => {
       p.close();
       clearMessages();
       g.startBlock(true);
     }));
-    r.appendChild(p.button('Stop here', 'soft', () => {
+    r.appendChild(p.button(tr('sum.stop'), 'soft', () => {
       p.close();
-      message('Saved. It will be exactly like this when you come back.');
+      message(tr('msg.saved'));
     }));
   }
 }
@@ -295,44 +296,38 @@ function teachKey(cap) {
            herd: 'care', care: 'care', road: 'road', farm: 'farm' }[cap] || cap;
 }
 
-function verbFor(cap) {
-  return {
-    fell: 'fell that tree', saw: 'saw some planks', bridge: 'sort out the bridge',
-    house: 'build the house', mill: 'make some bread', herd: 'move a sheep',
-    care: 'look after a sheep', road: 'build a road', farm: 'work the field',
-  }[cap] || 'help';
-}
-
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function escapeHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-/** Turn the journal into a few plain sentences. */
+/** Turn the journal into a few plain sentences, in whichever language. */
 export function summarise(w) {
   const n = {}, num = {};
   for (const j of w.journal) {
     n[j.icon] = (n[j.icon] || 0) + 1;
-    const m = j.text.match(/(\d+)/);
-    if (m) num[j.icon] = (num[j.icon] || 0) + parseInt(m[1], 10);
+    if (j.vars && typeof j.vars.n === 'number') num[j.icon] = (num[j.icon] || 0) + j.vars.n;
   }
   const out = [];
-  const plural = (c, one, many) => c === 1 ? one : c + ' ' + many;
-  if (n['🌳']) out.push({ icon: '🌳', text: 'felled ' + plural(n['🌳'], 'a tree', 'trees') });
-  if (n['🪚']) out.push({ icon: '🪚', text: 'sawed ' + num['🪚'] + ' planks' });
-  if (n['🌉']) out.push({ icon: '🌉', text: 'built the bridge across the river' });
-  if (n['🔧']) out.push({ icon: '🔧', text: 'mended the bridge' });
-  if (n['🏠']) out.push({ icon: '🏠', text: 'built ' + plural(n['🏠'], 'a house', 'houses') });
-  if (n['🔑']) out.push({ icon: '🔑', text: plural(n['🔑'], 'somebody moved in', 'people moved in') });
-  if (n['🛤️']) out.push({ icon: '🛤️', text: 'laid ' + num['🛤️'] + ' steps of road' });
-  if (n['🐑']) out.push({ icon: '🐑', text: 'looked after the sheep ' + plural(n['🐑'], 'once', 'times') });
-  if (n['🌾']) out.push({ icon: '🌾', text: 'harvested ' + num['🌾'] + ' wheat' });
-  if (n['🍞']) out.push({ icon: '🍞', text: 'baked ' + num['🍞'] + ' loaves' });
-  if (n['🧺']) out.push({ icon: '🧺', text: 'kept the village basket full' });
-  if (n['🤝']) out.push({ icon: '🤝', text: 'shared things with each other ' + plural(n['🤝'], 'once', 'times') });
-  if (n['👐']) out.push({ icon: '👐', text: 'taught each other something' });
-  if (n['👨‍👩‍👧']) out.push({ icon: '👨‍👩‍👧', text: 'welcomed a new family' });
-  if (n['🦌']) out.push({ icon: '🦌', text: 'met a deer' });
+  const add = (icon, key, count, vars) => {
+    if (!n[icon]) return;
+    out.push({ icon, text: count == null ? tr(key, vars) : trn(key, count, vars) });
+  };
+  add('🌳', 'sum.felled', n['🌳'], { n: n['🌳'] });
+  add('🪚', 'sum.sawed', null, { n: num['🪚'] });
+  add('🌉', 'sum.bridge');
+  add('🔧', 'sum.mended');
+  add('🏠', 'sum.houses', n['🏠'], { n: n['🏠'] });
+  add('🔑', 'sum.movedIn', n['🔑'], { n: n['🔑'] });
+  add('🛤️', 'sum.road', null, { n: num['🛤️'] });
+  add('🐑', 'sum.sheep', n['🐑'], { n: n['🐑'] });
+  add('🌾', 'sum.wheat', null, { n: num['🌾'] });
+  add('🍞', 'sum.bread', null, { n: num['🍞'] });
+  add('🧺', 'sum.larder');
+  add('🤝', 'sum.shared', n['🤝'], { n: n['🤝'] });
+  add('👐', 'sum.taught');
+  add('👨‍👩‍👧', 'sum.family');
+  add('🦌', 'sum.deer');
   return out;
 }

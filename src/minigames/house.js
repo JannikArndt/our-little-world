@@ -4,6 +4,7 @@
 
 import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overlay.js';
 import { rr, glyph } from '../render/art.js';
+import { tr, trn } from '../core/i18n.js';
 
 const COLS = 6, ROWS = 4, CELL = 56, OX = 34, OY = 40;
 const CW = 514, CH = 300;
@@ -11,17 +12,18 @@ const WALL = 26;                       // how thick the outside wall looks
 const FAMILY_X = 456;                  // they wait outside, well clear of the plan
 
 const ITEMS = {
-  door:   { icon: '🚪', label: 'door',   plank: 1, stone: 0, blocks: false, edgeOnly: true, max: 1 },
-  window: { icon: '🪟', label: 'window', plank: 1, stone: 0, blocks: false, edgeOnly: true, max: 3 },
-  bed:    { icon: '🛏️', label: 'bed',    plank: 1, stone: 0, blocks: false, edgeOnly: false, max: 3 },
-  stove:  { icon: '🔥', label: 'stove',  plank: 0, stone: 2, blocks: true,  edgeOnly: false, max: 1 },
-  table:  { icon: '🪑', label: 'table',  plank: 1, stone: 0, blocks: true,  edgeOnly: false, max: 2 },
+  door:   { icon: '🚪', plank: 1, stone: 0, blocks: false, edgeOnly: true, max: 1 },
+  window: { icon: '🪟', plank: 1, stone: 0, blocks: false, edgeOnly: true, max: 3 },
+  bed:    { icon: '🛏️', plank: 1, stone: 0, blocks: false, edgeOnly: false, max: 3 },
+  stove:  { icon: '🔥', plank: 0, stone: 2, blocks: true,  edgeOnly: false, max: 1 },
+  table:  { icon: '🪑', plank: 1, stone: 0, blocks: true,  edgeOnly: false, max: 2 },
 };
+const itemName = (k) => tr('house.' + k);
 const BASE = { plank: 2, stone: 1 };
 
 export function openHouse(game, site) {
   const w = game.world;
-  const p = openPanel({ title: '🏠 Build a house' });
+  const p = openPanel({ title: tr('house.title') });
 
   const cv = makeCanvas(CW, CH);
   p.body.appendChild(cv.canvas);
@@ -35,7 +37,7 @@ export function openHouse(game, site) {
   for (const k in ITEMS) {
     const it = ITEMS[k];
     const b = el('button', 'tool' + (k === tool ? ' on' : ''));
-    b.innerHTML = '<span class="ico">' + it.icon + '</span><span class="lab">' + it.label + '</span>' +
+    b.innerHTML = '<span class="ico">' + it.icon + '</span><span class="lab">' + itemName(k) + '</span>' +
       '<span class="cost">' + (it.plank ? it.plank + '🪚' : '') + (it.stone ? ' ' + it.stone + '🪨' : '') + '</span>';
     b.addEventListener('click', () => {
       tool = k;
@@ -53,8 +55,8 @@ export function openHouse(game, site) {
       if (grid[key]) { delete grid[key]; update(); return; }
       const it = ITEMS[tool];
       const onEdge = c === 0 || r === 0 || c === COLS - 1 || r === ROWS - 1;
-      if (it.edgeOnly && !onEdge) { p.readout('A ' + it.label + ' has to go on an outside wall.'); return; }
-      if (count(tool) >= it.max) { p.readout('One ' + it.label + ' is plenty… ' + (it.max > 1 ? '(' + it.max + ' at most)' : '')); return; }
+      if (it.edgeOnly && !onEdge) { p.readout(tr('house.outsideWall', { what: itemName(tool) })); return; }
+      if (count(tool) >= it.max) { p.readout(trn('house.enough', it.max, { what: itemName(tool), n: it.max })); return; }
       grid[key] = tool;
       update();
     },
@@ -110,16 +112,16 @@ export function openHouse(game, site) {
   }
 
   const row = p.row();
-  const buildBtn = p.button('🏠 Build it', 'go', () => {
+  const buildBtn = p.button(tr('house.build'), 'go', () => {
     const a = assess(), c = cost();
     if (!a.hasDoor || a.beds < 1) return;
     const me = w.players[game.role].res;
     if (me.plank < c.plank || me.stone < c.stone) {
-      p.readout('Not quite enough. The grey ones are what is missing.');
+      p.readout(tr('house.notEnough'));
       if (!p._ask) {
-        p._ask = p.button('🙋 Ask for it', 'soft', () => {
+        p._ask = p.button(tr('ask.forParts'), 'soft', () => {
           game.dispatch({ type: 'ask', from: game.role, to: game.other, cap: 'house', targetId: site.id });
-          message('Asked for the missing pieces.');
+          message(tr('ask.askedForParts'));
         });
         p._ask.style.flex = '0 0 auto';
         row.insertBefore(p._ask, back);
@@ -133,11 +135,11 @@ export function openHouse(game, site) {
       planks: c.plank, stone: c.stone,
     });
     stop(); p.close();
-    message('🏠 The roof is on. Somebody will be along shortly.');
+    message(tr('msg.houseUp'));
     game.look(site.x + site.w / 2, site.y + site.h / 2);
   });
   row.appendChild(buildBtn);
-  const back = p.button('Later', 'soft', () => { stop(); p.close(); });
+  const back = p.button(tr('ui.later'), 'soft', () => { stop(); p.close(); });
   back.style.flex = '0 0 auto';
   row.appendChild(back);
 
@@ -145,14 +147,13 @@ export function openHouse(game, site) {
     const a = assess(), c = cost();
     const me = w.players[game.role].res;
     const notes = [];
-    if (!a.hasDoor) notes.push('no way in');
-    if (a.beds < 1) notes.push('nowhere to sleep');
-    if (a.stranded) notes.push('a bed nobody can reach');
-    if (!a.warm) notes.push('no stove — it would be cold');
-    if (!a.light) notes.push('no window — it would be dark');
-    if (!a.roomy && a.beds) notes.push('very cramped');
-    p.readout(notes.length ? notes.join(' · ')
-      : 'Sleeps <b>' + a.beds + '</b>. Warm, light and roomy.');
+    if (!a.hasDoor) notes.push(tr('house.noDoor'));
+    if (a.beds < 1) notes.push(tr('house.noBed'));
+    if (a.stranded) notes.push(tr('house.stranded'));
+    if (!a.warm) notes.push(tr('house.cold'));
+    if (!a.light) notes.push(tr('house.dark'));
+    if (!a.roomy && a.beds) notes.push(tr('house.cramped'));
+    p.readout(notes.length ? notes.join(' · ') : tr('house.good', { n: a.beds }));
     p.cost([
       { icon: '🪚', need: c.plank, have: me.plank },
       { icon: '🪨', need: c.stone, have: me.stone },
@@ -279,7 +280,7 @@ export function openHouse(game, site) {
       ctx.fillStyle = 'rgba(67,55,42,.6)';
       ctx.font = '700 14px -apple-system, system-ui, sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('put a door in an outside wall first', CW / 2, 24);
+      ctx.fillText(tr('house.startDoor'), CW / 2, 24);
     }
   }
 

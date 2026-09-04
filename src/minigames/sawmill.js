@@ -4,6 +4,7 @@
 
 import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overlay.js';
 import { C, rr } from '../render/art.js';
+import { tr, trn } from '../core/i18n.js';
 
 const LOG_UNITS = 12;
 const MIN_PLANK = 3;
@@ -15,14 +16,11 @@ const MIN_PLANK = 3;
 export function openSawmill(game) {
   const w = game.world;
   const have = w.players[game.role].res.wood;
-  const p = openPanel({
-    title: '🪚 The sawmill',
-    lead: 'Cut the log into pieces. A plank has to be at least 3 marks long — anything shorter is kindling.',
-  });
+  const p = openPanel({ title: tr('saw.title'), lead: tr('saw.lead') });
 
   if (have < 1) {
-    p.body.appendChild(el('p', 'lead', 'There is no wood here. Somebody needs to fell a tree — or share some.'));
-    const r = p.row(); r.appendChild(p.button('Alright', 'soft', () => p.close()));
+    p.body.appendChild(el('p', 'lead', tr('saw.noWood')));
+    const r = p.row(); r.appendChild(p.button(tr('ui.alright'), 'soft', () => p.close()));
     return;
   }
 
@@ -57,24 +55,25 @@ export function openSawmill(game) {
 
   function describe() {
     const ps = pieces();
-    if (!cuts.length) { p.readout('Tap the log to place a saw cut.'); sawBtn.disabled = true; return; }
+    if (!cuts.length) { p.readout(tr('saw.place')); sawBtn.disabled = true; return; }
     sawBtn.disabled = false;
     const good = ps.filter(n => n >= MIN_PLANK).length;
     const even = ps.every(n => n === ps[0]);
-    p.readout('Pieces: <b>' + ps.join(' + ') + '</b> = ' + LOG_UNITS +
-      '  →  ' + (good ? '<b>' + good + '</b> plank' + (good === 1 ? '' : 's') : 'no planks') +
-      (even ? ' — all the same 👍' : ''));
+    p.readout(tr('saw.pieces', {
+      lens: ps.join(' + '), total: LOG_UNITS,
+      result: good ? trn('saw.planks', good, { n: good }) : tr('saw.noPlanks'),
+    }) + (even ? tr('saw.even') : ''));
   }
 
   const row = p.row();
-  const sawBtn = p.button('🪚 Saw it', '', () => {
+  const sawBtn = p.button(tr('saw.go'), '', () => {
     if (result || sawing) return;
     sawing = 0.0001;
     sawBtn.disabled = true;
   });
   sawBtn.disabled = true;
   row.appendChild(sawBtn);
-  const back = p.button('Not now', 'soft', () => { stop(); p.close(); });
+  const back = p.button(tr('ui.notNow'), 'soft', () => { stop(); p.close(); });
   back.style.flex = '0 0 auto';
   row.appendChild(back);
 
@@ -175,22 +174,22 @@ export function openSawmill(game) {
     result = { planks: Math.max(1, planks), even };
     game.dispatch({ type: 'saw.run', role: game.role, wood: 1, planks: result.planks });
 
+    const scraps = ps.length - planks;
     p.readout(even
-      ? '<b>Perfect.</b> ' + ps.length + ' pieces of ' + ps[0] + ' — ' + result.planks + ' good planks.'
-      : '<b>' + result.planks + '</b> plank' + (result.planks === 1 ? '' : 's') + ', and ' +
-        (ps.length - planks) + ' bit' + (ps.length - planks === 1 ? '' : 's') + ' for the fire.');
+      ? tr('saw.perfect', { count: ps.length, size: ps[0], planks: result.planks })
+      : tr(scraps === 1 ? 'saw.mixed1' : 'saw.mixed', { planks: result.planks, scraps: scraps }));
 
     row.innerHTML = '';
     const left = game.world.players[game.role].res.wood;
     if (left > 0) {
-      row.appendChild(p.button('Same again  (' + Math.min(4, left) + ' × 🪵)', 'go', () => {
+      row.appendChild(p.button(tr('saw.sameAgain', { n: Math.min(4, left) }), 'go', () => {
         const n = Math.min(4, game.world.players[game.role].res.wood);
         for (let i = 0; i < n; i++) game.dispatch({ type: 'saw.run', role: game.role, wood: 1, planks: result.planks });
         stop(); p.close();
-        message('🪚 ' + (n * result.planks) + ' more planks stacked up.');
+        message(tr('msg.morePlanks', { n: n * result.planks }));
       }));
     }
-    row.appendChild(p.button('Done', 'soft', () => { stop(); p.close(); }));
+    row.appendChild(p.button(tr('ui.done'), 'soft', () => { stop(); p.close(); }));
   }
 }
 
@@ -201,16 +200,11 @@ export function openSawmill(game) {
 export function openMill(game) {
   const w = game.world;
   const wheat = w.players[game.role].res.wheat;
-  const p = openPanel({
-    title: '🌀 The mill',
-    lead: 'Two wheat make three loaves. Turn the stone with your finger, then bake.',
-  });
+  const p = openPanel({ title: tr('mill.title'), lead: tr('mill.lead') });
 
   if (wheat < 2) {
-    p.body.appendChild(el('p', 'lead',
-      wheat === 1 ? 'One wheat is not enough for a full grind. The farmer will have more.'
-                  : 'The hopper is empty. Somebody has to grow the wheat first.'));
-    const r = p.row(); r.appendChild(p.button('Alright', 'soft', () => p.close()));
+    p.body.appendChild(el('p', 'lead', tr(wheat === 1 ? 'mill.oneWheat' : 'mill.noWheat')));
+    const r = p.row(); r.appendChild(p.button(tr('ui.alright'), 'soft', () => p.close()));
     return;
   }
 
@@ -232,23 +226,23 @@ export function openMill(game) {
       while (d < -Math.PI) d += Math.PI * 2;
       angle += d; turned += Math.abs(d);
       last = pt;
-      if (turned >= NEEDED) { flour = 1; bakeBtn.disabled = false; p.readout('<b>Flour!</b> Now put it in the oven.'); }
-      else p.readout('Keep turning… ' + Math.round((turned / NEEDED) * 100) + '%');
+      if (turned >= NEEDED) { flour = 1; bakeBtn.disabled = false; p.readout(tr('mill.flour')); }
+      else p.readout(tr('mill.keepTurning', { n: Math.round((turned / NEEDED) * 100) }));
     },
     up() { last = null; },
   });
 
   const row = p.row();
-  const bakeBtn = p.button('🔥 Bake', '', () => {
+  const bakeBtn = p.button(tr('mill.bake'), '', () => {
     if (done || flour < 1) return;
     done = true; baking = 0.0001; bakeBtn.disabled = true;
   });
   bakeBtn.disabled = true;
   row.appendChild(bakeBtn);
-  const back = p.button('Later', 'soft', () => { stop(); p.close(); });
+  const back = p.button(tr('ui.later'), 'soft', () => { stop(); p.close(); });
   back.style.flex = '0 0 auto';
   row.appendChild(back);
-  p.readout('Drag around the millstone to turn it.');
+  p.readout(tr('mill.turn'));
 
   function draw(t) {
     const ctx = cv.ctx;
@@ -300,7 +294,7 @@ export function openMill(game) {
     if (turned < NEEDED) {
       ctx.font = '600 12px -apple-system, system-ui, sans-serif';
       ctx.fillStyle = 'rgba(67,55,42,.6)';
-      ctx.fillText('turn me', 150, 196);
+      ctx.fillText(tr('mill.turnMe'), 150, 196);
     }
   }
 
@@ -312,9 +306,9 @@ export function openMill(game) {
       if (baking >= 1 && !p._done) {
         p._done = true;
         game.dispatch({ type: 'mill.run', role: game.role, wheat: 2, food: 3 });
-        p.readout('<b>Three warm loaves.</b> Put some in the village basket and the hungry ones will come.');
+        p.readout(tr('mill.baked'));
         row.innerHTML = '';
-        row.appendChild(p.button('Take them', 'go', () => { stop(); p.close(); }));
+        row.appendChild(p.button(tr('mill.take'), 'go', () => { stop(); p.close(); }));
       }
     }
     draw(t);

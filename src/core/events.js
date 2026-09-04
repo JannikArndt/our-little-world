@@ -65,11 +65,11 @@ export function nextTimeHint(w) {
   const sites = w.buildings.filter(b => b.state === 'site').length;
   const woolly = w.sheep.filter(s => s.fluff > 70).length;
 
-  if (ripe) return { icon: '🌾', text: 'The wheat is still standing in the field, waiting to be cut.' };
-  if (growing) return { icon: '🌱', text: 'The wheat will be taller next time.' };
-  if (noBed) return { icon: '🛏️', text: 'Somebody is still sleeping by the fire.' };
-  if (!w.bridge.built) return { icon: '🌉', text: 'The river is still uncrossed.' };
-  if (sites) return { icon: '📐', text: 'There is still a plot marked out and empty.' };
-  if (woolly) return { icon: '🧶', text: 'The sheep are getting woolly again.' };
-  return { icon: '🌤️', text: 'The little world will be here, just like this.' };
+  if (ripe) return { icon: '🌾', key: 'next.ripe' };
+  if (growing) return { icon: '🌱', key: 'next.growing' };
+  if (noBed) return { icon: '🛏️', key: 'next.noBed' };
+  if (!w.bridge.built) return { icon: '🌉', key: 'next.noBridge' };
+  if (sites) return { icon: '📐', key: 'next.sites' };
+  if (woolly) return { icon: '🧶', key: 'next.woolly' };
+  return { icon: '🌤️', key: 'next.calm' };
 }

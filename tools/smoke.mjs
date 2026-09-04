@@ -234,7 +234,7 @@ async function main() {
   await page.waitForTimeout(300);
   await page.mouse.click(standingPt.x, standingPt.y);
   await page.waitForTimeout(300);
-  const askTree = await page.$('text=Ask the Builder to fell this tree');
+  const askTree = await page.$('text=Ask the Builder to fell that tree');
   if (!askTree) throw new Error('the Keeper was not offered a way to ask');
   await askTree.click();
   await page.waitForTimeout(300);

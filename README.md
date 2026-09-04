@@ -46,6 +46,18 @@ devices.
 Useful query parameters: `?room=kitchen`, `?role=A|B|BOTH`,
 `?server=wss://your-relay/relay`.
 
+## English and German
+
+The game picks its language from the device and remembers what you choose; the
+two flags at the top of the start screen switch it. A parent playing in English
+and a child playing in German can share one world: notices, the journal and
+everything a villager says are stored as a key and its values, never as a
+finished sentence, so each screen renders them in its own language.
+
+Adding a third language means one file in `src/i18n/`. The tests check that
+every string exists in both tables, that the `{name}` and `{n}` slots match, and
+that plurals come in pairs.
+
 ## The two players
 
 |                | 🔨 The Builder                     | 🌿 The Keeper                    |
@@ -62,6 +74,11 @@ button appears on your role card — teach it across, and you both know it.
 
 ## What you can do
 
+Starting a morning opens with one card: the world's most pressing problem in a
+sentence, and the numbered steps that would put it right, each labelled with who
+can do it. Steps you have already covered are ticked. Tapping any of the world's
+notices opens the same card.
+
 | | |
 |---|---|
 | 🪓 **Fell a tree** | Pick which way it falls. It goes where you cut it — unless you drop it into the wind, and then it goes wherever it likes. |
@@ -73,6 +90,11 @@ button appears on your role card — teach it across, and you both know it.
 | 🌱 **Work the field** | Sow, then carry water. The can holds three plots and the field has six. |
 | 🌀 **Run the mill** | Turn the stone with your finger, then bake. Two wheat, three loaves. |
 | 🤝 **Share** | Tap any resource to send some across. Or drop food in the village basket, where the hungry go looking. |
+
+Anything that costs materials shows the cost as the materials themselves — one
+picture per plank and per stone, the ones you have in colour and the ones you
+are missing greyed out. Messages from the world wait on screen until somebody
+taps them away, and everything said so far is kept behind the 📜 button.
 
 ## Five minutes
 
@@ -153,6 +175,7 @@ shapes.
 ```
 npm test              # simulation determinism, costs, pathing, relay framing
 node tools/smoke.mjs  # a headless browser plays a whole five minute block
+node tools/german.mjs # the same, in German, checking no untranslated key leaks
 ```
 
 The smoke test needs the server running (`npm start` on port 8099, or set

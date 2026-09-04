@@ -3,6 +3,7 @@
 // (24 per tile), y grows downward.
 
 import { TILE } from '../core/grid.js';
+import { tr } from '../core/i18n.js';
 
 export const C = {
   grass:   '#8ec96f', grassDark: '#7cb85f', grassLite: '#a3d886',
@@ -215,7 +216,7 @@ export function drawVillager(ctx, v, time, tick) {
     ctx.restore();
   }
 
-  if (v.said) speech(ctx, x, y - 22, v.said);
+  if (v.said) speech(ctx, x, y - 22, tr(v.said));
   else if (MOOD_GLYPH[v.mood]) bubble(ctx, x + 9, y - 18, MOOD_GLYPH[v.mood], 12);
 }
 
@@ -314,7 +315,7 @@ export function drawSite(ctx, b, time) {
   ctx.fillStyle = 'rgba(67,55,42,.75)';
   ctx.font = '600 9px -apple-system, system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(b.newFamily ? 'for the new family' : 'a plot', x + w / 2, y + h / 2 + 1);
+  ctx.fillText(tr(b.newFamily ? 'art.forFamily' : 'art.plot'), x + w / 2, y + h / 2 + 1);
   ctx.restore();
 }
 
@@ -424,7 +425,7 @@ export function drawWorkshop(ctx, b, time, tick) {
   ctx.fillStyle = 'rgba(67,55,42,.7)';
   ctx.font = '700 8px -apple-system, system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('WORKSHOP', x + w / 2, y + h + 6);
+  ctx.fillText(tr('art.workshop'), x + w / 2, y + h + 6);
 }
 
 export function drawLarder(ctx, l, time) {

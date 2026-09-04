@@ -3,6 +3,7 @@
 
 import { T, TILE, tileAt, walkable, inBounds } from '../core/grid.js';
 import { message } from '../ui/overlay.js';
+import { tr, trn } from '../core/i18n.js';
 
 /* ------------------------------------------------------------------ */
 /* road                                                               */
@@ -20,7 +21,7 @@ export function roadMode(game) {
     const t = tileAt(game.world, x, y);
     if (t === T.WATER || t === T.ROAD || t === T.BRIDGE) return;
     if (!walkable(game.world, x, y)) return;
-    if (Math.ceil((tiles.length + 1) / 2) > has()) { mode.hint = 'That is all the stone you have.'; return; }
+    if (Math.ceil((tiles.length + 1) / 2) > has()) { mode.hint = tr('road.noStone'); return; }
     seen[key(x, y)] = 1;
     tiles.push({ x, y });
     mode.hint = null;
@@ -41,11 +42,10 @@ export function roadMode(game) {
 
   const mode = {
     kind: 'road',
-    title: '🛤️ Laying a road',
+    title: tr('road.title'),
     hint: null,
     say() {
-      return 'Draw anywhere you like. <b>' + tiles.length + '</b> step' + (tiles.length === 1 ? '' : 's') +
-             ' · costs <b>' + cost() + ' 🪨</b> of your ' + has() +
+      return trn('road.say', tiles.length, { n: tiles.length, cost: cost(), have: has() }) +
              (mode.hint ? ' — ' + mode.hint : '');
     },
     down(tx, ty) { add(tx, ty); },
@@ -67,15 +67,15 @@ export function roadMode(game) {
       ctx.restore();
     },
     buttons: [
-      { label: 'Lay it', cls: 'go', fn() {
+      { label: tr('road.lay'), cls: 'go', fn() {
         if (!tiles.length) return;
         if (game.dispatch({ type: 'road.build', role: game.role, tiles: tiles.slice() })) {
-          message('🛤️ ' + tiles.length + ' steps of road. Watch them use it.');
+          message(tr('msg.roadLaid', { n: tiles.length }));
         }
         game.setMode(null);
       } },
-      { label: 'Start over', cls: 'soft', fn() { tiles.length = 0; for (const k in seen) delete seen[k]; } },
-      { label: 'Done', cls: 'soft', fn() { game.setMode(null); } },
+      { label: tr('ui.startOver'), cls: 'soft', fn() { tiles.length = 0; for (const k in seen) delete seen[k]; } },
+      { label: tr('ui.done'), cls: 'soft', fn() { game.setMode(null); } },
     ],
   };
   return mode;
@@ -88,11 +88,11 @@ export function roadMode(game) {
 export function sheepMode(game, sheep) {
   const mode = {
     kind: 'sheep',
-    title: '🐑 Where should ' + sheep.name + ' go?',
-    say() { return 'Tap a spot in the world and she will walk there — if she can get to it.'; },
+    title: tr('herd.title', { name: sheep.name }),
+    say() { return tr('herd.say'); },
     highlight: () => ({ x: sheep.x, y: sheep.y, r: 18 }),
     down(tx, ty) {
-      if (!inBounds(tx, ty) || !walkable(game.world, tx, ty)) { message('She cannot stand there.'); return; }
+      if (!inBounds(tx, ty) || !walkable(game.world, tx, ty)) { message(tr('msg.cannotStand')); return; }
       game.dispatch({ type: 'sheep.send', role: game.role, sheepId: sheep.id, x: tx, y: ty });
       game.setMode(null);
     },
@@ -105,7 +105,7 @@ export function sheepMode(game, sheep) {
       ctx.beginPath(); ctx.ellipse(s.x * TILE, s.y * TILE + 3, 16, 9, 0, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
     },
-    buttons: [{ label: 'Never mind', cls: 'soft', fn() { game.setMode(null); } }],
+    buttons: [{ label: tr('ui.neverMind'), cls: 'soft', fn() { game.setMode(null); } }],
   };
   return mode;
 }

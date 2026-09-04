@@ -4,6 +4,7 @@
 
 import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overlay.js';
 import { C, rr } from '../render/art.js';
+import { tr } from '../core/i18n.js';
 
 const PIER_STONE = 2;
 
@@ -12,8 +13,8 @@ export function openBridge(game) {
   const site = w.bridge.site;
   const N = site.span;                    // water columns to cross
   const p = openPanel({
-    title: w.bridge.built ? '🌉 The bridge' : '🌉 Crossing the river',
-    lead: 'Tap the water to stand a pier there. Then see whether it holds.',
+    title: tr(w.bridge.built ? 'bridge.titleOld' : 'bridge.titleNew'),
+    lead: tr('bridge.lead'),
   });
 
   const cv = makeCanvas(480, 206);
@@ -64,11 +65,11 @@ export function openBridge(game) {
   }
 
   const row = p.row();
-  const testBtn = p.button('👣 Try it', 'soft', () => {
+  const testBtn = p.button(tr('bridge.try'), 'soft', () => {
     if (built) return;
     test = { t: 0, verdict: verdict(), broke: null };
   });
-  const buildBtn = p.button('Build it', 'go', () => {
+  const buildBtn = p.button(tr('bridge.build'), 'go', () => {
     const c = cost(), v = verdict();
     if (v === 'breaks' || built) return;
     const me = w.players[game.role].res;
@@ -80,21 +81,21 @@ export function openBridge(game) {
       quality: v === 'strong' ? 3 : 2,
     });
     stop(); p.close();
-    message(v === 'strong' ? '🌉 It holds. Solid as anything.' : '🌉 It holds — with a bit of a creak.');
+    message(tr(v === 'strong' ? 'msg.bridgeStrong' : 'msg.bridgeCreaky'));
     game.look(site.x0 + site.span / 2, site.row + 1);
   });
   row.appendChild(testBtn);
   row.appendChild(buildBtn);
-  const back = p.button('Later', 'soft', () => { stop(); p.close(); });
+  const back = p.button(tr('ui.later'), 'soft', () => { stop(); p.close(); });
   back.style.flex = '0 0 auto';
   row.appendChild(back);
 
   function askForParts() {
-    p.readout('Not enough yet. The grey ones are what is missing.');
+    p.readout(tr('bridge.notEnough'));
     if (!p._askBtn) {
-      p._askBtn = p.button('🙋 Ask for it', 'soft', () => {
+      p._askBtn = p.button(tr('ask.forParts'), 'soft', () => {
         game.dispatch({ type: 'ask', from: game.role, to: game.other, cap: 'bridge', targetId: null });
-        message('Asked for the missing pieces.');
+        message(tr('ask.askedForParts'));
       });
       p._askBtn.style.flex = '0 0 auto';
       row.insertBefore(p._askBtn, back);
@@ -105,17 +106,17 @@ export function openBridge(game) {
     const c = cost(), v = verdict(), sp = spans();
     const me = w.players[game.role].res;
     const lens = sp.map(s => s.d).join(' + ');
-    let msg = 'Beams: <b>' + lens + '</b>';
-    if (v === 'breaks') msg += ' — one of those is far too long.';
-    else if (v === 'creaky') msg += ' — one is a bit of a stretch.';
-    else msg += ' — every beam is short enough.';
+    let msg = tr('bridge.beams', { lens: lens });
+    if (v === 'breaks') msg += tr('bridge.tooLong');
+    else if (v === 'creaky') msg += tr('bridge.stretch');
+    else msg += tr('bridge.allShort');
     p.readout(msg);
     p.cost([
       { icon: '🪚', need: c.plank, have: me.plank },
       { icon: '🪨', need: c.stone, have: me.stone },
     ]);
     buildBtn.disabled = v === 'breaks';
-    buildBtn.textContent = v === 'creaky' ? 'Build it anyway' : 'Build it';
+    buildBtn.textContent = tr(v === 'creaky' ? 'bridge.buildAnyway' : 'bridge.build');
   }
   update();
 
@@ -219,7 +220,7 @@ export function openBridge(game) {
     ctx.fillStyle = 'rgba(67,55,42,.5)';
     ctx.font = '600 11px -apple-system, system-ui, sans-serif';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillText('tap the water to add or remove a pier', 8, 8);
+    ctx.fillText(tr('chop.tapHint'), 8, 8);
   }
 
   const stop = loop((t, dt) => {
@@ -234,16 +235,14 @@ export function openBridge(game) {
           test.broke = bad.a;
           test.t = 0.45;
           setTimeout(() => {
-            message('💦 SPLASH. Everybody is fine. The planks floated to the bank.');
-            p.readout('That beam had to reach <b>' + bad.d + '</b> gaps on its own. Try a pier under it.');
+            message(tr('msg.splash'));
+            p.readout(tr('bridge.broke', { n: bad.d }));
             test = null;
           }, 1500);
         }
       }
       if (test && test.t >= 1.05 && test.broke === null) {
-        p.readout(test.verdict === 'strong'
-          ? '<b>Not a wobble.</b> Every beam is short enough.'
-          : '<b>It creaked, but it held.</b> One beam is a bit of a stretch.');
+        p.readout(tr(test.verdict === 'strong' ? 'bridge.holdsWell' : 'bridge.holdsCreak'));
         test = null;
       }
     }
@@ -253,21 +252,17 @@ export function openBridge(game) {
 
 /** Mending the bridge after the wind has had a go at it. */
 export function openRepair(game) {
-  const p = openPanel({
-    title: '🔧 Mending the bridge',
-    lead: 'One plank is missing. One plank will fix it.',
-    center: true,
-  });
+  const p = openPanel({ title: tr('bridge.mendTitle'), lead: tr('bridge.mendLead'), center: true });
   const have = game.world.players[game.role].res.plank;
   const r = p.row();
   if (have >= 1) {
-    r.appendChild(p.button('🪚 Put a plank back', 'go', () => {
+    r.appendChild(p.button(tr('bridge.mendGo'), 'go', () => {
       game.dispatch({ type: 'bridge.repair', role: game.role });
       p.close();
-      message('🌉 Mended. People are crossing again.');
+      message(tr('msg.mended'));
     }));
   } else {
-    p.body.appendChild(el('p', 'lead center', 'You have no planks. The sawmill turns wood into planks.'));
+    p.body.appendChild(el('p', 'lead center', tr('bridge.mendNoPlank')));
   }
-  r.appendChild(p.button('Later', 'soft', () => p.close()));
+  r.appendChild(p.button(tr('ui.later'), 'soft', () => p.close()));
 }

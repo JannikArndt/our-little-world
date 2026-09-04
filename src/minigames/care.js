@@ -3,22 +3,19 @@
 
 import { openPanel, makeCanvas, onPointer, loop } from '../ui/overlay.js';
 import { drawSheep, rr, glyph } from '../render/art.js';
+import { tr } from '../core/i18n.js';
 
 const ITEMS = [
-  { key: 'hay',   icon: '🌾', label: 'hay' },
-  { key: 'water', icon: '🪣', label: 'water' },
-  { key: 'shear', icon: '✂️', label: 'shears' },
-  { key: 'pet',   icon: '🤚', label: 'a scratch' },
+  { key: 'hay',   icon: '🌾' },
+  { key: 'water', icon: '🪣' },
+  { key: 'shear', icon: '✂️' },
+  { key: 'pet',   icon: '🤚' },
 ];
 
-const WRONG = {
-  hay:   'It sniffs the hay, then looks away.',
-  water: 'It dips its nose in, sneezes, and steps back.',
-  shear: 'It shuffles off. Not today, thank you.',
-};
+const WRONG = { hay: 'care.wrongHay', water: 'care.wrongWater', shear: 'care.wrongShear' };
 
 export function openCare(game, sheep) {
-  const p = openPanel({ title: '🐑 ' + sheep.name, lead: 'Tap what she needs. Dragging works too.' });
+  const p = openPanel({ title: '🐑 ' + sheep.name, lead: tr('care.lead') });
 
   const cv = makeCanvas(420, 300);
   p.body.appendChild(cv.canvas);
@@ -70,32 +67,29 @@ export function openCare(game, sheep) {
     if (key === 'pet') {
       joy = 1;
       game.dispatch({ type: 'sheep.care', role: game.role, sheepId: s.id, item: 'pet' });
-      p.readout('She leans into it. Whatever else she wants, she still wanted that.');
+      p.readout(tr('care.pet.done'));
       return;
     }
     const wanted = need();
     if (key === wanted || (key === 'shear' && s.fluff > 70)) {
       joy = 1;
       game.dispatch({ type: 'sheep.care', role: game.role, sheepId: s.id, item: key });
-      p.readout(key === 'shear' ? '<b>Snip snip.</b> A whole bundle of wool.'
-        : key === 'water' ? '<b>Glug glug glug.</b> Better.'
-        : '<b>Munch munch.</b> Much better.');
+      p.readout(tr(key === 'shear' ? 'care.sheared' : key === 'water' ? 'care.drank' : 'care.ate'));
       setTimeout(refreshHint, 900);
     } else {
       shake = 1;
-      p.readout(WRONG[key] || 'She is not interested.');
+      p.readout(tr(WRONG[key] || 'care.notInterested'));
     }
   }
 
   function refreshHint() {
     const n = need();
-    p.readout(n ? 'She still wants something. Have another look at her.'
-                : '<b>She looks content.</b> Ears up, tail going.');
+    p.readout(tr(n ? 'care.stillWants' : 'care.content'));
   }
   refreshHint();
 
   const row = p.row();
-  row.appendChild(p.button('Done', 'soft', () => { stop(); p.close(); }));
+  row.appendChild(p.button(tr('ui.done'), 'soft', () => { stop(); p.close(); }));
 
   function draw(t) {
     const ctx = cv.ctx;

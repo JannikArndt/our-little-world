@@ -1,16 +1,16 @@
 // Giving things to the other player. One screen, big buttons, no trade menu.
 
 import { el, openPanel, message } from './overlay.js';
-import { RESOURCES, ROLE } from '../core/world.js';
+import { RESOURCES, ROLE, roleName, resName } from '../core/world.js';
+import { tr } from '../core/i18n.js';
 
 export function openGive(game, focusKey) {
   const w = game.world;
   const mine = w.players[game.role].res;
-  const other = ROLE[game.other];
 
   const p = openPanel({
-    title: '🤝 Sharing',
-    lead: 'What should go over to the ' + other.name + '?',
+    title: tr('give.title'),
+    lead: tr('give.lead', { role: roleName(game.other) }),
   });
 
   const amounts = {};
@@ -24,10 +24,10 @@ export function openGive(game, focusKey) {
 
     const row = el('div', 'give-row');
     row.appendChild(el('span', 'g-ico', r.icon));
-    const name = el('span', 'g-name', r.name);
+    const name = el('span', 'g-name', resName(r.key));
     name.appendChild(el('span', '', ''));
     row.appendChild(name);
-    const count = el('span', '', 'you have ' + have);
+    const count = el('span', '', tr('give.youHave', { n: have }));
     count.style.cssText = 'color:#7a6a56;font-size:13px;margin-right:8px;';
     row.appendChild(count);
 
@@ -42,26 +42,26 @@ export function openGive(game, focusKey) {
     p.body.appendChild(row);
   }
 
-  if (!any) p.body.appendChild(el('p', 'lead', 'Your side of the table is empty just now.'));
+  if (!any) p.body.appendChild(el('p', 'lead', tr('give.nothing')));
 
   const row = p.row();
   if (any) {
-    row.appendChild(p.button('Give it to the ' + other.name + ' ' + other.emoji, 'go', () => {
+    row.appendChild(p.button(tr('give.button', { role: roleName(game.other), emoji: ROLE[game.other].emoji }), 'go', () => {
       let n = 0;
       for (const k in amounts) {
         if (amounts[k] > 0 && game.dispatch({ type: 'give', from: game.role, to: game.other, res: k, n: amounts[k] })) n += amounts[k];
       }
       p.close();
-      if (n) message('🤝 ' + n + ' went across to the ' + other.name + '.');
+      if (n) message(tr('msg.gaveAcross', { n: n, role: roleName(game.other) }));
     }));
   }
   if ((mine.food || 0) > 0) {
-    row.appendChild(p.button('🧺 Into the village basket', 'soft', () => {
+    row.appendChild(p.button(tr('give.basket'), 'soft', () => {
       const n = Math.min(3, mine.food);
       game.dispatch({ type: 'larder.give', from: game.role, n });
       p.close();
-      message('🍞 ' + n + ' in the basket. The hungry ones will come.');
+      message(tr('msg.inBasket', { n: n }));
     }));
   }
-  row.appendChild(p.button('Close', 'soft', () => p.close()));
+  row.appendChild(p.button(tr('ui.close'), 'soft', () => p.close()));
 }

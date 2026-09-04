@@ -4,7 +4,7 @@
 // browsers share one world, and what lets the tests be meaningful.
 
 import { T, inBounds, setTile, tileAt, rebuildBlocked } from './grid.js';
-import { addBuilding, byId, newId, CAPS, BLOCK_TICKS } from './world.js';
+import { addBuilding, byId, newId, CAPS, capName, BLOCK_TICKS } from './world.js';
 
 /* ---- small helpers -------------------------------------------------- */
 
@@ -14,15 +14,19 @@ export function fx(w, kind, x, y, text, colour) {
   w.fx.push({ kind, x, y, text: text || '', colour: colour || null, born: w.tick, id: newId('fx') });
 }
 
-function note(w, id, icon, text, kind) {
+/**
+ * Notices and the journal are stored as a key plus values, never as a finished
+ * sentence, so each player reads them in their own language.
+ */
+function note(w, id, icon, key, vars, kind) {
   if (w.notices.some(n => n.id === id)) return;
   if (w.notices.length > 3) w.notices.shift();
-  w.notices.push({ id, icon, text, kind: kind || 'calm', born: w.tick });
+  w.notices.push({ id, icon, key, vars: vars || null, kind: kind || 'calm', born: w.tick });
 }
 export { note };
 
-export function journal(w, icon, text) {
-  w.journal.push({ icon, text, tick: w.tick });
+export function journal(w, icon, key, vars) {
+  w.journal.push({ icon, key, vars: vars || null, tick: w.tick });
   if (w.journal.length > 40) w.journal.shift();
 }
 
@@ -92,7 +96,7 @@ export function applyAction(w, a) {
         w.logs.push({ id: newId('log'), x: lx + 0.5, y: ly + 0.5, owner: a.role, claimed: null, wood: a.logs });
       }
       tally(w, a.role, 'fell');
-      journal(w, '🌳', a.mishap ? 'felled a tree (the funny way)' : 'felled a tree');
+      journal(w, '🌳', 'j.felled');
       clearAsk(w, 'fell', a.treeId);
       return true;
     }
@@ -104,7 +108,7 @@ export function applyAction(w, a) {
       const ws = w.buildings.find(b => b.type === 'workshop');
       if (ws) { ws.spin = w.tick; fx(w, 'float', ws.x + 2, ws.y - 0.2, '+' + a.planks + ' 🪚'); }
       tally(w, a.role, 'saw');
-      journal(w, '🪚', 'sawed ' + a.planks + ' planks');
+      journal(w, '🪚', 'j.sawed', { n: a.planks });
       clearAsk(w, 'saw', null);
       return true;
     }
@@ -116,7 +120,7 @@ export function applyAction(w, a) {
       const ws = w.buildings.find(b => b.type === 'workshop');
       if (ws) { ws.spin = w.tick; fx(w, 'float', ws.x + 2, ws.y - 0.2, '+' + a.food + ' 🍞'); }
       tally(w, a.role, 'mill');
-      journal(w, '🍞', 'baked ' + a.food + ' loaves');
+      journal(w, '🍞', 'j.baked', { n: a.food });
       clearAsk(w, 'mill', null);
       return true;
     }
@@ -138,7 +142,7 @@ export function applyAction(w, a) {
       rebuildBlocked(w);
       fx(w, 'sparkle', (s.x0 + s.x1) / 2 + 0.5, s.row + 1);
       tally(w, a.role, 'bridge');
-      journal(w, '🌉', a.quality >= 2 ? 'built a strong bridge' : 'built a bridge');
+      journal(w, '🌉', 'j.bridge');
       w.notices = w.notices.filter(n => n.id !== 'sheep_far' && n.id !== 'bridge_broken');
       clearAsk(w, 'bridge', null);
       return true;
@@ -150,7 +154,7 @@ export function applyAction(w, a) {
       rebuildBlocked(w);
       const s = w.bridge.site;
       fx(w, 'sparkle', (s.x0 + s.x1) / 2 + 0.5, s.row + 1);
-      journal(w, '🔧', 'mended the bridge');
+      journal(w, '🔧', 'j.mended');
       w.notices = w.notices.filter(n => n.id !== 'bridge_broken');
       return true;
     }
@@ -173,7 +177,7 @@ export function applyAction(w, a) {
       rebuildBlocked(w);
       fx(w, 'sparkle', site.x + site.w / 2, site.y);
       tally(w, a.role, 'house');
-      journal(w, '🏠', 'built a house with ' + a.beds + (a.beds === 1 ? ' bed' : ' beds'));
+      journal(w, '🏠', 'j.house', { n: a.beds });
       clearAsk(w, 'house', a.siteId);
       return true;
     }
@@ -190,7 +194,7 @@ export function applyAction(w, a) {
       for (const v of w.villagers) v.path = [];      // everybody re-plans on the new road
       for (const s of w.sheep) s.path = [];
       tally(w, a.role, 'road');
-      journal(w, '🛤️', 'laid ' + tiles.length + ' steps of road');
+      journal(w, '🛤️', 'j.road', { n: tiles.length });
       clearAsk(w, 'road', null);
       return true;
     }
@@ -215,7 +219,7 @@ export function applyAction(w, a) {
       s.hearts = w.tick;
       fx(w, 'hearts', s.x, s.y - 0.7);
       tally(w, a.role, 'care');
-      journal(w, '🐑', 'looked after ' + s.name);
+      journal(w, '🐑', 'j.sheep', { name: s.name });
       clearAsk(w, 'care', a.sheepId);
       return true;
     }
@@ -244,7 +248,7 @@ export function applyAction(w, a) {
       gain(w, a.role, 'wheat', n);
       fx(w, 'float', p.x + 1, p.y, '+' + n + ' 🌾');
       tally(w, a.role, 'farm');
-      journal(w, '🌾', 'harvested ' + n + ' wheat');
+      journal(w, '🌾', 'j.wheat', { n: n });
       w.notices = w.notices.filter(x => x.id !== 'wheat_ready');
       return true;
     }
@@ -275,7 +279,7 @@ export function applyAction(w, a) {
       if (n <= 0) return false;
       from.res[a.res] -= n;
       to.res[a.res] = (to.res[a.res] || 0) + n;
-      journal(w, '🤝', 'shared ' + n + ' ' + a.res);
+      journal(w, '🤝', 'j.shared', { n: n });
       return true;
     }
     case 'larder.give': {
@@ -285,7 +289,7 @@ export function applyAction(w, a) {
       from.res.food -= n;
       w.larder.food += n;
       fx(w, 'float', w.larder.x, w.larder.y - 0.6, '+' + n + ' 🍞');
-      journal(w, '🧺', 'put ' + n + ' food in the basket');
+      journal(w, '🧺', 'j.basket', { n: n });
       w.notices = w.notices.filter(x => x.id !== 'hungry');
       return true;
     }
@@ -307,8 +311,8 @@ export function applyAction(w, a) {
       if (w.players[a.to].caps[a.cap]) return false;
       w.players[a.to].caps[a.cap] = 1;
       w.asks = w.asks.filter(x => x.cap !== a.cap);
-      journal(w, '👐', 'learned ' + CAPS[a.cap].name);
-      note(w, 'taught_' + a.cap, CAPS[a.cap].icon, 'Now you both know ' + CAPS[a.cap].name + '.', 'calm');
+      journal(w, '👐', 'j.taught');
+      note(w, 'taught_' + a.cap, CAPS[a.cap].icon, 'teach.notice', { what: capName(a.cap) }, 'calm');
       return true;
     }
 
@@ -344,31 +348,30 @@ function applyWorldEvent(w, a) {
       for (const sh of w.sheep) sh.path = [];
       const s = w.bridge.site;
       fx(w, 'crack', (s.x0 + s.x1) / 2 + 0.5, s.row + 0.6);
-      note(w, 'bridge_broken', '💨', 'A gust of wind knocked a plank off the bridge. Nobody can cross until it is mended.', 'ask');
-      journal(w, '💨', 'the wind rattled the bridge');
+      note(w, 'bridge_broken', '💨', 'notice.bridgeBroken', null, 'ask');
       return true;
     }
     case 'newfamily': {
       if (w.buildings.some(b => b.id === 'site_east')) return false;
       const b = addBuilding(w, { id: 'site_east', type: 'site', x: 26, y: 6, w: 3, h: 2, state: 'site', name: 'a marked-out plot' });
       b.newFamily = true;
-      note(w, 'newfamily', '👨‍👩‍👧', 'A family walked in from the hills. They have marked out a plot across the river.', 'ask');
-      journal(w, '👨‍👩‍👧', 'a new family arrived');
+      note(w, 'newfamily', '👨‍👩‍👧', 'notice.newFamily', null, 'ask');
+      journal(w, '👨‍👩‍👧', 'j.family');
       return true;
     }
     case 'critter': {
       w.visitors = w.visitors || [];
       if (w.visitors.length) return false;
       w.visitors.push({ id: newId('cr'), kind: a.kind || 'deer', x: 2.5, y: 9.5, path: [], wait: 0, life: 1400 });
-      note(w, 'critter', '🦌', 'Something stepped out of the forest. Nobody knows what it wants.', 'calm');
-      journal(w, '🦌', 'a deer visited');
+      note(w, 'critter', '🦌', 'notice.critter', null, 'calm');
+      journal(w, '🦌', 'j.deer');
       return true;
     }
     case 'goodharvest': {
       let n = 0;
       for (const p of w.plots) if (p.state === 'growing' && p.growth > 30) { p.growth = Math.min(100, p.growth + 25); n++; }
       if (!n) return false;
-      note(w, 'goodharvest', '☀️', 'Warm rain last night. The wheat shot up.', 'calm');
+      note(w, 'goodharvest', '☀️', 'notice.goodHarvest', null, 'calm');
       return true;
     }
     default: return false;

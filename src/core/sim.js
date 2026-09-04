@@ -77,7 +77,7 @@ function chooseVillagerTask(w, v) {
     if (w.larder.food > 0) {
       if (goTo(w, v, Math.floor(w.larder.x), Math.floor(w.larder.y), 1)) { v.task = { kind: 'eat' }; return; }
     } else if (rnd(w) < 0.25) {
-      say(w, v, 'the basket is empty…', 40);
+      say(w, v, 'say.emptyBasket', 40);
     }
   }
   // 2. nowhere to sleep, and a bed has appeared
@@ -130,7 +130,7 @@ function finishVillagerTask(w, v) {
         v.hunger = Math.max(0, v.hunger - 70);
         v.hearts = w.tick;
         fx(w, 'hearts', v.x, v.y - 0.7);
-        say(w, v, 'mmm 🍞', 25);
+        say(w, v, 'say.mmm', 25);
       }
       v.wait = 15;
       break;
@@ -141,9 +141,9 @@ function finishVillagerTask(w, v) {
         v.homeId = b.id;
         v.hearts = w.tick;
         fx(w, 'sparkle', b.x + b.w / 2, b.y);
-        say(w, v, 'home!', 40);
-        journal(w, '🔑', v.name + ' moved in');
-        note(w, 'movedin_' + v.id, '🔑', v.name + ' moved into the new house.', 'calm');
+        say(w, v, 'say.home', 40);
+        journal(w, '🔑', 'j.movedIn', { name: v.name });
+        note(w, 'movedin_' + v.id, '🔑', 'notice.movedIn', { name: v.name }, 'calm');
         w.notices = w.notices.filter(n => n.id !== 'homeless');
       }
       v.wait = 20;
@@ -165,18 +165,18 @@ function finishVillagerTask(w, v) {
         const p = w.players[v.carrying.owner] || w.players.A;
         p.res.wood += v.carrying.wood;
         fx(w, 'float', v.x, v.y - 0.6, '+' + v.carrying.wood + ' 🪵');
-        say(w, v, 'delivered!', 25);
+        say(w, v, 'say.delivered', 25);
         v.carrying = null;
       }
       v.wait = 15;
       break;
     }
     case 'stare':
-      say(w, v, rnd(w) < 0.5 ? 'I wish I could get across…' : 'that side looks nice.', 55);
+      say(w, v, rnd(w) < 0.5 ? 'say.wishAcross' : 'say.niceOverThere', 55);
       v.wait = 45;
       break;
     case 'visit':
-      say(w, v, 'made it across!', 35);
+      say(w, v, 'say.madeIt', 35);
       v.wait = 30 + rndInt(w, 30);
       break;
     default:
@@ -232,7 +232,7 @@ function tickSheep(w, s) {
     if (p) {
       if (p.state === 'growing') p.growth = Math.max(0, p.growth - 0.28);
       if (!p.nibbled) { p.nibbled = 1; }
-      if (w.tick % 40 === 0 && !(w.block.active && blockProgress(w) > 0.85)) note(w, 'sheep_in_field', '🐑', 'A sheep found the wheat field. It looks delighted.', 'ask');
+      if (w.tick % 40 === 0 && !(w.block.active && blockProgress(w) > 0.85)) note(w, 'sheep_in_field', '🐑', 'notice.sheepField', null, 'ask');
     }
   }
   if (nearWater(w, s)) s.thirst = Math.max(0, s.thirst - 0.5);
@@ -246,8 +246,8 @@ function tickSheep(w, s) {
       // it wants to go, but it cannot get there from here
       s.gaveUp = true;
       const acrossRiver = (s.x < 19) !== (s.led.x < 19);
-      if (acrossRiver && !w.bridge.built) note(w, 'sheep_far', '🐑', 'The sheep cannot get across the river. There is no bridge.', 'ask');
-      else if (acrossRiver && w.bridge.damaged) note(w, 'bridge_broken', '🐑', 'The sheep will not walk on a broken bridge.', 'ask');
+      if (acrossRiver && !w.bridge.built) note(w, 'sheep_far', '🐑', 'notice.sheepFar', null, 'ask');
+      else if (acrossRiver && w.bridge.damaged) note(w, 'bridge_broken', '🐑', 'notice.sheepBroken', null, 'ask');
       s.led = null;
       s.wait = 30;
     } else {
@@ -304,7 +304,7 @@ function tickPlots(w) {
       else p.growth += 0.004;
       if (p.growth >= 100) {
         p.state = 'ripe'; p.growth = 100;
-        note(w, 'wheat_ready', '🌾', 'The wheat is golden. It is ready to cut.', 'calm');
+        note(w, 'wheat_ready', '🌾', 'notice.wheatReady', null, 'calm');
       }
     }
   }
@@ -354,12 +354,12 @@ export function tick(w) {
   if (w.tick % 50 === 0 && !settling) {
     const starving = w.villagers.filter(v => v.hunger > 72);
     if (starving.length && w.larder.food <= 0)
-      note(w, 'hungry', '🍞', starving[0].name + ' is hungry and the bread basket is empty.', 'ask');
+      note(w, 'hungry', '🍞', 'notice.hungry', { name: starving[0].name }, 'ask');
     else if (!starving.length) w.notices = w.notices.filter(n => n.id !== 'hungry');
 
     const noBed = w.villagers.filter(v => !v.homeId);
     if (noBed.length && !freeBed(w))
-      note(w, 'homeless', '🛏️', noBed[0].name + ' has nowhere to sleep tonight.', 'ask');
+      note(w, 'homeless', '🛏️', 'notice.homeless', { name: noBed[0].name }, 'ask');
 
     if (!w.plots.some(p => p.state === 'ripe')) w.notices = w.notices.filter(n => n.id !== 'wheat_ready');
     if (!noBed.length) w.notices = w.notices.filter(n => n.id !== 'homeless');

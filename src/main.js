@@ -6,7 +6,8 @@ import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
 import { installInput, renderModeBar, closeBubble } from './ui/interact.js';
 import { openPanel, message, closePanel } from './ui/overlay.js';
-import { ROLE, otherRole, byId } from './core/world.js';
+import { ROLE, otherRole, byId, roleName } from './core/world.js';
+import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
 import { rememberRole, recallRole } from './core/persist.js';
 import { openChop } from './minigames/chop.js';
@@ -21,7 +22,26 @@ const qs = new URLSearchParams(location.search);
 /* start screen                                                       */
 /* ------------------------------------------------------------------ */
 
+/** Fill in the start screen in whichever language, and offer the other one. */
+function applyStartText() {
+  document.title = tr('app.title');
+  const nodes = document.querySelectorAll('[data-t]');
+  for (let i = 0; i < nodes.length; i++) nodes[i].textContent = tr(nodes[i].getAttribute('data-t'));
+  const row = document.getElementById('langRow');
+  row.innerHTML = '';
+  for (const l of LANGUAGES) {
+    const b = document.createElement('button');
+    b.className = 'lang-btn' + (l.id === currentLang() ? ' on' : '');
+    b.type = 'button';
+    b.textContent = l.flag + ' ' + l.name;
+    b.addEventListener('click', () => { setLang(l.id); applyStartText(); });
+    row.appendChild(b);
+  }
+}
+
 function boot() {
+  detectLang();
+  applyStartText();
   const start = document.getElementById('start');
   const roomInput = document.getElementById('roomInput');
   roomInput.value = (qs.get('room') || 'home').slice(0, 24);
@@ -154,7 +174,7 @@ async function startGame(chosenRole, room) {
 
     pointAtSite() {
       const s = game.world.buildings.find(b => b.state === 'site');
-      if (s) { game.look(s.x + s.w / 2, s.y + s.h / 2, 1.8); message('There is a plot here, ready for a house.'); }
+      if (s) { game.look(s.x + s.w / 2, s.y + s.h / 2, 1.8); message(tr('msg.plotHere')); }
     },
 
     goToNotice(n) {
@@ -188,7 +208,7 @@ async function startGame(chosenRole, room) {
         farm: () => { const p = w.plots[0]; if (p) game.look(p.x + 1, p.y + 1, 1.6); },
       }[a.cap];
       if (!w.players[game.role].caps[a.cap]) {
-        message('You do not know how to do that yet — ask them to show you.');
+        message(tr('teach.cannot'));
         return;
       }
       if (open) open();
@@ -215,7 +235,7 @@ async function startGame(chosenRole, room) {
     // if the other player starts the morning, put our invitation away
     if (what === 'acted' && data && data.type === 'block.start' && game._offer) {
       game._offer.close(); game._offer = null;
-      message('🌅 ' + ROLE[game.other].name + ' started the morning.');
+      message(tr('block.otherStarted', { role: roleName(game.other) }));
     }
   });
 
@@ -268,12 +288,12 @@ async function startGame(chosenRole, room) {
 
   // a phone held upright shows very little of the world
   if (window.innerHeight > window.innerWidth * 1.25) {
-    setTimeout(() => message('Turn the screen sideways to see the whole world. Pinch and drag works too.'), 2600);
+    setTimeout(() => message(tr('msg.sideways')), 2600);
   }
 
   // the shared ritual: agree to play for five minutes
   if (!session.world.block.active) offerBlock(game);
-  else message('🌅 Joining a morning already in progress.');
+  else message(tr('block.joined'));
 
   window.OLW = game;      // handy when poking at it from a console
 }
@@ -282,20 +302,18 @@ function offerBlock(game) {
   const w = game.world;
   const returning = w.tick > 0;
   const p = openPanel({
-    title: returning ? '🌤️ Our little world is still here' : '🌤️ Our little world',
-    lead: returning
-      ? 'Everything is exactly as you left it. Shall we look after it for a bit?'
-      : 'A river, a forest, a few houses, and some people who could do with a hand.',
+    title: tr(returning ? 'block.titleBack' : 'block.titleNew'),
+    lead: tr(returning ? 'block.leadBack' : 'block.leadNew'),
     center: true,
   });
   game._offer = p;
   const r = p.row();
-  r.appendChild(p.button('☀️ Five minutes together', 'go', () => { game._offer = null; p.close(); game.startBlock(returning); }));
-  r.appendChild(p.button('Just look around', 'soft', () => { game._offer = null; p.close(); game.hud.showGuide(); }));
+  r.appendChild(p.button(tr('block.start'), 'go', () => { game._offer = null; p.close(); game.startBlock(returning); }));
+  r.appendChild(p.button(tr('block.look'), 'soft', () => { game._offer = null; p.close(); game.hud.showGuide(); }));
   const note = document.createElement('p');
   note.className = 'lead center';
   note.style.marginTop = '10px';
-  note.textContent = 'When the five minutes are up nothing stops. The world just settles, and we get a good place to leave it.';
+  note.textContent = tr('block.note');
   p.body.appendChild(note);
 }
 

@@ -6,6 +6,7 @@ import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overl
 import { T, TILE, tileAt, inBounds } from '../core/grid.js';
 import { C, drawTree, drawStump, drawHouse, drawSite, drawWorkshop } from '../render/art.js';
 import { makeRng } from '../core/rng.js';
+import { tr } from '../core/i18n.js';
 
 const DIRS = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] };
 const ARROW = { N: '⬆️', S: '⬇️', E: '➡️', W: '⬅️' };
@@ -24,11 +25,11 @@ function look(w, tree, dir) {
 }
 
 const MISHAP = {
-  water: ['🌊 Straight into the river! It floated off downstream.', 1, 0],
-  house: ['🏠 It leaned on the roof. Everyone is fine. Everyone is laughing.', 2, 0],
-  tree:  ['🌳 It got caught in the next tree and hung there.', 2, 0],
-  edge:  ['🪨 It landed on the rocks and split badly.', 2, 0],
-  clear: ['🪵 A good clean THUMP.', 2, 2],
+  water: ['chop.water', 1, 0],
+  house: ['chop.house', 2, 0],
+  tree:  ['chop.tree', 2, 0],
+  edge:  ['chop.edge', 2, 0],
+  clear: ['chop.clear', 2, 2],
 };
 
 export function openChop(game, tree) {
@@ -38,10 +39,7 @@ export function openChop(game, tree) {
   const around = {};
   for (const d in DIRS) around[d] = look(w, tree, d);
 
-  const p = openPanel({
-    title: '🪓 Felling a tree',
-    lead: 'Choose which way it should fall. Watch the wind.',
-  });
+  const p = openPanel({ title: tr('chop.title'), lead: tr('chop.lead') });
 
   const cv = makeCanvas(340, 300);
   p.body.appendChild(cv.canvas);
@@ -54,14 +52,14 @@ export function openChop(game, tree) {
   const dirBtns = {};
   for (const d of ['W', 'N', 'S', 'E']) {
     const b = el('button', 'btn soft small');
-    b.innerHTML = ARROW[d] + ' <span style="font-size:13px">' + ({ N: 'up', S: 'down', E: 'right', W: 'left' })[d] + '</span>';
+    b.innerHTML = ARROW[d] + ' <span style="font-size:13px">' + tr('chop.dir.' + d) + '</span>';
     b.addEventListener('click', () => choose(d));
     dirBtns[d] = b;
     pad.appendChild(b);
   }
 
   const row2 = p.row();
-  const chopBtn = p.button('🪓 Chop', '', () => {
+  const chopBtn = p.button(tr('chop.chop'), '', () => {
     if (done || !chosen) return;
     chops++;
     shake = 1;
@@ -70,17 +68,16 @@ export function openChop(game, tree) {
       chopBtn.disabled = true;
       falling = 0.0001;
     } else {
-      p.readout('Chip… chip… <b>' + (3 - chops) + '</b> to go.');
+      p.readout(tr('chop.chips', { n: 3 - chops }));
     }
   });
   chopBtn.disabled = true;
   row2.appendChild(chopBtn);
-  const leave = p.button('Leave it standing', 'soft', () => { stop(); p.close(); });
+  const leave = p.button(tr('chop.leave'), 'soft', () => { stop(); p.close(); });
   leave.style.flex = '0 0 auto';
   row2.appendChild(leave);
 
-  p.readout('The wind is blowing <b>' + ({ N: 'north', S: 'south', E: 'east', W: 'west' })[windDir] +
-            '</b> ' + ARROW[windDir] + '. Trees do not like falling into the wind.');
+  p.readout(tr('chop.wind', { dir: tr('chop.compass.' + windDir), arrow: ARROW[windDir] }));
 
   /* ---- drawing ---- */
   const S = 262 / ((R * 2 + 1) * TILE);          // the 7x7 patch around the tree
@@ -92,8 +89,7 @@ export function openChop(game, tree) {
     chosen = d; chops = 0;
     for (const k in dirBtns) dirBtns[k].className = 'btn ' + (k === d ? '' : 'soft') + ' small';
     chopBtn.disabled = false;
-    p.readout('Cutting the notch on the <b>' + ({ N: 'far', S: 'near', E: 'right', W: 'left' })[d] +
-              '</b> side. Tap the axe three times.');
+    p.readout(tr('chop.notch', { side: tr('chop.side.' + d) }));
   }
 
   function drawScene(t) {
@@ -214,11 +210,11 @@ export function openChop(game, tree) {
   function finish() {
     const dir = fellDir();
     const what = around[dir];
-    const [msg, wood, logs] = MISHAP[what];
+    const [key, wood, logs] = MISHAP[what];
     stop();
     game.dispatch({ type: 'tree.fell', role: game.role, treeId: tree.id, dir, wood, logs, mishap: what !== 'clear' });
     p.close();
-    message(msg);
-    if (what !== 'clear') game.hint('Have another look at the wind next time.');
+    message(tr(key));
+    if (what !== 'clear') game.hint(tr('chop.again'));
   }
 }

@@ -1,6 +1,8 @@
 // Small DOM helpers shared by every mini-game: a panel, a canvas that knows
 // about fingers, and a message. Nothing clever, just fewer repeated lines.
 
+import { tr } from '../core/i18n.js';
+
 export function el(tag, cls, text) {
   const n = document.createElement(tag);
   if (cls) n.className = cls;
@@ -76,9 +78,9 @@ export function renderCost(host, items) {
     if (it.need > show) pips.appendChild(el('span', 'pip more', '…'));
     row.appendChild(pips);
     const txt = el('span', 'cost-txt');
-    txt.appendChild(document.createTextNode('have '));
+    txt.appendChild(document.createTextNode(tr('ui.have') + ' '));
     txt.appendChild(el('b', '', String(it.have)));
-    txt.appendChild(document.createTextNode(', need ' + it.need));
+    txt.appendChild(document.createTextNode(', ' + tr('ui.need') + ' ' + it.need));
     row.appendChild(txt);
     host.appendChild(row);
   }

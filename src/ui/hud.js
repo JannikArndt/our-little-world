@@ -5,6 +5,7 @@ import { el, openPanel, message, messages, clearMessages } from './overlay.js';
 import { openGive } from './share.js';
 import { RESOURCES, ROLE, CAPS, blockProgress } from '../core/world.js';
 import { nextTimeHint } from '../core/events.js';
+import { currentProblem } from '../core/guide.js';
 
 const PHASE = [
   [0.00, 'early morning'],
@@ -127,7 +128,7 @@ export class Hud {
       };
     }
     for (const n of w.notices) {
-      wanted[n.id] = { icon: n.icon, kind: n.kind, text: n.text, onTap: () => g.goToNotice(n) };
+      wanted[n.id] = { icon: n.icon, kind: n.kind, text: n.text, onTap: () => { g.goToNotice(n); this.showGuide(); } };
     }
 
     for (const id in this.noticeEls) {
@@ -146,6 +147,42 @@ export class Hud {
       layer.appendChild(b);
       this.noticeEls[id] = b;
     }
+  }
+
+  /**
+   * What is wrong, and what would put it right. Shown when a morning starts
+   * and whenever somebody taps one of the world's notices.
+   */
+  showGuide(opts) {
+    const g = this.game;
+    const pr = currentProblem(g.world);
+    const first = opts && opts.first;
+    const p = openPanel({
+      title: pr.icon + '  ' + pr.title,
+      lead: pr.why,
+      onClose: opts && opts.onClose,
+    });
+
+    const list = el('div', 'steps');
+    let n = 0;
+    for (const s of pr.steps) {
+      n++;
+      const row = el('div', 'step' + (s.done ? ' done' : ''));
+      row.appendChild(el('span', 's-n', String(n)));
+      row.appendChild(el('span', 's-ico', s.icon));
+      row.appendChild(el('span', 's-txt', s.text));
+      if (s.done) row.appendChild(el('span', 's-tick', '✓'));
+      row.appendChild(el('span', 's-who', s.who));
+      list.appendChild(row);
+    }
+    p.body.appendChild(list);
+
+    const r = p.row();
+    r.appendChild(p.button(first ? '☀️ Off we go' : 'Right, got it', 'go', () => p.close()));
+    if (!first && pr.id !== 'calm') {
+      r.appendChild(p.button('👀 Where?', 'soft', () => { p.close(); g.showMe(pr.id); }));
+    }
+    return p;
   }
 
   /** Everything the world has said, newest first. */

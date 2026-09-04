@@ -41,6 +41,12 @@ async function main() {
   await step(page, '02-offer-block', 900);
 
   await page.click('text=Five minutes together');
+  await step(page, '02b-guide', 900);
+  const guide = await page.textContent('.panel');
+  console.log('opening card says:', guide.replace(/\s+/g, ' ').trim().slice(0, 150));
+  if (!/nowhere to sleep|river cuts/.test(guide)) throw new Error('the opening card names no problem');
+  if ((await page.$$eval('.step', ns => ns.length)) < 2) throw new Error('the opening card has no steps');
+  await page.click('text=Off we go');
   await step(page, '03-world', 1200);
 
   const api = async (fn, arg) => page.evaluate(fn, arg);

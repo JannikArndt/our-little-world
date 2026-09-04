@@ -135,6 +135,23 @@ async function startGame(chosenRole, room) {
       hud.last = {};
     },
 
+    /** Take us to whatever the guide is talking about. */
+    showMe(id) {
+      const w = game.world;
+      const s = w.bridge.site;
+      const at = {
+        bridge_broken: () => [(s.x0 + s.x1) / 2 + 0.5, s.row + 1],
+        no_bridge: () => [(s.x0 + s.x1) / 2 + 0.5, s.row + 1],
+        homeless: () => { const b = w.buildings.find(b => b.state === 'site'); return b ? [b.x + 1.5, b.y + 1] : null; },
+        hungry: () => { const p = w.plots[0]; return p ? [p.x + 1, p.y + 1] : [w.larder.x, w.larder.y]; },
+        wheat_ready: () => { const p = w.plots.find(p => p.state === 'ripe'); return p ? [p.x + 1, p.y + 1] : null; },
+        sheep: () => { const sh = w.sheep.find(x => x.mood !== 'ok') || w.sheep[0]; return [sh.x, sh.y]; },
+      }[id];
+      const at2 = at ? at() : null;
+      if (at2) game.look(at2[0], at2[1], 2);
+      else { renderer.userZoom = false; renderer.resize(); }
+    },
+
     pointAtSite() {
       const s = game.world.buildings.find(b => b.state === 'site');
       if (s) { game.look(s.x + s.w / 2, s.y + s.h / 2, 1.8); message('There is a plot here, ready for a house.'); }
@@ -180,6 +197,7 @@ async function startGame(chosenRole, room) {
     startBlock(newDay) {
       session.startBlock(newDay);
       closePanel();
+      setTimeout(() => hud.showGuide({ first: true }), 120);
     },
     endBlock() {
       session.dispatch({ type: 'block.end' });
@@ -273,7 +291,7 @@ function offerBlock(game) {
   game._offer = p;
   const r = p.row();
   r.appendChild(p.button('☀️ Five minutes together', 'go', () => { game._offer = null; p.close(); game.startBlock(returning); }));
-  r.appendChild(p.button('Just look around', 'soft', () => { game._offer = null; p.close(); }));
+  r.appendChild(p.button('Just look around', 'soft', () => { game._offer = null; p.close(); game.hud.showGuide(); }));
   const note = document.createElement('p');
   note.className = 'lead center';
   note.style.marginTop = '10px';

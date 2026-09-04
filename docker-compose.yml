@@ -1,0 +1,10 @@
+# docker compose up -d   ->   http://localhost:8080
+services:
+  world:
+    build: .
+    image: our-little-world
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+    restart: unless-stopped

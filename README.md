@@ -46,6 +46,62 @@ devices.
 Useful query parameters: `?room=kitchen`, `?role=A|B|BOTH`,
 `?server=wss://your-relay/relay`.
 
+## Playing when you are far apart
+
+The relay is a WebSocket on the same port as the page, so anything that runs
+Node and keeps a socket open will do. There is a `Dockerfile`:
+
+```
+docker build -t our-little-world .
+docker run -p 8080:8080 our-little-world      # or: docker compose up -d
+```
+
+`node:22-alpine` plus the files it serves. No dependencies, no build step, no
+volumes, nothing to mount. It listens on `$PORT` (8080 by default) and answers
+`/rooms`, which is also its health check.
+
+Put it behind TLS. The page chooses `wss://` when it was loaded over `https://`
+and `ws://` otherwise, so a certificate is all it takes — but a proxy in front
+of it has to pass the `Upgrade` and `Connection` headers through or the relay
+never sees the handshake and both players quietly end up alone. Caddy does that
+by itself:
+
+```
+world.example.com {
+  reverse_proxy localhost:8080
+}
+```
+
+nginx needs to be told:
+
+```
+location / {
+  proxy_pass http://localhost:8080;
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
+  proxy_read_timeout 3600s;
+}
+```
+
+Both players then open the same address, type the same world name, and pick
+different roles.
+
+### Where the world lives
+
+The relay only passes messages along. The world itself lives in the browsers:
+whoever connects first runs the clock and reads their own `localStorage`; the
+other player receives that world and follows it.
+
+So the same person should open the page first each time — otherwise a device
+with no save (or an old one) can become the authority and the world that
+appears is the one that device remembers. Nothing is lost while both are
+playing; the risk is only in who starts.
+
+Keeping the world on the server instead would remove that ordering rule: the
+relay would hold the last snapshot per room and hand it to whoever arrives.
+`Session` is already shaped for it — see **Multiplayer** below.
+
 ## English and German
 
 The game picks its language from the device and remembers what you choose; the

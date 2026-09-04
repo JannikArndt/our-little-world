@@ -137,7 +137,12 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
 #bubbleLayer, #toastLayer, #noticeLayer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; }
 
 /* resources */
-.bottom-right { -webkit-box-flex: 0; -ms-flex: none; flex: none; margin-left: 6px; }
+.bottom-right {
+  -webkit-box-flex: 0; -ms-flex: none; flex: none; margin-left: 6px;
+  display: -webkit-box; display: -ms-flexbox; display: flex;
+  -webkit-box-align: center; -ms-flex-align: center; align-items: center;
+}
+.icon-chip { min-width: 46px; padding: 0 10px; font-size: 19px; }
 .resbar {
   -webkit-box-flex: 1; -ms-flex: 1 1 auto; flex: 1 1 auto; min-width: 0;
   display: -webkit-box; display: -ms-flexbox; display: flex;
@@ -178,17 +183,39 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
 .bubble button.ghost { background: transparent; border-color: transparent; color: var(--ink-soft); font-weight: 600; min-height: 38px; text-align: center; }
 .bubble p.hint { margin: 0 4px 4px; font-size: 13px; color: var(--ink-soft); }
 
-/* toasts (transient world feedback) */
-.toast {
-  position: absolute; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%);
-  bottom: 12px; background: rgba(67,55,42,.92); color: #fff;
-  padding: 10px 16px; border-radius: 999px; font-size: 15px; font-weight: 600;
-  max-width: 88%; text-align: center;
-  -webkit-animation: toastIn .25s ease-out; animation: toastIn .25s ease-out;
+/* messages — they wait until somebody taps them away */
+.msg-stack {
+  position: absolute; left: 8px; right: 8px; bottom: 8px;
+  max-width: 520px; margin: 0 auto;
 }
-@-webkit-keyframes toastIn { from { opacity: 0; -webkit-transform: translate(-50%, 12px); } }
-@keyframes toastIn { from { opacity: 0; transform: translate(-50%, 12px); } }
-.toast.fade { opacity: 0; transition: opacity .4s linear; }
+#stage.has-mode .msg-stack { bottom: 118px; }
+.msg {
+  pointer-events: auto;
+  display: -webkit-box; display: -ms-flexbox; display: flex;
+  -webkit-box-align: center; -ms-flex-align: center; align-items: center;
+  margin-top: 6px; padding: 10px 6px 10px 14px;
+  background: #fffdf8; border: 2px solid var(--line); border-left: 6px solid var(--warm);
+  border-radius: 14px; box-shadow: 0 6px 18px rgba(67,55,42,.20);
+  font-size: 16px; line-height: 1.3;
+  -webkit-animation: msgIn .22s ease-out; animation: msgIn .22s ease-out;
+}
+@-webkit-keyframes msgIn { from { opacity: 0; -webkit-transform: translateY(10px); } }
+@keyframes msgIn { from { opacity: 0; transform: translateY(10px); } }
+.msg .m-text { -webkit-box-flex: 1; -ms-flex: 1 1 auto; flex: 1 1 auto; }
+.msg .m-x {
+  -webkit-box-flex: 0; -ms-flex: none; flex: none;
+  width: 40px; height: 40px; margin-left: 8px;
+  border: 2px solid var(--line); border-radius: 12px; background: #fff;
+  font-size: 22px; font-weight: 800; line-height: 1; color: var(--ink-soft);
+}
+.msg .m-x:active { background: var(--paper-deep); }
+
+.hist-line {
+  display: block; padding: 10px 12px; margin: 6px 4px;
+  background: #fffdf8; border: 2px solid var(--line); border-radius: 12px;
+  font-size: 15px; line-height: 1.35;
+}
+.hist-line .t { display: block; font-size: 12px; color: var(--ink-soft); margin-bottom: 2px; }
 
 /* notices — the world's little problems */
 #noticeLayer { padding: 8px; }

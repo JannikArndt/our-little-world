@@ -5,7 +5,7 @@ import { LocalTransport, WsTransport, SoloTransport } from './net/transport.js';
 import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
 import { installInput, renderModeBar, closeBubble } from './ui/interact.js';
-import { openPanel, toast, closePanel } from './ui/overlay.js';
+import { openPanel, message, closePanel } from './ui/overlay.js';
 import { ROLE, otherRole, byId } from './core/world.js';
 import { TILE } from './core/grid.js';
 import { rememberRole, recallRole } from './core/persist.js';
@@ -126,19 +126,18 @@ async function startGame(chosenRole, room) {
       renderer.clampCamera();
     },
 
-    hint(text) { toast(text, 3000); },
+    hint(text) { message(text); },
 
     swapRole() {
       game.role = game.role === 'A' ? 'B' : 'A';
       game.other = otherRole(game.role);
       game.setMode(null);
       hud.last = {};
-      toast(ROLE[game.role].emoji + ' Now playing as the ' + ROLE[game.role].name + '.', 2200);
     },
 
     pointAtSite() {
       const s = game.world.buildings.find(b => b.state === 'site');
-      if (s) { game.look(s.x + s.w / 2, s.y + s.h / 2, 1.8); toast('There is a plot here, ready for a house.'); }
+      if (s) { game.look(s.x + s.w / 2, s.y + s.h / 2, 1.8); message('There is a plot here, ready for a house.'); }
     },
 
     goToNotice(n) {
@@ -168,11 +167,11 @@ async function startGame(chosenRole, room) {
         house: () => { const b = byId(w.buildings, a.targetId) || w.buildings.find(x => x.state === 'site'); if (b) { game.look(b.x + 1.5, b.y + 1, 1.8); openHouse(game, b); } },
         care: () => { const s = byId(w.sheep, a.targetId) || w.sheep[0]; if (s) { game.look(s.x, s.y, 2); openCare(game, s); } },
         herd: () => { const s = byId(w.sheep, a.targetId) || w.sheep[0]; if (s) game.look(s.x, s.y, 2); },
-        road: () => toast('Drag across the ground to lay a road.'),
+        road: () => game.setMode(null),
         farm: () => { const p = w.plots[0]; if (p) game.look(p.x + 1, p.y + 1, 1.6); },
       }[a.cap];
       if (!w.players[game.role].caps[a.cap]) {
-        toast('You do not know how to do that yet — ask them to show you.', 3200);
+        message('You do not know how to do that yet — ask them to show you.');
         return;
       }
       if (open) open();
@@ -198,7 +197,7 @@ async function startGame(chosenRole, room) {
     // if the other player starts the morning, put our invitation away
     if (what === 'acted' && data && data.type === 'block.start' && game._offer) {
       game._offer.close(); game._offer = null;
-      toast('🌅 ' + ROLE[game.other].name + ' started the morning.', 2600);
+      message('🌅 ' + ROLE[game.other].name + ' started the morning.');
     }
   });
 
@@ -251,12 +250,12 @@ async function startGame(chosenRole, room) {
 
   // a phone held upright shows very little of the world
   if (window.innerHeight > window.innerWidth * 1.25) {
-    setTimeout(() => toast('Turn the screen sideways to see the whole world. Pinch and drag works too.', 5000), 2600);
+    setTimeout(() => message('Turn the screen sideways to see the whole world. Pinch and drag works too.'), 2600);
   }
 
   // the shared ritual: agree to play for five minutes
   if (!session.world.block.active) offerBlock(game);
-  else toast('🌅 Joining a morning already in progress.', 2600);
+  else message('🌅 Joining a morning already in progress.');
 
   window.OLW = game;      // handy when poking at it from a console
 }

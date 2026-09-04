@@ -2,7 +2,7 @@
 // laying a road, walking a sheep somewhere, and carrying water to the field.
 
 import { T, TILE, tileAt, walkable, inBounds } from '../core/grid.js';
-import { toast } from '../ui/overlay.js';
+import { message } from '../ui/overlay.js';
 
 /* ------------------------------------------------------------------ */
 /* road                                                               */
@@ -58,7 +58,7 @@ export function roadMode(game) {
       { label: 'Lay it', cls: 'go', fn() {
         if (!tiles.length) return;
         if (game.dispatch({ type: 'road.build', role: game.role, tiles: tiles.slice() })) {
-          toast('🛤️ ' + tiles.length + ' steps of road. Watch them use it.', 3000);
+          message('🛤️ ' + tiles.length + ' steps of road. Watch them use it.');
         }
         game.setMode(null);
       } },
@@ -80,7 +80,7 @@ export function sheepMode(game, sheep) {
     say() { return 'Tap a spot in the world and she will walk there — if she can get to it.'; },
     highlight: () => ({ x: sheep.x, y: sheep.y, r: 18 }),
     down(tx, ty) {
-      if (!inBounds(tx, ty) || !walkable(game.world, tx, ty)) { toast('She cannot stand there.'); return; }
+      if (!inBounds(tx, ty) || !walkable(game.world, tx, ty)) { message('She cannot stand there.'); return; }
       game.dispatch({ type: 'sheep.send', role: game.role, sheepId: sheep.id, x: tx, y: ty });
       game.setMode(null);
     },
@@ -116,11 +116,11 @@ export function waterMode(game) {
     },
     down(tx, ty) {
       const w = game.world;
-      if (tileAt(w, tx, ty) === T.WATER) { drops = CAN; toast('🪣 Filled — ' + CAN + ' plots\' worth.'); return; }
+      if (tileAt(w, tx, ty) === T.WATER) { drops = CAN; message('🪣 Filled — ' + CAN + ' plots\' worth.'); return; }
       const p = w.plots.find(p => tx >= p.x && tx < p.x + 2 && ty >= p.y && ty < p.y + 2);
       if (!p) return;
-      if (p.state === 'empty') { toast('Nothing planted here yet.'); return; }
-      if (drops <= 0) { toast('The can is empty. Fill it at the river.'); return; }
+      if (p.state === 'empty') { message('Nothing planted here yet.'); return; }
+      if (drops <= 0) { message('The can is empty. Fill it at the river.'); return; }
       if (game.dispatch({ type: 'plot.water', role: game.role, plotId: p.id })) drops--;
     },
     overlay(ctx) {

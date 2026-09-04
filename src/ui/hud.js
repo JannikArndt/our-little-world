@@ -1,7 +1,7 @@
 // The frame around the world: what we have, what time it is, what the world
 // is trying to tell us, and how a play block finishes.
 
-import { el, openPanel, toast } from './overlay.js';
+import { el, openPanel, message, messages, clearMessages } from './overlay.js';
 import { openGive } from './share.js';
 import { RESOURCES, ROLE, CAPS, blockProgress } from '../core/world.js';
 import { nextTimeHint } from '../core/events.js';
@@ -35,12 +35,13 @@ export class Hud {
       else this.showRoleCard();
     });
     document.getElementById('partnerChip').addEventListener('click', () => openGive(g));
+    document.getElementById('historyChip').addEventListener('click', () => this.showHistory());
     document.getElementById('sunbar').addEventListener('click', () => {
       const w = g.world;
-      if (!w.block.active) { toast('The play block is finished. Everything is saved.'); return; }
+      if (!w.block.active) { message('The play block is finished. Everything is saved.'); return; }
       const left = Math.max(0, w.block.length - (w.tick - w.block.startTick));
       const mins = Math.floor(left / 600), secs = Math.floor((left % 600) / 10);
-      toast('About ' + (mins ? mins + ' min ' : '') + secs + ' s of this morning left. No hurry.');
+      message('About ' + (mins ? mins + ' min ' : '') + secs + ' s of this morning left. No hurry.');
     });
   }
 
@@ -147,6 +148,23 @@ export class Hud {
     }
   }
 
+  /** Everything the world has said, newest first. */
+  showHistory() {
+    const p = openPanel({ title: '📜 What has happened', lead: 'Every message, newest first.' });
+    const list = messages().slice().reverse();
+    if (!list.length) p.body.appendChild(el('p', 'lead', 'Nothing yet. The world has been quiet.'));
+    const now = Date.now();
+    for (const m of list.slice(0, 30)) {
+      const line = el('div', 'hist-line');
+      const mins = Math.floor((now - m.at) / 60000);
+      line.appendChild(el('span', 't', mins < 1 ? 'just now' : mins + ' min ago'));
+      line.appendChild(document.createTextNode(m.text));
+      p.body.appendChild(line);
+    }
+    const r = p.row();
+    r.appendChild(p.button('Close', 'soft', () => p.close()));
+  }
+
   /* ---------------- what each of us knows ---------------- */
 
   showRoleCard() {
@@ -170,7 +188,7 @@ export class Hud {
         b.addEventListener('click', () => {
           g.dispatch({ type: 'teach', from: g.role, to: g.other, cap: c });
           p.close();
-          toast('👐 You showed them how. Now you both know ' + CAPS[c].name + '.', 3200);
+          message('👐 You showed them how. Now you both know ' + CAPS[c].name + '.');
         });
         card.appendChild(b);
       }
@@ -223,12 +241,12 @@ export class Hud {
     const r = p.row();
     r.appendChild(p.button('☀️ Another five minutes', 'go', () => {
       p.close();
+      clearMessages();
       g.startBlock(true);
-      toast('🌅 A new morning. Take your time.', 2600);
     }));
     r.appendChild(p.button('Stop here', 'soft', () => {
       p.close();
-      toast('Saved. It will be exactly like this when you come back.', 3600);
+      message('Saved. It will be exactly like this when you come back.');
     }));
   }
 }

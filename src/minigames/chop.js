@@ -2,7 +2,7 @@
 // The rule you can work out by looking: a tree falls the way you cut it —
 // unless you try to drop it straight into the wind.
 
-import { el, openPanel, makeCanvas, onPointer, loop, toast } from '../ui/overlay.js';
+import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overlay.js';
 import { T, TILE, tileAt, inBounds } from '../core/grid.js';
 import { C, drawTree, drawStump, drawHouse, drawSite, drawWorkshop } from '../render/art.js';
 import { makeRng } from '../core/rng.js';
@@ -218,7 +218,7 @@ export function openChop(game, tree) {
     stop();
     game.dispatch({ type: 'tree.fell', role: game.role, treeId: tree.id, dir, wood, logs, mishap: what !== 'clear' });
     p.close();
-    toast(msg, 3400);
+    message(msg);
     if (what !== 'clear') game.hint('Have another look at the wind next time.');
   }
 }

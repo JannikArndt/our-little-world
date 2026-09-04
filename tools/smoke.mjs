@@ -241,6 +241,22 @@ async function main() {
   if (!learned) throw new Error('teaching did not stick');
   await api(() => { window.OLW.canSwap = true; });
 
+  // messages wait to be read and then go into the history
+  const standing = await page.$$eval('.msg', ns => ns.length);
+  console.log('messages standing on screen:', standing, '(never more than 3)');
+  if (standing > 3) throw new Error('messages piled up');
+  if (standing > 0) {
+    await page.click('.msg .m-x');
+    const after = await page.$$eval('.msg', ns => ns.length);
+    if (after !== standing - 1) throw new Error('the x did not put a message away');
+  }
+  await page.click('#historyChip');
+  await step(page, '25c-history', 400);
+  const hist = await page.$$eval('.hist-line', ns => ns.length);
+  console.log('messages kept in the history:', hist);
+  if (hist < 3) throw new Error('the history is not keeping messages');
+  await page.click('text=Close');
+
   // sharing
   await page.click('#partnerChip');
   await step(page, '25-share', 500);

@@ -1,5 +1,5 @@
 // Small DOM helpers shared by every mini-game: a panel, a canvas that knows
-// about fingers, and a toast. Nothing clever, just fewer repeated lines.
+// about fingers, and a message. Nothing clever, just fewer repeated lines.
 
 export function el(tag, cls, text) {
   const n = document.createElement(tag);
@@ -100,17 +100,47 @@ export function onPointer(canvas, logicalW, logicalH, handlers) {
   };
 }
 
-let toastTimer = null;
-export function toast(text, ms) {
+/* ------------------------------------------------------------------ */
+/* messages                                                           */
+/* ------------------------------------------------------------------ */
+// Nothing disappears on a timer: a message waits until somebody has read it
+// and tapped it away. Only three stand at once; older ones step back into
+// the history by themselves.
+
+const MAX_ON_SCREEN = 3;
+const history = [];
+let onHistoryChange = null;
+
+export function messages() { return history; }
+export function onMessages(fn) { onHistoryChange = fn; }
+
+function stack() {
   const layer = document.getElementById('toastLayer');
-  layer.innerHTML = '';
-  const t = el('div', 'toast', text);
-  layer.appendChild(t);
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    t.classList.add('fade');
-    setTimeout(() => { if (t.parentNode) t.parentNode.removeChild(t); }, 420);
-  }, ms || 2200);
+  let s = layer.querySelector('.msg-stack');
+  if (!s) { s = el('div', 'msg-stack'); layer.appendChild(s); }
+  return s;
+}
+
+export function message(text) {
+  history.push({ text, at: Date.now() });
+  if (history.length > 40) history.shift();
+  if (onHistoryChange) onHistoryChange();
+
+  const s = stack();
+  const card = el('div', 'msg');
+  card.appendChild(el('span', 'm-text', text));
+  const x = el('button', 'm-x', '×');
+  x.setAttribute('aria-label', 'ok');
+  x.addEventListener('click', () => { if (card.parentNode) card.parentNode.removeChild(card); });
+  card.appendChild(x);
+  s.appendChild(card);
+  while (s.children.length > MAX_ON_SCREEN) s.removeChild(s.firstChild);
+}
+
+/** Clear the standing messages, e.g. when a new morning starts. */
+export function clearMessages() {
+  const s = stack();
+  while (s.firstChild) s.removeChild(s.firstChild);
 }
 
 /** A tiny animation loop that stops itself when the panel goes away. */

@@ -2,7 +2,7 @@
 // You draw the rooms; a family looks at your plan and tells you, with their
 // faces, what it would be like to live in it.
 
-import { el, openPanel, makeCanvas, onPointer, loop, toast } from '../ui/overlay.js';
+import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overlay.js';
 import { C, rr } from '../render/art.js';
 
 const COLS = 6, ROWS = 4, CELL = 56, OX = 42, OY = 30;
@@ -123,7 +123,7 @@ export function openHouse(game, site) {
       if (!p._ask) {
         p._ask = p.button('🙋 Ask for it', 'soft', () => {
           game.dispatch({ type: 'ask', from: game.role, to: game.other, cap: 'house', targetId: site.id });
-          toast('Asked for the missing pieces.');
+          message('Asked for the missing pieces.');
         });
         p._ask.style.flex = '0 0 auto';
         row.insertBefore(p._ask, back);
@@ -137,7 +137,7 @@ export function openHouse(game, site) {
       planks: c.plank, stone: c.stone,
     });
     stop(); p.close();
-    toast('🏠 The roof is on. Somebody will be along shortly.', 3200);
+    message('🏠 The roof is on. Somebody will be along shortly.');
     game.look(site.x + site.w / 2, site.y + site.h / 2);
   });
   row.appendChild(buildBtn);

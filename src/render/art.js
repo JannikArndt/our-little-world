@@ -35,7 +35,25 @@ function shadow(ctx, x, y, rx, ry) {
   ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
 }
 
-function bubble(ctx, x, y, glyph, size) {
+/** Emoji advance widths are wider than their ink, so centring on the advance
+ *  leaves the picture sitting to one side. Centre on what you can actually see. */
+export function glyph(ctx, text, x, y, px) {
+  ctx.font = px + 'px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  let w = 0, left = 0;
+  try {
+    const m = ctx.measureText(text);
+    if (m.actualBoundingBoxLeft != null && m.actualBoundingBoxRight != null) {
+      left = -m.actualBoundingBoxLeft;
+      w = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
+    } else { w = m.width; }
+  } catch (e) { w = px; }
+  if (!w) w = px;
+  ctx.fillText(text, x - left - w / 2, y);
+}
+
+function bubble(ctx, x, y, glyphText, size) {
   const s = size || 15;
   ctx.fillStyle = 'rgba(255,253,248,0.96)';
   ctx.strokeStyle = 'rgba(67,55,42,0.22)';
@@ -45,9 +63,8 @@ function bubble(ctx, x, y, glyph, size) {
   ctx.beginPath();
   ctx.moveTo(x - 2.5, y - s * 0.24); ctx.lineTo(x + 2.5, y - s * 0.24); ctx.lineTo(x, y + 2.5);
   ctx.closePath(); ctx.fill();
-  ctx.font = (s * 0.92) + 'px system-ui, "Apple Color Emoji", sans-serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(glyph, x, y - s * 0.84);
+  ctx.fillStyle = '#000';
+  glyph(ctx, glyphText, x, y - s * 0.86, s * 0.92);
 }
 export { bubble };
 

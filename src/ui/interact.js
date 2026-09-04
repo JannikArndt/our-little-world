@@ -4,7 +4,7 @@
 
 import { TILE, T, tileAt } from '../core/grid.js';
 import { ROLE, can } from '../core/world.js';
-import { el, toast } from './overlay.js';
+import { el, message } from './overlay.js';
 import { openChop } from '../minigames/chop.js';
 import { openSawmill, openMill } from '../minigames/sawmill.js';
 import { openBridge, openRepair } from '../minigames/bridge.js';
@@ -86,7 +86,7 @@ function askAction(game, cap, targetId, what) {
     cls: 'soft',
     fn() {
       game.dispatch({ type: 'ask', from: game.role, to: game.other, cap, targetId: targetId || null });
-      toast('Asked the ' + other.name + '. Tell them out loud too — it is more fun.', 3000);
+      message('Asked the ' + other.name + '. Tell them out loud too — it is more fun.');
     },
   };
 }
@@ -225,8 +225,10 @@ export function renderModeBar(game) {
   if (!game.mode) {
     if (modeBar && modeBar.parentNode) modeBar.parentNode.removeChild(modeBar);
     modeBar = null;
+    stage.className = stage.className.replace(/\s*has-mode/, '');
     return;
   }
+  if (stage.className.indexOf('has-mode') < 0) stage.className += ' has-mode';
   if (!modeBar) {
     modeBar = el('div');
     modeBar.style.cssText = 'position:absolute;left:8px;right:8px;bottom:8px;background:#fffdf8;' +

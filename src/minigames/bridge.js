@@ -2,7 +2,7 @@
 // One rule, discovered by trying: a beam can reach two gaps on its own.
 // Three and it sags. Four and it goes in the river.
 
-import { el, openPanel, makeCanvas, onPointer, loop, toast } from '../ui/overlay.js';
+import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overlay.js';
 import { C, rr } from '../render/art.js';
 
 const PIER_STONE = 2;
@@ -80,7 +80,7 @@ export function openBridge(game) {
       quality: v === 'strong' ? 3 : 2,
     });
     stop(); p.close();
-    toast(v === 'strong' ? '🌉 It holds. Solid as anything.' : '🌉 It holds — with a bit of a creak.', 3200);
+    message(v === 'strong' ? '🌉 It holds. Solid as anything.' : '🌉 It holds — with a bit of a creak.');
     game.look(site.x0 + site.span / 2, site.row + 1);
   });
   row.appendChild(testBtn);
@@ -98,7 +98,7 @@ export function openBridge(game) {
     if (!p._askBtn) {
       p._askBtn = p.button('🙋 Ask for it', 'soft', () => {
         game.dispatch({ type: 'ask', from: game.role, to: game.other, cap: 'bridge', targetId: null });
-        toast('Asked for the missing pieces.');
+        message('Asked for the missing pieces.');
       });
       p._askBtn.style.flex = '0 0 auto';
       row.insertBefore(p._askBtn, back);
@@ -236,15 +236,16 @@ export function openBridge(game) {
           test.broke = bad.a;
           test.t = 0.45;
           setTimeout(() => {
-            toast('💦 SPLASH. Everybody is fine. The planks floated to the bank.', 3400);
+            message('💦 SPLASH. Everybody is fine. The planks floated to the bank.');
             p.readout('That beam had to reach <b>' + bad.d + '</b> gaps on its own. Try a pier under it.');
             test = null;
           }, 1500);
         }
       }
       if (test && test.t >= 1.05 && test.broke === null) {
-        const v = test.verdict;
-        toast(v === 'strong' ? '👍 Not a wobble.' : '😬 It creaked, but it held.', 2600);
+        p.readout(test.verdict === 'strong'
+          ? '<b>Not a wobble.</b> Every beam is short enough.'
+          : '<b>It creaked, but it held.</b> One beam is a bit of a stretch.');
         test = null;
       }
     }
@@ -265,7 +266,7 @@ export function openRepair(game) {
     r.appendChild(p.button('🪚 Put a plank back', 'go', () => {
       game.dispatch({ type: 'bridge.repair', role: game.role });
       p.close();
-      toast('🌉 Mended. People are crossing again.');
+      message('🌉 Mended. People are crossing again.');
     }));
   } else {
     p.body.appendChild(el('p', 'lead center', 'You have no planks. The sawmill turns wood into planks.'));

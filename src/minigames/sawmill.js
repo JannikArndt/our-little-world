@@ -2,7 +2,7 @@
 //   sawmill: wood -> planks   (cut the log into equal pieces)
 //   mill:    wheat -> bread   (turn the stone, then bake)
 
-import { el, openPanel, makeCanvas, onPointer, loop, toast } from '../ui/overlay.js';
+import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overlay.js';
 import { C, rr } from '../render/art.js';
 
 const LOG_UNITS = 12;
@@ -187,7 +187,7 @@ export function openSawmill(game) {
         const n = Math.min(4, game.world.players[game.role].res.wood);
         for (let i = 0; i < n; i++) game.dispatch({ type: 'saw.run', role: game.role, wood: 1, planks: result.planks });
         stop(); p.close();
-        toast('🪚 ' + (n * result.planks) + ' more planks stacked up.');
+        message('🪚 ' + (n * result.planks) + ' more planks stacked up.');
       }));
     }
     row.appendChild(p.button('Done', 'soft', () => { stop(); p.close(); }));
@@ -314,7 +314,7 @@ export function openMill(game) {
         game.dispatch({ type: 'mill.run', role: game.role, wheat: 2, food: 3 });
         p.readout('<b>Three warm loaves.</b> Put some in the village basket and the hungry ones will come.');
         row.innerHTML = '';
-        row.appendChild(p.button('Take them', 'go', () => { stop(); p.close(); toast('🍞 Three loaves.'); }));
+        row.appendChild(p.button('Take them', 'go', () => { stop(); p.close(); }));
       }
     }
     draw(t);

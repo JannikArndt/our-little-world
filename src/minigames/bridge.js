@@ -72,7 +72,7 @@ export function openBridge(game) {
     const c = cost(), v = verdict();
     if (v === 'breaks' || built) return;
     const me = w.players[game.role].res;
-    if (me.plank < c.plank || me.stone < c.stone) { askForParts(c); return; }
+    if (me.plank < c.plank || me.stone < c.stone) { askForParts(); return; }
     built = true;
     game.dispatch({
       type: 'bridge.build', role: game.role,
@@ -89,12 +89,8 @@ export function openBridge(game) {
   back.style.flex = '0 0 auto';
   row.appendChild(back);
 
-  function askForParts(c) {
-    const me = w.players[game.role].res;
-    const need = [];
-    if (me.plank < c.plank) need.push((c.plank - me.plank) + ' 🪚');
-    if (me.stone < c.stone) need.push((c.stone - me.stone) + ' 🪨');
-    p.readout('Not enough yet. You still need <b>' + need.join(' and ') + '</b>.');
+  function askForParts() {
+    p.readout('Not enough yet. The grey ones are what is missing.');
     if (!p._askBtn) {
       p._askBtn = p.button('🙋 Ask for it', 'soft', () => {
         game.dispatch({ type: 'ask', from: game.role, to: game.other, cap: 'bridge', targetId: null });
@@ -113,9 +109,11 @@ export function openBridge(game) {
     if (v === 'breaks') msg += ' — one of those is far too long.';
     else if (v === 'creaky') msg += ' — one is a bit of a stretch.';
     else msg += ' — every beam is short enough.';
-    msg += '<br>Needs <b>' + c.plank + ' 🪚</b> and <b>' + c.stone + ' 🪨</b>. ' +
-           'You have ' + me.plank + ' 🪚 and ' + me.stone + ' 🪨.';
     p.readout(msg);
+    p.cost([
+      { icon: '🪚', need: c.plank, have: me.plank },
+      { icon: '🪨', need: c.stone, have: me.stone },
+    ]);
     buildBtn.disabled = v === 'breaks';
     buildBtn.textContent = v === 'creaky' ? 'Build it anyway' : 'Build it';
   }

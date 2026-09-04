@@ -283,6 +283,25 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
 .tool .lab { display: block; font-size: 12px; font-weight: 700; margin-top: 2px; }
 .tool .cost { display: block; font-size: 11px; color: var(--ink-soft); }
 
+.cost { margin: 10px 4px 0; }
+.cost-row {
+  display: -webkit-box; display: -ms-flexbox; display: flex;
+  -webkit-box-align: center; -ms-flex-align: center; align-items: center;
+  margin-top: 6px; padding: 6px 10px;
+  background: #fffdf8; border: 2px solid var(--line); border-radius: 12px;
+}
+.cost-row.ok { border-color: #b6d5a8; background: #f4faf0; }
+.cost-pips { -webkit-box-flex: 1; -ms-flex: 1 1 auto; flex: 1 1 auto; line-height: 1; }
+.pip { display: inline-block; font-size: 24px; line-height: 30px; margin-right: 3px; }
+.pip.off { opacity: .3; -webkit-filter: grayscale(1); filter: grayscale(1); }
+.pip.more { font-size: 16px; color: var(--ink-soft); }
+.cost-txt {
+  -webkit-box-flex: 0; -ms-flex: none; flex: none;
+  margin-left: 10px; font-size: 16px; color: var(--ink-soft); white-space: nowrap;
+}
+.cost-txt b { font-size: 20px; color: var(--danger); }
+.cost-row.ok .cost-txt b { color: var(--keeper); }
+
 .readout { font-size: 15px; color: var(--ink-soft); margin: 8px 6px 0; min-height: 22px; }
 .readout b { color: var(--ink); }
 

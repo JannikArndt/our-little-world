@@ -185,7 +185,7 @@ async function main() {
   await step(page, '22-house-plan', 600);
   const hcv = await page.$('.panel canvas');
   const hbox = await hcv.boundingBox();
-  const cell = (c, r) => ({ x: hbox.x + hbox.width * ((42 + c * 56 + 28) / 420), y: hbox.y + hbox.height * ((10 + r * 56 + 28) / 250) });
+  const cell = (c, r) => ({ x: hbox.x + hbox.width * ((34 + c * 56 + 28) / 514), y: hbox.y + hbox.height * ((40 + r * 56 + 28) / 300) });
   await page.mouse.click(cell(2, 3).x, cell(2, 3).y);            // door on the bottom wall
   await page.click('text=window'); await page.mouse.click(cell(0, 1).x, cell(0, 1).y);
   await page.click('text=bed');    await page.mouse.click(cell(4, 1).x, cell(4, 1).y);

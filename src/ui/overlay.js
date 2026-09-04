@@ -43,8 +43,46 @@ export function openPanel(opts) {
       api._ro.innerHTML = text;
       return api._ro;
     },
+    /** What this costs, drawn as the things themselves. */
+    cost(items) {
+      if (!api._cost) {
+        api._cost = el('div', 'cost');
+        if (api._ro) panel.insertBefore(api._cost, api._ro);
+        else panel.appendChild(api._cost);
+      }
+      renderCost(api._cost, items);
+      return api._cost;
+    },
   };
   return api;
+}
+
+/**
+ * A cost you can count instead of read: one picture per thing needed, the ones
+ * you already have in colour and the ones you are missing greyed out.
+ * items: [{ icon, need, have, name }]
+ */
+export function renderCost(host, items) {
+  host.innerHTML = '';
+  for (const it of items) {
+    if (!it.need) continue;
+    const enough = it.have >= it.need;
+    const row = el('div', 'cost-row' + (enough ? ' ok' : ''));
+    const pips = el('div', 'cost-pips');
+    const show = Math.min(it.need, 14);
+    for (let i = 0; i < show; i++) {
+      pips.appendChild(el('span', 'pip' + (i < it.have ? '' : ' off'), it.icon));
+    }
+    if (it.need > show) pips.appendChild(el('span', 'pip more', '…'));
+    row.appendChild(pips);
+    const txt = el('span', 'cost-txt');
+    txt.appendChild(document.createTextNode('have '));
+    txt.appendChild(el('b', '', String(it.have)));
+    txt.appendChild(document.createTextNode(', need ' + it.need));
+    row.appendChild(txt);
+    host.appendChild(row);
+  }
+  return host;
 }
 
 export function isPanelOpen() { return !overlay().classList.contains('hidden'); }

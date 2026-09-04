@@ -198,7 +198,7 @@ export const de = {
   /* ---- Teilen ---- */
   'give.title': '🤝 Teilen',
   'give.lead': 'Was soll zu {role} rübergehen?',
-  'give.youHave': 'du hast {n}',
+  'give.give': 'gibst',
   'give.button': 'An {role} geben {emoji}',
   'give.basket': '🧺 In den Dorfkorb',
   'give.nothing': 'Bei dir ist der Tisch gerade leer.',

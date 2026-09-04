@@ -23,22 +23,44 @@ export function openGive(game, focusKey) {
     amounts[r.key] = (focusKey === r.key) ? Math.min(1, have) : 0;
 
     const row = el('div', 'give-row');
-    row.appendChild(el('span', 'g-ico', r.icon));
-    const name = el('span', 'g-name', resName(r.key));
-    name.appendChild(el('span', '', ''));
-    row.appendChild(name);
-    const count = el('span', '', tr('give.youHave', { n: have }));
-    count.style.cssText = 'color:#7a6a56;font-size:13px;margin-right:8px;';
-    row.appendChild(count);
+    const head = el('div', 'g-head');
+    head.appendChild(el('span', 'g-ico', r.icon));
+    head.appendChild(el('span', 'g-name', resName(r.key)));
 
     const st = el('div', 'stepper');
     const minus = el('button', '', '−');
     const val = el('span', 'val', String(amounts[r.key]));
     const plus = el('button', '', '+');
-    minus.addEventListener('click', () => { amounts[r.key] = Math.max(0, amounts[r.key] - 1); val.textContent = amounts[r.key]; });
-    plus.addEventListener('click', () => { amounts[r.key] = Math.min(have, amounts[r.key] + 1); val.textContent = amounts[r.key]; });
     st.appendChild(minus); st.appendChild(val); st.appendChild(plus);
-    row.appendChild(st);
+    head.appendChild(st);
+    row.appendChild(head);
+
+    // One picture per thing you own; the marked ones are the ones going across.
+    const pips = el('div', 'g-pips cost-pips');
+    const count = el('div', 'cost-txt g-count');
+    row.appendChild(pips);
+    row.appendChild(count);
+
+    const paint = (key, howMany) => {
+      amounts[key] = Math.max(0, Math.min(have, howMany));
+      val.textContent = String(amounts[key]);
+      pips.innerHTML = '';
+      const show = Math.min(have, 12);
+      for (let i = 0; i < show; i++) {
+        const pip = el('span', 'pip' + (i < amounts[key] ? ' give' : ''), r.icon);
+        pip.addEventListener('click', () => paint(key, i + 1 === amounts[key] ? i : i + 1));
+        pips.appendChild(pip);
+      }
+      if (have > show) pips.appendChild(el('span', 'pip more', '…'));
+      count.innerHTML = '';
+      count.appendChild(document.createTextNode(tr('ui.have') + ' '));
+      count.appendChild(el('b', '', String(have)));
+      count.appendChild(document.createTextNode(' · ' + tr('give.give') + ' '));
+      count.appendChild(el('b', 'n-give', String(amounts[key])));
+    };
+    minus.addEventListener('click', () => paint(r.key, amounts[r.key] - 1));
+    plus.addEventListener('click', () => paint(r.key, amounts[r.key] + 1));
+    paint(r.key, amounts[r.key]);
     p.body.appendChild(row);
   }
 

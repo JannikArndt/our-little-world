@@ -198,7 +198,7 @@ export const en = {
   /* ---- sharing ---- */
   'give.title': '🤝 Sharing',
   'give.lead': 'What should go over to the {role}?',
-  'give.youHave': 'you have {n}',
+  'give.give': 'give',
   'give.button': 'Give it to the {role} {emoji}',
   'give.basket': '🧺 Into the village basket',
   'give.nothing': 'Your side of the table is empty just now.',

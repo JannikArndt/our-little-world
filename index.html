@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f6efe2">
+<meta name="description" content="Our Little World - a calm cooperative world for two people to grow together.">
+<title>Our Little World</title>
+<link rel="stylesheet" href="styles/main.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%237fb069'/%3E%3Cpath d='M4 20q12-8 24 0v8H4z' fill='%235d9150'/%3E%3Ccircle cx='11' cy='11' r='4' fill='%23f2c14e'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<!-- ============ START SCREEN ============ -->
+<div id="start" class="screen">
+  <div class="start-card">
+    <h1 class="title">Our Little World</h1>
+    <p class="subtitle">A world for two people to look after together.</p>
+
+    <div class="roles">
+      <button class="role-btn" data-role="A">
+        <span class="role-emoji">🔨</span>
+        <span class="role-name">The Builder</span>
+        <span class="role-desc">Trees, planks, bridges, houses, machines</span>
+      </button>
+      <button class="role-btn" data-role="B">
+        <span class="role-emoji">🌿</span>
+        <span class="role-name">The Keeper</span>
+        <span class="role-desc">Animals, roads, fields, growing things</span>
+      </button>
+    </div>
+
+    <button class="role-btn wide" data-role="BOTH">
+      <span class="role-emoji">👐</span>
+      <span class="role-name">Both, on one screen</span>
+      <span class="role-desc">Sitting next to each other? Swap with one tap.</span>
+    </button>
+
+    <div class="room-row">
+      <label for="roomInput">Our world's name</label>
+      <input id="roomInput" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="24" value="home">
+    </div>
+
+    <p class="start-note" id="startNote">Both players type the same world name.</p>
+  </div>
+</div>
+
+<!-- ============ GAME ============ -->
+<div id="game" class="screen hidden">
+
+  <header id="topbar">
+    <button id="roleChip" class="chip role-chip" type="button" aria-label="Your role">
+      <span id="roleChipEmoji">🔨</span><span id="roleChipName">Builder</span>
+    </button>
+
+    <button id="sunbar" class="sunbar" type="button" aria-label="Time in this play block">
+      <div class="sky"></div>
+      <div id="sunArc" class="sun">☀️</div>
+      <span id="sunLabel" class="sun-label">morning</span>
+    </button>
+
+    <button id="finishBtn" class="chip" type="button">🌇 Finish</button>
+  </header>
+
+  <main id="stage">
+    <canvas id="world" width="960" height="576"></canvas>
+    <div id="bubbleLayer"></div>
+    <div id="toastLayer"></div>
+    <div id="noticeLayer"></div>
+  </main>
+
+  <footer id="bottombar">
+    <div id="resbar" class="resbar"></div>
+    <div class="bottom-right">
+      <button id="partnerChip" class="chip partner" type="button">🌿 <span id="partnerState">waiting…</span></button>
+    </div>
+  </footer>
+
+  <div id="overlay" class="overlay hidden"></div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+<noscript><p style="padding:24px;font:16px system-ui">Our Little World needs JavaScript.</p></noscript>
+</body>
+</html>

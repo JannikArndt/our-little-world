@@ -1,0 +1,12 @@
+{
+  "name": "our-little-world",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A calm cooperative browser world for two people to grow together.",
+  "type": "module",
+  "scripts": {
+    "start": "node server/serve.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "engines": { "node": ">=18" }
+}

@@ -1,0 +1,20 @@
+import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+const BASE = process.env.BASE || 'http://localhost:8099';
+const out = new URL('./shots/', import.meta.url).pathname;
+const name = process.argv[2] || 'look';
+const zoom = process.argv[3];
+const b = await chromium.launch();
+const c = await b.newContext({ viewport: { width: 1024, height: 768 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+const p = await c.newPage();
+const errs = [];
+p.on('pageerror', e => errs.push('' + e.message));
+p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+await p.goto(BASE + '/?room=look' + Math.random().toString(36).slice(2, 6) + '&role=BOTH');
+await p.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+await p.click('text=Five minutes together').catch(() => {});
+if (zoom) await p.evaluate((z) => { const [x, y, k] = z.split(','); window.OLW.look(+x, +y, +k); }, zoom);
+await p.waitForTimeout(1400);
+await p.screenshot({ path: out + name + '.png' });
+await b.close();
+if (errs.length) { console.log('ERRORS:\n' + errs.join('\n')); process.exit(1); }
+console.log('ok');

@@ -1,0 +1,169 @@
+# Our Little World
+
+A small cooperative world that two people look after together — typically a
+parent and a child, on two different devices, with FaceTime running separately.
+
+There is no score, no streak, no currency and nothing to come back for. There is
+a river, a forest, a field, some houses and a few people who could do with a
+hand. You each know how to do different things, so you need each other.
+
+```
+Child:  "We need to get the sheep across the river."
+Parent: "I can build the bridge."
+Child:  "But we need more wood."
+Parent: "I have some."
+Child:  "I'll build the road on the other side."
+```
+
+## Playing
+
+```
+npm start                 # http://localhost:8080
+```
+
+The server prints a second address on your local network — open that one on the
+iPad. Both players type the same world name on the first screen and they are in
+the same world.
+
+Three ways to play:
+
+- **Two devices on the same Wi-Fi** — run `npm start` on a laptop, open the
+  printed `http://192.168.x.x:8080` address on both devices. They connect
+  through the small relay built into the same server.
+- **Two windows on one machine** — open the page twice with the same world
+  name. With no relay answering, they find each other through the browser
+  itself, so this works from GitHub Pages or a plain file server too.
+- **Both roles on one screen** — pick "Both, on one screen" and tap the role
+  chip in the top left to swap. Good for sitting next to each other, and for
+  trying things out.
+
+There is no build step. The whole game is static files; any web server (or
+GitHub Pages) will do. The relay is only needed for two separate devices.
+
+Useful query parameters: `?room=kitchen`, `?role=A|B|BOTH`,
+`?server=wss://your-relay/relay`.
+
+## The two players
+
+|                | 🔨 The Builder                     | 🌿 The Keeper                    |
+|----------------|------------------------------------|----------------------------------|
+| knows how to   | fell trees, saw planks, build bridges and houses, run the mill | look after animals, move them, lay roads, work the field |
+| tends to have  | wood, planks                       | stone, food, wheat, wool         |
+
+Neither can finish much alone. Bread needs the Keeper's wheat and the Builder's
+mill. A bridge needs the Builder's planks and stone the Keeper is usually
+carrying. A road on the far bank is no use until somebody bridges the river.
+
+Roles are not fixed. Do something two or three times and a "show them how"
+button appears on your role card — teach it across, and you both know it.
+
+## What you can do
+
+| | |
+|---|---|
+| 🪓 **Fell a tree** | Pick which way it falls. It goes where you cut it — unless you drop it into the wind, and then it goes wherever it likes. |
+| 🪚 **Saw a log** | Place saw cuts. Pieces of three marks or more become planks; anything shorter is kindling. Even cuts, better planks. |
+| 🌉 **Build the bridge** | Stand piers in the river. A beam reaches two gaps on its own; three sags; four goes in the water, taking a villager with it. Try it before you build it — trying costs nothing. |
+| 🏠 **Design a house** | Put a door, windows, beds, a stove and a table on a floor plan. The family stands outside and tells you, with their faces, what living there would be like — dark, freezing, cramped, or a bed nobody can reach. |
+| 🐑 **Look after a sheep** | She does not say what she wants. She droops, or eyes the river, or gets very woolly. Drag over what you think she needs. Wrong guesses are funny and free. |
+| 🛤️ **Lay a road** | Drag across the ground. One stone for every two steps, counted as you drag. People immediately start using it. |
+| 🌱 **Work the field** | Sow, then carry water. The can holds three plots and the field has six. |
+| 🌀 **Run the mill** | Turn the stone with your finger, then bake. Two wheat, three loaves. |
+| 🤝 **Share** | Tap any resource to send some across. Or drop food in the village basket, where the hungry go looking. |
+
+## Five minutes
+
+Before you start, you agree on a play block: five minutes. A sun crosses the top
+of the screen — no numbers unless you tap it, and never a countdown.
+
+When the five minutes are up **nothing stops**. The light warms, the world stops
+raising new problems, and a card says what you did, who is better off, and one
+small thing still waiting. Then you either carry on or you don't. The world is
+saved either way, exactly as it is, with nothing rotting while you are away.
+
+## How it is put together
+
+Plain ES modules and a 2D canvas. No framework, no bundler, no build step, no
+downloaded assets — every tree, sheep and roof is drawn with `ctx` calls. It
+starts fast on an old iPad and stays quiet on the battery.
+
+```
+index.html
+styles/main.css
+src/
+  core/          the world, and nothing that draws
+    grid.js      terrain, movement costs
+    pathfind.js  A* — why a road is worth building
+    world.js     world state, laid out and serialisable
+    actions.js   the only way the world ever changes
+    sim.js       villagers, sheep, crops, weather in the sky
+    events.js    problems, but only when they make sense
+    rng.js       seeded, so two browsers agree
+    persist.js   localStorage
+  net/
+    transport.js the seam: local windows, a relay, or nothing
+    session.js   one peer hosts the clock; the rest follow snapshots
+  render/        art.js (sprites) and renderer.js (frames)
+  ui/            hud, world taps, sharing, panels
+  minigames/     one file each
+server/
+  serve.mjs      static files + the relay, no dependencies
+  relay.mjs      a ~180 line WebSocket relay, no dependencies
+tests/           deterministic simulation and relay tests
+tools/           browser smoke test that plays a whole block
+```
+
+Two rules keep it honest:
+
+1. **Every change to the world is an action.** `applyAction(world, action)` is
+   the only mutation. Actions are small JSON objects, so they broadcast, replay
+   and test cleanly.
+2. **The simulation is deterministic.** Fixed 100 ms ticks and a seeded PRNG
+   carried inside the world. The same seed and the same actions give the same
+   world, which is what makes two browsers agree and makes the tests mean
+   something.
+
+Mini-games run entirely on the device that opened them. Only the outcome is an
+action, so a wobbly bridge test never travels over the network.
+
+### Multiplayer
+
+One peer hosts: it runs the clock, applies actions and broadcasts a full world
+snapshot roughly once a second. Guests apply their own actions immediately so
+the game feels instant, send them on, and get corrected by the next snapshot
+(positions are blended in, so nobody teleports).
+
+That is the same shape a real server needs. Moving the host into Node means
+implementing `Transport` and running `Session` there; nothing above the seam
+changes.
+
+### Browser support
+
+Targeted at Safari 12 and up — an iPad from 2015 running the last iOS it was
+given. No optional chaining, no nullish coalescing, no `ResizeObserver`, and no
+flexbox `gap`. Devicepixel ratio is capped at 2, terrain is painted once into an
+offscreen canvas and re-used, and a frame is one blit plus a few dozen small
+shapes.
+
+## Tests
+
+```
+npm test              # simulation determinism, costs, pathing, relay framing
+node tools/smoke.mjs  # a headless browser plays a whole five minute block
+```
+
+The smoke test needs the server running (`npm start` on port 8099, or set
+`BASE`). It picks a role, fells a tree, saws it, designs and tests a bridge,
+looks after a sheep, sows the field, lays a road, designs a house, watches
+somebody move in, asks the other player for help, runs the block to its
+checkpoint, and then checks that two separate browsers see each other's work.
+It also checks that nothing overflows sideways on an iPad, an iPhone and a Mac.
+
+## What is deliberately missing
+
+No streaks, daily rewards, coins, energy, loot boxes, timers that punish you,
+leaderboards, notifications, chat, or anything that gets longer the more you
+play. Nothing decays while you are away and nothing asks you to come back.
+
+The conversation happens on FaceTime. The game only has to be worth talking
+about.

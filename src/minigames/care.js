@@ -1,0 +1,151 @@
+// Looking after an animal.
+// Nothing is written down. You look at the sheep and work out what it wants.
+
+import { el, openPanel, makeCanvas, onPointer, loop, toast } from '../ui/overlay.js';
+import { C, drawSheep, rr } from '../render/art.js';
+
+const ITEMS = [
+  { key: 'hay',   icon: '🌾', label: 'hay' },
+  { key: 'water', icon: '🪣', label: 'water' },
+  { key: 'shear', icon: '✂️', label: 'shears' },
+  { key: 'pet',   icon: '🤚', label: 'a scratch' },
+];
+
+const WRONG = {
+  hay:   'It sniffs the hay, then looks away.',
+  water: 'It dips its nose in, sneezes, and steps back.',
+  shear: 'It shuffles off. Not today, thank you.',
+};
+
+export function openCare(game, sheep) {
+  const p = openPanel({ title: '🐑 ' + sheep.name, lead: 'What does she need? Drag it over.' });
+
+  const cv = makeCanvas(420, 300);
+  p.body.appendChild(cv.canvas);
+
+  const slots = ITEMS.map((it, i) => Object.assign({}, it,
+    { hx: 60 + i * 100, hy: 258, x: 60 + i * 100, y: 258, held: false }));
+  let dragging = null, react = null, shake = 0, joy = 0;
+
+  onPointer(cv.canvas, 420, 300, {
+    down(pt) {
+      for (const s of slots) {
+        if (Math.abs(pt.x - s.x) < 34 && Math.abs(pt.y - s.y) < 34) { dragging = s; s.held = true; return; }
+      }
+    },
+    move(pt) { if (dragging) { dragging.x = pt.x; dragging.y = pt.y; } },
+    up(pt) {
+      if (!dragging) return;
+      const d = dragging;
+      dragging = null; d.held = false;
+      const onSheep = Math.abs(pt.x - 210) < 90 && Math.abs(pt.y - 120) < 80;
+      d.x = d.hx; d.y = d.hy;
+      if (!onSheep) return;
+      resolve(d.key);
+    },
+  });
+
+  function need() {
+    const s = game.world.sheep.find(x => x.id === sheep.id) || sheep;
+    if (s.thirst > 70) return 'water';
+    if (s.hunger > 70) return 'hay';
+    if (s.fluff > 88) return 'shear';
+    return null;
+  }
+
+  function resolve(key) {
+    const s = game.world.sheep.find(x => x.id === sheep.id) || sheep;
+    if (key === 'pet') {
+      joy = 1;
+      game.dispatch({ type: 'sheep.care', role: game.role, sheepId: s.id, item: 'pet' });
+      p.readout('She leans into it. Whatever else she wants, she still wanted that.');
+      return;
+    }
+    const wanted = need();
+    if (key === wanted || (key === 'shear' && s.fluff > 70)) {
+      joy = 1;
+      game.dispatch({ type: 'sheep.care', role: game.role, sheepId: s.id, item: key });
+      p.readout(key === 'shear' ? '<b>Snip snip.</b> A whole bundle of wool.'
+        : key === 'water' ? '<b>Glug glug glug.</b> Better.'
+        : '<b>Munch munch.</b> Much better.');
+      setTimeout(refreshHint, 900);
+    } else {
+      shake = 1;
+      p.readout(WRONG[key] || 'She is not interested.');
+    }
+  }
+
+  function refreshHint() {
+    const n = need();
+    p.readout(n ? 'She still wants something. Have another look at her.'
+                : '<b>She looks content.</b> Ears up, tail going.');
+  }
+  refreshHint();
+
+  const row = p.row();
+  row.appendChild(p.button('Done', 'soft', () => { stop(); p.close(); }));
+
+  function draw(t) {
+    const ctx = cv.ctx;
+    const s = game.world.sheep.find(x => x.id === sheep.id) || sheep;
+    ctx.clearRect(0, 0, 420, 300);
+    ctx.fillStyle = '#d9ecd0'; ctx.fillRect(0, 0, 420, 300);
+    ctx.fillStyle = '#c8e0bd'; ctx.fillRect(0, 190, 420, 110);
+    ctx.strokeStyle = 'rgba(120,160,110,.5)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    for (let i = 0; i < 22; i++) {
+      const gx = (i * 37) % 420, gy = 196 + (i * 13) % 24;
+      ctx.beginPath(); ctx.moveTo(gx, gy + 6); ctx.lineTo(gx + Math.sin(t * 0.002 + i) * 2, gy); ctx.stroke();
+    }
+
+    // the sheep, big
+    ctx.save();
+    ctx.translate(210 + (shake > 0 ? Math.sin(t * 0.05) * 5 * shake : 0), 128);
+    ctx.scale(5.4, 5.4);
+    drawSheep(ctx, { x: 0, y: 0, facing: 1, fluff: s.fluff, mood: s.mood, hearts: joy > 0 ? game.world.tick : -999, moving: -999 },
+              t, game.world.tick);
+    ctx.restore();
+
+    // what she is telling you, without words
+    const n = need();
+    if (n) {
+      const glyph = n === 'water' ? '💧' : n === 'hay' ? '🌾' : '🧶';
+      const bob = Math.sin(t * 0.004) * 3;
+      ctx.font = '30px system-ui, "Apple Color Emoji", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(255,253,248,.95)';
+      ctx.strokeStyle = 'rgba(67,55,42,.2)'; ctx.lineWidth = 1.5;
+      rr(ctx, 268, 24 + bob, 62, 54, 22); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(262, 84 + bob, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(252, 96 + bob, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#000';
+      ctx.fillText(n === 'water' ? '💧' : n === 'hay' ? '🥱' : '🧶', 299, 51 + bob);
+    }
+    if (joy > 0) {
+      ctx.font = '26px system-ui, "Apple Color Emoji", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.globalAlpha = joy;
+      ctx.fillText('💚', 210 - 40, 60 - (1 - joy) * 30);
+      ctx.fillText('💚', 210 + 44, 74 - (1 - joy) * 40);
+      ctx.globalAlpha = 1;
+    }
+
+    // the shelf of things
+    ctx.fillStyle = 'rgba(255,253,248,.75)';
+    rr(ctx, 8, 226, 404, 64, 16); ctx.fill();
+    for (const s2 of slots) {
+      ctx.fillStyle = s2.held ? '#f2c14e' : '#fffdf8';
+      ctx.strokeStyle = 'rgba(67,55,42,.25)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(s2.x, s2.y, 28, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.font = '26px system-ui, "Apple Color Emoji", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(s2.icon, s2.x, s2.y + 1);
+    }
+  }
+
+  const stop = loop((t, dt) => {
+    cv.fit();
+    if (shake > 0) shake = Math.max(0, shake - dt / 500);
+    if (joy > 0) joy = Math.max(0, joy - dt / 1400);
+    draw(t);
+  });
+}

@@ -1,6 +1,6 @@
 // Our Little World — start here.
 
-import { Session, hashSeed } from './net/session.js';
+import { Session } from './net/session.js';
 import { LocalTransport, WsTransport, SoloTransport } from './net/transport.js';
 import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';

@@ -3,9 +3,8 @@
 // same action it always produces the same result. That is what lets two
 // browsers share one world, and what lets the tests be meaningful.
 
-import { T, idx, inBounds, setTile, tileAt, rebuildBlocked } from './grid.js';
-import { addBuilding, addTree, byId, newId, otherRole, CAPS, BLOCK_TICKS } from './world.js';
-import { rndInt } from './rng.js';
+import { T, inBounds, setTile, tileAt, rebuildBlocked } from './grid.js';
+import { addBuilding, byId, newId, CAPS, BLOCK_TICKS } from './world.js';
 
 /* ---- small helpers -------------------------------------------------- */
 
@@ -61,6 +60,9 @@ export function applyAction(w, a) {
       w.block.length = a.length || BLOCK_TICKS;
       w.block.endedAt = null;
       w.journal = [];
+      w.eventsThisBlock = 0;
+      w.eventsSeen = [];
+      w.lastEventTick = w.tick;
       w.day = a.newDay ? w.day + 1 : w.day;
       return true;
     }

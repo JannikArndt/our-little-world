@@ -211,3 +211,29 @@ test('nothing decays while nobody is playing', () => {
   const later = deserialize(saved);
   assert.equal(serialize(later), saved);
 });
+
+test('the people who already live somewhere are holding their beds', () => {
+  const w = createWorld(2024);
+  const taken = w.buildings.reduce((n, b) => n + (b.residents ? b.residents.length : 0), 0);
+  assert.equal(taken, 3);
+  assert.equal(freeBed(w), null, 'there is no spare bed at the start');
+  run(w, BLOCK_TICKS);
+  assert.equal(w.villagers.filter(v => !v.homeId).length, 1,
+    'somebody is still sleeping by the fire until a house gets built');
+});
+
+test('the same thing does not happen twice in one morning', () => {
+  const w = createWorld(37);
+  applyAction(w, { type: 'block.start' });
+  w.bridge.built = true; w.bridge.quality = 2;
+  w.journal.push({ icon: '🏠', text: 'built a house', tick: 0 });
+  w.trees[0].state = 'stump';
+  w.tick = w.block.startTick + Math.floor(BLOCK_TICKS * 0.2);
+  const seen = [];
+  for (let i = 0; i < 3000; i++) {
+    const e = maybeEvent(w);
+    if (e) { seen.push(e.event); applyAction(w, e); }
+    w.tick++;
+  }
+  assert.equal(new Set(seen).size, seen.length, 'no event repeated: ' + seen.join(','));
+});

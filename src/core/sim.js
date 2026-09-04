@@ -4,7 +4,7 @@
 import { T, COST, GW, GH, tileAt, walkable, inBounds } from './grid.js';
 import { findPath } from './pathfind.js';
 import { byId, freeBed, blockProgress } from './world.js';
-import { rnd, rndInt, rndRange } from './rng.js';
+import { rnd, rndInt } from './rng.js';
 import { fx, journal, note } from './actions.js';
 
 const DT = 0.1;                      // seconds per tick
@@ -220,7 +220,7 @@ function nearWater(w, s) {
 function tickSheep(w, s) {
   const tile = tileAt(w, Math.floor(s.x), Math.floor(s.y));
   s.hunger = Math.min(100, s.hunger + 0.045);
-  s.thirst = Math.min(100, s.thirst + 0.038);
+  s.thirst = Math.min(100, s.thirst + 0.016);
   s.fluff = Math.min(100, s.fluff + 0.012);
 
   if (tile === T.GRASS || tile === T.FOREST) s.hunger = Math.max(0, s.hunger - 0.062);
@@ -230,7 +230,7 @@ function tickSheep(w, s) {
       Math.floor(s.x) >= p.x && Math.floor(s.x) < p.x + 2 &&
       Math.floor(s.y) >= p.y && Math.floor(s.y) < p.y + 2);
     if (p) {
-      p.growth = Math.max(0, p.growth - 0.28);
+      if (p.state === 'growing') p.growth = Math.max(0, p.growth - 0.28);
       if (!p.nibbled) { p.nibbled = 1; }
       if (w.tick % 40 === 0 && !(w.block.active && blockProgress(w) > 0.85)) note(w, 'sheep_in_field', '🐑', 'A sheep found the wheat field. It looks delighted.', 'ask');
     }
@@ -258,6 +258,12 @@ function tickSheep(w, s) {
   }
 
   if (s.wait > 0) { s.wait--; return; }
+
+  // a thirsty sheep goes looking for the river by herself
+  if (s.thirst > 62) {
+    const drink = nearestDrink(w, s);
+    if (drink && goTo(w, s, drink.x, drink.y)) { s.wait = 0; return; }
+  }
   const t = randomNearbyTile(w, s, 3);
   if (t && tileAt(w, t.x, t.y) !== T.BRIDGE) goTo(w, s, t.x, t.y);
   s.wait = 20 + rndInt(w, 60);
@@ -266,6 +272,30 @@ function tickSheep(w, s) {
 /* --------------------------------------------------------------------- */
 /* the rest of the world                                                 */
 /* --------------------------------------------------------------------- */
+
+/** The closest bit of bank she can stand on and reach the water from. */
+function nearestDrink(w, s) {
+  const sx = Math.floor(s.x), sy = Math.floor(s.y);
+  let best = null, bd = 1e9;
+  for (let r = 1; r < 12; r++) {
+    for (let dy = -r; dy <= r; dy++)
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const x = sx + dx, y = sy + dy;
+        if (!inBounds(x, y) || !walkable(w, x, y)) continue;
+        if (tileAt(w, x, y) === T.BRIDGE) continue;
+        let touches = false;
+        for (let a = -1; a <= 1 && !touches; a++)
+          for (let b = -1; b <= 1; b++)
+            if (tileAt(w, x + a, y + b) === T.WATER) { touches = true; break; }
+        if (!touches) continue;
+        const d = dx * dx + dy * dy;
+        if (d < bd) { bd = d; best = { x, y }; }
+      }
+    if (best) return best;
+  }
+  return best;
+}
 
 function tickPlots(w) {
   for (const p of w.plots) {

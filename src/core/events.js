@@ -2,7 +2,7 @@
 // already in a state where they make sense, they are spaced far apart, and
 // they stop entirely near the end of a play block so the world can settle.
 
-import { rnd, rndInt } from './rng.js';
+import { rnd } from './rng.js';
 import { blockProgress } from './world.js';
 
 const QUIET_AFTER = 0.72;      // no new problems in the last quarter of a block
@@ -35,21 +35,25 @@ export function maybeEvent(w) {
   if (w.plots.filter(pl => pl.state === 'growing' && pl.growth > 30).length >= 2)
     options.push({ event: 'goodharvest', weight: 2 });
 
-  if (!options.length) return null;
+  const already = w.eventsSeen || [];
+  const fresh = options.filter(o => already.indexOf(o.event) === -1);
+  if (!fresh.length) return null;
   if (rnd(w) > 0.55) return null;             // most checks pass quietly
 
-  let total = 0; for (const o of options) total += o.weight;
+  let total = 0; for (const o of fresh) total += o.weight;
   let r = rnd(w) * total;
-  let chosen = options[0];
-  for (const o of options) { r -= o.weight; if (r <= 0) { chosen = o; break; } }
+  let chosen = fresh[0];
+  for (const o of fresh) { r -= o.weight; if (r <= 0) { chosen = o; break; } }
 
   w.lastEventTick = w.tick;
   w.eventsThisBlock = (w.eventsThisBlock || 0) + 1;
+  w.eventsSeen = already.concat([chosen.event]);
   return { type: 'world.event', event: chosen.event };
 }
 
 export function resetEventBudget(w) {
   w.eventsThisBlock = 0;
+  w.eventsSeen = [];
   w.lastEventTick = w.tick;
 }
 

@@ -3,7 +3,7 @@
 
 import { el, openPanel, toast } from './overlay.js';
 import { openGive } from './share.js';
-import { RESOURCES, ROLE, CAPS, blockProgress, otherRole } from '../core/world.js';
+import { RESOURCES, ROLE, CAPS, blockProgress } from '../core/world.js';
 import { nextTimeHint } from '../core/events.js';
 
 const PHASE = [

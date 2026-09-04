@@ -1,8 +1,8 @@
 // Looking after an animal.
 // Nothing is written down. You look at the sheep and work out what it wants.
 
-import { el, openPanel, makeCanvas, onPointer, loop, toast } from '../ui/overlay.js';
-import { C, drawSheep, rr } from '../render/art.js';
+import { openPanel, makeCanvas, onPointer, loop } from '../ui/overlay.js';
+import { drawSheep, rr } from '../render/art.js';
 
 const ITEMS = [
   { key: 'hay',   icon: '🌾', label: 'hay' },
@@ -38,7 +38,7 @@ export function openCare(game, sheep) {
       if (!dragging) return;
       const d = dragging;
       dragging = null; d.held = false;
-      const onSheep = Math.abs(pt.x - 210) < 90 && Math.abs(pt.y - 120) < 80;
+      const onSheep = Math.abs(pt.x - 200) < 100 && Math.abs(pt.y - 130) < 90;
       d.x = d.hx; d.y = d.hy;
       if (!onSheep) return;
       resolve(d.key);
@@ -99,10 +99,10 @@ export function openCare(game, sheep) {
 
     // the sheep, big
     ctx.save();
-    ctx.translate(210 + (shake > 0 ? Math.sin(t * 0.05) * 5 * shake : 0), 128);
-    ctx.scale(5.4, 5.4);
-    drawSheep(ctx, { x: 0, y: 0, facing: 1, fluff: s.fluff, mood: s.mood, hearts: joy > 0 ? game.world.tick : -999, moving: -999 },
-              t, game.world.tick);
+    ctx.translate(196 + (shake > 0 ? Math.sin(t * 0.05) * 5 * shake : 0), 146);
+    ctx.scale(4.7, 4.7);
+    drawSheep(ctx, { x: 0, y: 0, facing: 1, fluff: s.fluff, mood: s.mood, hearts: -999, moving: -999 },
+              t, game.world.tick, true);
     ctx.restore();
 
     // what she is telling you, without words
@@ -114,18 +114,18 @@ export function openCare(game, sheep) {
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = 'rgba(255,253,248,.95)';
       ctx.strokeStyle = 'rgba(67,55,42,.2)'; ctx.lineWidth = 1.5;
-      rr(ctx, 268, 24 + bob, 62, 54, 22); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.arc(262, 84 + bob, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.arc(252, 96 + bob, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      rr(ctx, 288, 34 + bob, 66, 56, 24); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(281, 95 + bob, 6.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(270, 108 + bob, 3.8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#000';
-      ctx.fillText(n === 'water' ? '💧' : n === 'hay' ? '🥱' : '🧶', 299, 51 + bob);
+      ctx.fillText(n === 'water' ? '💧' : n === 'hay' ? '🥱' : '🧶', 321, 62 + bob);
     }
     if (joy > 0) {
       ctx.font = '26px system-ui, "Apple Color Emoji", sans-serif';
       ctx.textAlign = 'center';
       ctx.globalAlpha = joy;
-      ctx.fillText('💚', 210 - 40, 60 - (1 - joy) * 30);
-      ctx.fillText('💚', 210 + 44, 74 - (1 - joy) * 40);
+      ctx.fillText('💚', 150, 66 - (1 - joy) * 30);
+      ctx.fillText('💚', 246, 52 - (1 - joy) * 40);
       ctx.globalAlpha = 1;
     }
 

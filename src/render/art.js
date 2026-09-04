@@ -208,7 +208,7 @@ export function drawVillager(ctx, v, time, tick) {
 
 const SHEEP_GLYPH = { hungry: '🌾', thirsty: '💧', woolly: '✂️' };
 
-export function drawSheep(ctx, s, time, tick) {
+export function drawSheep(ctx, s, time, tick, noBubble) {
   const x = s.x * TILE, y = s.y * TILE;
   const f = s.facing === -1 ? -1 : 1;
   const walking = (tick - (s.moving || -99)) < 3;
@@ -220,8 +220,13 @@ export function drawSheep(ctx, s, time, tick) {
   ctx.translate(x, y - bob);
   ctx.scale(f, 1);
 
-  ctx.strokeStyle = C.muzzle; ctx.lineWidth = 1.9; ctx.lineCap = 'round';
   const st = walking ? Math.sin(time * 0.011 + s.x) * 1.6 : 0.6;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#6b5f54'; ctx.lineWidth = 1.6;      // the far pair
+  ctx.beginPath();
+  ctx.moveTo(-2.2, -1.4); ctx.lineTo(-2.2 + st, 2.6);
+  ctx.moveTo(4.2, -1.4); ctx.lineTo(4.2 - st, 2.6); ctx.stroke();
+  ctx.strokeStyle = C.muzzle; ctx.lineWidth = 1.9;
   ctx.beginPath();
   ctx.moveTo(-3.4, -1); ctx.lineTo(-3.4 - st, 3.6);
   ctx.moveTo(3.2, -1); ctx.lineTo(3.2 + st, 3.6); ctx.stroke();
@@ -249,6 +254,7 @@ export function drawSheep(ctx, s, time, tick) {
   ctx.beginPath(); ctx.arc(8.6, -4.1 + droop, 0.42, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
+  if (noBubble) return;
   if (tick - (s.hearts || -999) < 30) bubble(ctx, x, y - 16, '💚', 12);
   else if (SHEEP_GLYPH[s.mood]) bubble(ctx, x + 8, y - 15, SHEEP_GLYPH[s.mood], 12);
 }

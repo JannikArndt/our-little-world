@@ -2,8 +2,8 @@
 // be done with them. If you cannot do it yourself, you can ask the other
 // player — which is usually the more interesting option.
 
-import { TILE, T, tileAt, inBounds } from '../core/grid.js';
-import { CAPS, ROLE, can, otherRole } from '../core/world.js';
+import { TILE, T, tileAt } from '../core/grid.js';
+import { ROLE, can } from '../core/world.js';
 import { el, toast } from './overlay.js';
 import { openChop } from '../minigames/chop.js';
 import { openSawmill, openMill } from '../minigames/sawmill.js';

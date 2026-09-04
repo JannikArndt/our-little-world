@@ -106,7 +106,7 @@ export function createWorld(seed) {
     villagers: [],
     stones: [],
     bridge: { built: false, tiles: [], quality: 0, damaged: false },
-    larder: { x: 8.5, y: 14.5, food: 5 },
+    larder: { x: 8.5, y: 14.5, food: 7 },
     players: {
       A: { res: { wood: 2, plank: 1, stone: 2, wheat: 0, food: 0, wool: 0 },
            caps: { fell: 1, saw: 1, bridge: 1, house: 1, mill: 1 },
@@ -175,6 +175,9 @@ export function createWorld(seed) {
       mood: 'ok', hearts: 0, said: null, saidUntil: 0,
     });
   }
+  // the people who already live somewhere take up their beds, so the one
+  // without a home really does have nowhere to go
+  for (const v of w.villagers) if (v.homeId) byId(w.buildings, v.homeId).residents.push(v.id);
 
   // ---- stones you can pick up along the river ------------------------
   for (const [sx, sy] of [[15, 20], [21, 4]]) {

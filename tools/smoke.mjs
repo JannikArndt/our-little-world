@@ -224,6 +224,23 @@ async function main() {
   if (!/asks/.test(noticeText)) throw new Error('the ask did not reach the other player');
   await step(page, '25a-ask', 300);
 
+  // teaching: having done it a few times, you can show the other player how
+  await api(() => {
+    const g = window.OLW;
+    g.canSwap = false;                       // make the role chip open the card
+    g.world.players.A.done.fell = 3;
+  });
+  await page.click('#roleChip');
+  await step(page, '25b-role-card', 500);
+  const teach = await page.$('text=teach felling trees');
+  if (!teach) throw new Error('no way to teach a capability across');
+  await teach.click();
+  await page.waitForTimeout(400);
+  const learned = await api(() => !!window.OLW.world.players.B.caps.fell);
+  console.log('taught the other player to fell trees:', learned);
+  if (!learned) throw new Error('teaching did not stick');
+  await api(() => { window.OLW.canSwap = true; });
+
   // sharing
   await page.click('#partnerChip');
   await step(page, '25-share', 500);

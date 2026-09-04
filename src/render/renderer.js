@@ -5,7 +5,6 @@
 import { GW, GH, TILE, WORLD_W, WORLD_H, T, idx } from '../core/grid.js';
 import { blockProgress } from '../core/world.js';
 import * as art from './art.js';
-import { rr } from './art.js';
 
 const C = art.C;
 

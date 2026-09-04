@@ -9,3 +9,5 @@ Dockerfile
 docker-compose.yml
 *.log
 .DS_Store
+.github
+captain-definition

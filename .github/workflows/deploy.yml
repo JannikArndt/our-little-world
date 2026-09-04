@@ -1,0 +1,25 @@
+name: Deploy to CapRover
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # checkout leaves the workspace at the git root on a real "main" branch,
+      # which is all the CapRover CLI needs: it tars that branch and the server
+      # builds the Dockerfile named by captain-definition.
+      - name: Deploy to CapRover
+        run: |
+          npm install -g caprover
+          caprover deploy \
+            --caproverUrl ${{ secrets.CAPROVER_SERVER }} \
+            --appToken ${{ secrets.CAPROVER_APP_TOKEN }} \
+            --appName ${{ secrets.CAPROVER_APP }} \
+            --branch main

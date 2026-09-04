@@ -87,6 +87,23 @@ location / {
 Both players then open the same address, type the same world name, and pick
 different roles.
 
+### CapRover
+
+`.github/workflows/deploy.yml` deploys on every push to `main`. It needs three
+repository secrets: `CAPROVER_SERVER`, `CAPROVER_APP_TOKEN` and `CAPROVER_APP`.
+The CLI tars the checked-out branch and the server builds it; `captain-definition`
+points at the `Dockerfile`, so the image is the same one you get locally.
+
+Two settings on the app's **HTTP Settings** page have to match the image:
+
+- **Container HTTP Port: 8080** — CapRover assumes 80 when the field is empty,
+  and the server listens on 8080.
+- **Websocket Support: on** — CapRover's nginx only passes `Upgrade` and
+  `Connection` through when that box is ticked. Without it the page loads
+  perfectly and the two players never find each other.
+
+Then add the domain, enable HTTPS, and force it.
+
 ### Where the world lives
 
 The relay only passes messages along. The world itself lives in the browsers:

@@ -6,7 +6,7 @@ import { GW, GH, T, idx, inBounds, rebuildBlocked } from './grid.js';
 import { rnd, rndInt, rndRange } from './rng.js';
 import { tr } from './i18n.js';
 
-export const SCHEMA = 6;
+export const SCHEMA = 7;
 export const TICK_MS = 100;                 // one simulation step
 export const BLOCK_TICKS = 5 * 60 * 10;     // a five minute play block
 
@@ -18,6 +18,15 @@ export const RESOURCES = [
   { key: 'food',  icon: '🍞' },
   { key: 'wool',  icon: '🧶' },
 ];
+
+/** Things the village could have one day, and what they take to make. */
+export const PROJECT = {
+  boat: { plank: 4, stone: 1 },
+  play: { plank: 4, stone: 2 },
+};
+
+export const SAPLING_TICKS = 1500;   // a sapling is a tree again after ~2.5 min of play
+export const REPLANT_GOAL = 3;       // stumps worth replanting before the forest looks whole
 
 export const ROLE = {
   A: { id: 'A', emoji: '🔨', colour: '#c8783c' },
@@ -41,8 +50,9 @@ export function roleName(id) { return tr('role.' + id + '.short'); }
 export function capName(key) { return tr('cap.' + key); }
 export function resName(key) { return tr('res.' + key); }
 
-const VILLAGER_NAMES = ['Anna', 'Bo', 'Mira', 'Ted'];
-const VILLAGER_COLOURS = ['#d96a5f', '#4f83b8', '#b47ec0', '#4f9c8a'];
+const VILLAGER_NAMES = ['Anna', 'Bo', 'Mira', 'Ted', 'Lina', 'Sam'];
+const VILLAGER_COLOURS = ['#d96a5f', '#4f83b8', '#b47ec0', '#4f9c8a', '#e0a03e', '#7a86c9'];
+const VILLAGER_KIDS = [false, false, false, false, true, true];
 const SHEEP_NAMES = ['Cloud', 'Pip', 'Nutmeg'];
 
 let nextId = 1;
@@ -130,8 +140,8 @@ export function createWorld(seed) {
   paintTerrain(w);
 
   // ---- village on the west bank -------------------------------------
-  addBuilding(w, { type: 'house', x: 4,  y: 12, w: 3, h: 2, state: 'built', name: "Anna & Bo's house", beds: 2, warm: true, light: true });
-  addBuilding(w, { type: 'house', x: 10, y: 12, w: 3, h: 2, state: 'built', name: "Mira's house", beds: 1, warm: true, light: true });
+  addBuilding(w, { type: 'house', x: 4,  y: 12, w: 3, h: 2, state: 'built', name: "Anna & Bo's house", beds: 3, warm: true, light: true });
+  addBuilding(w, { type: 'house', x: 10, y: 12, w: 3, h: 2, state: 'built', name: "Mira's house", beds: 2, warm: true, light: true });
   addBuilding(w, { type: 'site',  x: 4,  y: 18, w: 3, h: 2, state: 'site',  name: 'an empty plot' });
   addBuilding(w, { type: 'workshop', x: 9, y: 16, w: 4, h: 3, state: 'built', name: 'the workshop' });
 
@@ -170,12 +180,13 @@ export function createWorld(seed) {
   w.sheep[2].hunger = 84;     // wants hay
 
   // ---- people --------------------------------------------------------
-  const homes = [w.buildings[0].id, w.buildings[0].id, w.buildings[1].id, null];
-  const at = [[6, 15], [9, 13], [11, 15], [7, 17]];
-  for (let i = 0; i < 4; i++) {
+  const B0 = w.buildings[0].id, B1 = w.buildings[1].id;
+  const homes = [B0, B0, B1, null, B0, B1];
+  const at = [[6, 15], [9, 13], [11, 15], [7, 17], [5, 15], [12, 14]];
+  for (let i = 0; i < VILLAGER_NAMES.length; i++) {
     w.villagers.push({
       id: newId('v'), name: VILLAGER_NAMES[i], colour: VILLAGER_COLOURS[i],
-      x: at[i][0] + 0.5, y: at[i][1] + 0.5,
+      kid: VILLAGER_KIDS[i], x: at[i][0] + 0.5, y: at[i][1] + 0.5,
       path: [], pathI: 0, task: null, wait: rndInt(w, 30),
       hunger: 28 + rndInt(w, 26), homeId: homes[i], carrying: null,
       mood: 'ok', hearts: 0, said: null, saidUntil: 0,
@@ -190,6 +201,20 @@ export function createWorld(seed) {
     const p = findSandNear(w, sx, sy);
     if (p) w.stones.push({ id: newId('sb'), x: p.x, y: p.y, count: 6, regrow: 0 });
   }
+
+  // ---- things nobody has got round to yet -----------------------------
+  // A plan is not a building site: nothing stands there, nothing is blocked,
+  // and the world never nags about it. It is simply a place where something
+  // could go, and the guide knows about it.
+  const jetty = findSandNear(w, 15, 11);
+  if (jetty) addBuilding(w, {
+    id: 'plan_boat', type: 'boat', x: jetty.x - 1, y: jetty.y, w: 2, h: 1,
+    state: 'plan', name: 'the old landing', walkable: true, faces: 1,
+  });
+  addBuilding(w, {
+    id: 'plan_play', type: 'play', x: 13, y: 18, w: 3, h: 2,
+    state: 'plan', name: 'the green by the water', walkable: true,
+  });
 
   // ---- the crossing --------------------------------------------------
   w.bridge.site = findCrossing(w, 12);
@@ -248,6 +273,19 @@ export function freeBed(w) {
   return null;
 }
 export function homeless(w) { return w.villagers.filter(v => !v.homeId); }
+export function kids(w) { return w.villagers.filter(v => v.kid); }
+
+/** The house plot people are waiting on — never one of the project plans. */
+export function openSite(w) { return w.buildings.find(b => b.state === 'site') || null; }
+
+/** A project: 'plan' while it is only an idea, 'built' once it is there. */
+export function project(w, type) { return w.buildings.find(b => b.type === type) || null; }
+export function hasProject(w, type) {
+  const b = project(w, type);
+  return !!(b && b.state === 'built');
+}
+export function stumps(w) { return w.trees.filter(t => t.state === 'stump'); }
+export function saplings(w) { return w.trees.filter(t => t.state === 'sapling'); }
 
 export function blockProgress(w) {
   if (!w.block.active) return w.block.endedAt !== null ? 1 : 0;

@@ -135,7 +135,7 @@ that plurals come in pairs.
 
 |                | 🔨 The Builder                     | 🌿 The Keeper                    |
 |----------------|------------------------------------|----------------------------------|
-| knows how to   | fell trees, saw planks, build bridges and houses, run the mill | look after animals, move them, lay roads, work the field |
+| knows how to   | fell trees, saw planks, build bridges, houses, boats, run the mill | look after animals, move them, lay roads, work the field, fish, plant trees |
 | tends to have  | wood, planks                       | stone, food, wheat, wool         |
 
 Neither can finish much alone. Bread needs the Keeper's wheat and the Builder's
@@ -147,10 +147,23 @@ button appears on your role card — teach it across, and you both know it.
 
 ## What you can do
 
-Starting a morning opens with one card: the world's most pressing problem in a
-sentence, and the numbered steps that would put it right, each labelled with who
-can do it. Steps you have already covered are ticked. Tapping any of the world's
-notices opens the same card.
+Starting a morning opens with one card: the most pressing thing in the world
+right now, said as something to do — **"Build a house for Ted!"**, not "Ted has
+nowhere to sleep tonight" — and the numbered steps that would get there, each
+labelled with who can do it.
+
+Three things keep that card honest:
+
+- **It says what to do.** A title is an invitation, never a verdict.
+- **Anybody it names is somebody you can see.** Ted is drawn on the card in the
+  same lines the world draws him in, the view moves to him behind the card, and
+  a soft ring follows him about for a while afterwards. A name is never just a
+  name.
+- **Every step that can be counted carries its count.** `3/5 🪵`, `1/5 🪚`,
+  `3/3 🪨 ✓`. A tick with a number next to it explains itself; a bare tick does
+  not.
+
+Tapping any of the world's notices opens the same card.
 
 | | |
 |---|---|
@@ -162,6 +175,10 @@ notices opens the same card.
 | 🛤️ **Lay a road** | Drag across the ground. One stone for every two steps, counted as you drag. People immediately start using it. |
 | 🌱 **Work the field** | Sow, then carry water. The can holds three plots and the field has six. |
 | 🌀 **Run the mill** | Turn the stone with your finger, then bake. Two wheat, three loaves. |
+| ⛵ **Build the fishing boat** | Four planks and a stone at the old landing on the west bank. Then somebody has to take her out. |
+| 🎣 **Go fishing** | Cast, watch the float, and tap the moment it goes under. Too early and the line comes up empty. Three casts, then row back — the fish go quiet for a while. |
+| 🛝 **Build the playground** | A swing, a slide and a sandpit on the green by the water. Lina and Sam go and use it, which is the whole point of it. |
+| 🌱 **Plant a sapling** | Every stump was a tree. Put a sapling in and it grows back into one while you play. |
 | 🤝 **Share** | Tap any resource to send some across. Or drop food in the village basket, where the hungry go looking. |
 
 Anything that costs materials shows the cost as the materials themselves — one
@@ -196,6 +213,8 @@ src/
     actions.js   the only way the world ever changes
     sim.js       villagers, sheep, crops, weather in the sky
     events.js    problems, but only when they make sense
+    guide.js     the one card: what to do next, who, and how far along
+    changelog.js what has changed, per language
     rng.js       seeded, so two browsers agree
     persist.js   localStorage
   net/
@@ -203,7 +222,7 @@ src/
     session.js   one peer hosts the clock; the rest follow snapshots
   render/        art.js (sprites) and renderer.js (frames)
   ui/            hud, world taps, sharing, panels
-  minigames/     one file each
+  minigames/     one file each (chop, sawmill, bridge, house, care, fish)
 server/
   serve.mjs      static files + the relay, no dependencies
   relay.mjs      a ~180 line WebSocket relay, no dependencies
@@ -254,9 +273,21 @@ node tools/german.mjs # the same, in German, checking no untranslated key leaks
 The smoke test needs the server running (`npm start` on port 8099, or set
 `BASE`). It picks a role, fells a tree, saws it, designs and tests a bridge,
 looks after a sheep, sows the field, lays a road, designs a house, watches
-somebody move in, asks the other player for help, runs the block to its
-checkpoint, and then checks that two separate browsers see each other's work.
+somebody move in, plants a sapling, builds the boat and goes fishing, builds the
+playground, opens the changelog, asks the other player for help, runs the block
+to its checkpoint, and then checks that two separate browsers see each other's
+work. It also checks the opening card: that it says what to do, that whoever it
+names is drawn on it and ringed in the world, and that every counted step reads
+`have/need`.
 It also checks that nothing overflows sideways on an iPad, an iPhone and a Mac.
+
+## What is new
+
+There is a changelog, and it is not in your way: open 📜 (what has happened) and
+there is a line at the bottom of it — **✨ What is new (v1.1)**. Every version,
+newest first, in whichever language the screen is in. It lives in
+`src/core/changelog.js`, outside the language tables, so an entry can be written
+once and shipped without waiting for the other language.
 
 ## What is deliberately missing
 

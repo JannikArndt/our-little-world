@@ -165,10 +165,12 @@ export function drawVillager(ctx, v, time, tick) {
   const walking = (tick - (v.moving || -99)) < 3;
   const bob = walking ? Math.abs(Math.sin(time * 0.012 + v.x)) * 1.6 : 0;
   const lean = walking ? Math.sin(time * 0.012 + v.x) * 0.08 : 0;
-  shadow(ctx, x, y + 4, 6.5, 2.8);
+  const small = v.kid ? 0.72 : 1;                 // the children are smaller
+  shadow(ctx, x, y + 4, 6.5 * small, 2.8 * small);
 
   ctx.save();
   ctx.translate(x, y - bob);
+  if (small !== 1) ctx.scale(small, small);
   ctx.rotate(lean);
 
   // legs
@@ -387,6 +389,135 @@ export function drawHouse(ctx, b, time, tick) {
   }
 }
 
+/**
+ * A plan is a place where something could go: a few marks on the ground and
+ * the thing it would become, drawn faintly. Nothing stands there yet.
+ */
+export function drawPlan(ctx, b, time, glyphText) {
+  const x = b.x * TILE, y = b.y * TILE, w = b.w * TILE, h = b.h * TILE;
+  const bob = Math.sin(time * 0.0016) * 1.4;
+  ctx.save();
+  ctx.globalAlpha = 0.5;
+  ctx.setLineDash([4, 5]);
+  ctx.strokeStyle = 'rgba(90,75,55,.5)'; ctx.lineWidth = 1.4;
+  rr(ctx, x + 3, y + 3, w - 6, h - 6, 6); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 0.42;
+  glyph(ctx, glyphText, x + w / 2, y + h / 2 + bob, Math.min(24, h - 4));
+  ctx.restore();
+}
+
+/** A few boards over the water, and once it is built, a boat tied to them. */
+export function drawLanding(ctx, b, time, tick) {
+  const x = b.x * TILE, y = b.y * TILE, w = b.w * TILE, h = b.h * TILE;
+  const deckY = y + h / 2;
+  const built = b.state === 'built';
+  const grow = built && b.builtTick != null && tick - b.builtTick < 22 ? (tick - b.builtTick) / 22 : 1;
+
+  // the boards
+  ctx.fillStyle = '#9a6f42';
+  rr(ctx, x + 2, deckY - 5, w + 10, 10, 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.16)'; ctx.lineWidth = 1;
+  for (let px = x + 5; px < x + w + 10; px += 6) {
+    ctx.beginPath(); ctx.moveTo(px, deckY - 5); ctx.lineTo(px, deckY + 5); ctx.stroke();
+  }
+  ctx.fillStyle = '#7d5730';
+  ctx.fillRect(x + 2, deckY + 3, w + 10, 2);
+  // a mooring post
+  ctx.fillStyle = C.woodDark;
+  rr(ctx, x + w + 6, deckY - 12, 3.4, 12, 1.5); ctx.fill();
+
+  if (!built) {
+    ctx.save();
+    ctx.globalAlpha = 0.42;
+    glyph(ctx, '⛵', x + w + 16, deckY - 6 + Math.sin(time * 0.0016) * 1.4, 20);
+    ctx.restore();
+    return;
+  }
+
+  // the boat itself, nudging the boards
+  const bx = x + w + 17, by = deckY + Math.sin(time * 0.0018) * 1.6;
+  ctx.save();
+  ctx.translate(bx, by);
+  ctx.scale(grow, grow);
+  ctx.rotate(Math.sin(time * 0.0013) * 0.05);
+  shadow(ctx, 0, 6, 12, 3);
+  ctx.fillStyle = '#b8763f';
+  ctx.beginPath();
+  ctx.moveTo(-13, -3); ctx.lineTo(13, -3);
+  ctx.quadraticCurveTo(10, 6, 0, 6); ctx.quadraticCurveTo(-10, 6, -13, -3);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#8a5c30'; rr(ctx, -13, -4.6, 26, 2.6, 1.2); ctx.fill();
+  ctx.fillStyle = '#e6d3ab'; rr(ctx, -6, -3, 12, 2.2, 1); ctx.fill();
+  // the mast and a small sail
+  ctx.strokeStyle = C.woodDark; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(0, -18); ctx.stroke();
+  ctx.fillStyle = '#fbf6ec';
+  ctx.beginPath(); ctx.moveTo(1, -17); ctx.lineTo(9, -7); ctx.lineTo(1, -6); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+/** A swing, a slide and a sandpit — nothing that has to be there. */
+export function drawPlayground(ctx, b, time, tick) {
+  const x = b.x * TILE, y = b.y * TILE, w = b.w * TILE, h = b.h * TILE;
+  const grow = b.builtTick != null && tick - b.builtTick < 26 ? (tick - b.builtTick) / 26 : 1;
+  const e = grow < 1 ? 1 - Math.pow(1 - grow, 3) : 1;
+  ctx.save();
+  ctx.translate(x + w / 2, y + h);
+  ctx.scale(1, e);
+  ctx.translate(-(x + w / 2), -(y + h));
+
+  // the sandpit
+  ctx.fillStyle = C.sand;
+  ctx.beginPath(); ctx.ellipse(x + w - 14, y + h - 8, 13, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = C.woodDark; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.ellipse(x + w - 14, y + h - 8, 13, 7, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#e0a03e';
+  ctx.beginPath(); ctx.arc(x + w - 10, y + h - 10, 2.6, 0, Math.PI * 2); ctx.fill();
+
+  // the slide
+  ctx.strokeStyle = C.woodDark; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x + 12, y + h - 6); ctx.lineTo(x + 12, y + h - 22);
+  ctx.stroke();
+  ctx.strokeStyle = '#9fc4d8'; ctx.lineWidth = 3.4;
+  ctx.beginPath();
+  ctx.moveTo(x + 12, y + h - 22); ctx.quadraticCurveTo(x + 20, y + h - 12, x + 26, y + h - 5);
+  ctx.stroke();
+
+  // the swing, moving whenever somebody has been on it
+  const sx = x + w / 2 + 4, top = y + h - 26;
+  ctx.strokeStyle = C.woodDark; ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(sx - 11, y + h - 5); ctx.lineTo(sx - 5, top);
+  ctx.moveTo(sx + 11, y + h - 5); ctx.lineTo(sx + 5, top);
+  ctx.moveTo(sx - 7, top); ctx.lineTo(sx + 7, top);
+  ctx.stroke();
+  const a = Math.sin(time * 0.0022) * 0.28;
+  ctx.save();
+  ctx.translate(sx, top);
+  ctx.rotate(a);
+  ctx.strokeStyle = '#7a6a56'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(-3, 0); ctx.lineTo(-3, 13); ctx.moveTo(3, 0); ctx.lineTo(3, 13); ctx.stroke();
+  ctx.fillStyle = '#c8783c'; rr(ctx, -5.5, 13, 11, 2.8, 1.2); ctx.fill();
+  ctx.restore();
+  ctx.restore();
+}
+
+/** Small, but it knows what it is doing. */
+export function drawSapling(ctx, t, time) {
+  const x = t.x * TILE + TILE / 2, y = t.y * TILE + TILE / 2;
+  const sway = Math.sin(time * 0.0016 + (t.sway || 0)) * 1.1;
+  shadow(ctx, x, y + 4, 5, 2);
+  ctx.strokeStyle = C.woodDark; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x, y + 3); ctx.lineTo(x + sway * 0.4, y - 5); ctx.stroke();
+  ctx.fillStyle = C.sprout;
+  ctx.beginPath(); ctx.ellipse(x - 3 + sway, y - 7, 4, 2.6, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + 3 + sway, y - 8.5, 4, 2.6, 0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#6ab24a';
+  ctx.beginPath(); ctx.ellipse(x + sway, y - 11, 3.4, 3, 0, 0, Math.PI * 2); ctx.fill();
+}
+
 export function drawWorkshop(ctx, b, time, tick) {
   const x = b.x * TILE, y = b.y * TILE, w = b.w * TILE, h = b.h * TILE;
   shadow(ctx, x + w / 2, y + h - 2, w * 0.44, 6);
@@ -546,6 +677,24 @@ export function drawBridge(ctx, br, time) {
     ctx.restore();
     bubble(ctx, mx, y0 - 6, '⚠️', 13);
   }
+}
+
+/**
+ * Whoever the guide is talking about, drawn big enough to recognise in a card.
+ * The world drawings are all anchored at their feet, so this just moves the
+ * origin and scales — no second set of pictures to keep in step.
+ */
+export function drawPortrait(ctx, kind, o, cx, cy, scale, time, tick) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+  const at = { x: 0, y: 0, facing: 1, moving: -999, hearts: -999 };
+  if (kind === 'sheep') {
+    drawSheep(ctx, Object.assign({}, o, at), time, tick, true);
+  } else {
+    drawVillager(ctx, Object.assign({}, o, at, { said: null, carrying: null }), time, tick);
+  }
+  ctx.restore();
 }
 
 /* ------------------------------------------------------------------ */

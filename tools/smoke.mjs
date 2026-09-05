@@ -44,8 +44,19 @@ async function main() {
   await step(page, '02b-guide', 900);
   const guide = await page.textContent('.panel');
   console.log('opening card says:', guide.replace(/\s+/g, ' ').trim().slice(0, 150));
-  if (!/nowhere to sleep|river cuts/.test(guide)) throw new Error('the opening card names no problem');
+  if (!/Build a house for|Build a bridge|Mend the bridge/.test(guide)) throw new Error('the opening card does not say what to do');
   if ((await page.$$eval('.step', ns => ns.length)) < 2) throw new Error('the opening card has no steps');
+  // a named person is drawn on the card and ringed out in the world
+  const named = await page.evaluate(() => {
+    const g = window.OLW;
+    return { face: !!document.querySelector('.guide-who .who-face'), ring: !!g.spotlightAt() };
+  });
+  console.log('the card shows who it is about:', JSON.stringify(named));
+  if (!named.face || !named.ring) throw new Error('the card names somebody it never shows');
+  // and every counted step reads "have/need"
+  const counts = await page.$$eval('.step .s-count', ns => ns.map(n => n.textContent.trim()));
+  console.log('counted steps:', counts.join(', '));
+  if (!counts.length || !counts.every(c => /^\d+\/\d+/.test(c))) throw new Error('steps carry no counts');
   await page.click('text=Off we go');
   await step(page, '03-world', 1200);
 
@@ -63,10 +74,12 @@ async function main() {
   const treePt = await api(() => {
     const g = window.OLW, w = g.world;
     const t = w.trees.find(t => t.state === 'standing');
+    g.look(t.x, t.y, 1.8);                     // the opening card left us looking at Ted
     const p = g.renderer.toScreen(t.x * 24 + 12, t.y * 24 + 12);
     const r = document.getElementById('world').getBoundingClientRect();
     return { x: r.left + p.x, y: r.top + p.y, id: t.id };
   });
+  await page.waitForTimeout(300);
   await page.mouse.click(treePt.x, treePt.y);
   await step(page, '04-tree-bubble', 400);
   await page.click('text=Fell this tree');
@@ -87,11 +100,17 @@ async function main() {
   // sawmill
   await api(() => { window.OLW.world.players.A.res.wood = 6; });
   const wsPt = await api(() => {
-    const g = window.OLW, b = g.world.buildings.find(b => b.type === 'workshop');
-    const p = g.renderer.toScreen((b.x + b.w / 2) * 24, (b.y + b.h) * 24 - 10);
+    const g = window.OLW, w = g.world, b = w.buildings.find(b => b.type === 'workshop');
+    g.look(b.x + b.w / 2, b.y + b.h / 2, 1.8);
+    // somebody standing in the doorway would answer the tap instead of the
+    // workshop, so aim at whichever corner nobody is loitering in
+    const cands = [[b.x + 0.5, b.y + 0.3], [b.x + b.w - 0.5, b.y + 0.3], [b.x + 0.5, b.y + 1.3]];
+    const clear = cands.find(c => !w.villagers.some(v => Math.abs(v.x - c[0]) < 1.2 && Math.abs(v.y - c[1]) < 1.2)) || cands[0];
+    const p = g.renderer.toScreen(clear[0] * 24, clear[1] * 24);
     const r = document.getElementById('world').getBoundingClientRect();
     return { x: r.left + p.x, y: r.top + p.y };
   });
+  await page.waitForTimeout(300);
   await page.mouse.click(wsPt.x, wsPt.y);
   await step(page, '07-workshop-bubble', 400);
   await page.click('text=Saw wood into planks');
@@ -123,10 +142,12 @@ async function main() {
   await api(() => { const w = window.OLW.world; w.players.A.res.plank = 9; w.players.A.res.stone = 9; });
   const crossPt = await api(() => {
     const g = window.OLW, s = g.world.bridge.site;
+    g.look((s.x0 + s.x1 + 1) / 2, s.row + 1, 1.8);
     const p = g.renderer.toScreen((s.x0 + s.x1 + 1) * 12, (s.row + 1) * 24);
     const r = document.getElementById('world').getBoundingClientRect();
     return { x: r.left + p.x, y: r.top + p.y };
   });
+  await page.waitForTimeout(300);
   await page.mouse.click(crossPt.x, crossPt.y);
   await step(page, '11-crossing-bubble', 400);
   await page.click('text=Build a bridge here');
@@ -295,6 +316,104 @@ async function main() {
   // sharing
   await page.click('#partnerChip');
   await step(page, '25-share', 500);
+  await page.click('text=Close');
+
+  // planting a sapling on a stump
+  await api(() => { const g = window.OLW; g.role = 'B'; g.other = 'A'; });
+  const stumpPt = await api(() => {
+    const g = window.OLW, t = g.world.trees.find(t => t.state === 'stump');
+    g.look(t.x, t.y, 2);
+    const p = g.renderer.toScreen(t.x * 24 + 12, t.y * 24 + 12);
+    const r = document.getElementById('world').getBoundingClientRect();
+    return { x: r.left + p.x, y: r.top + p.y };
+  });
+  await page.waitForTimeout(300);
+  await page.mouse.click(stumpPt.x, stumpPt.y);
+  await step(page, '25d-stump-bubble', 400);
+  await page.click('text=Plant a sapling');
+  await page.waitForTimeout(400);
+  const planted = await api(() => window.OLW.world.trees.filter(t => t.state === 'sapling').length);
+  console.log('saplings planted:', planted);
+  if (!planted) throw new Error('the sapling was not planted');
+  await step(page, '25e-sapling', 400);
+
+  // the fishing boat: build it, then go out in it
+  await api(() => {
+    const g = window.OLW, w = g.world;
+    g.role = 'A'; g.other = 'B';
+    w.players.A.res.plank = 9; w.players.A.res.stone = 9;
+    const b = w.buildings.find(b => b.type === 'boat');
+    g.look(b.x + b.w, b.y + 0.5, 2);
+  });
+  await page.waitForTimeout(300);
+  const landingPt = await api(() => {
+    const g = window.OLW, b = g.world.buildings.find(b => b.type === 'boat');
+    const p = g.renderer.toScreen((b.x + 0.5) * 24, (b.y + 0.5) * 24);
+    const r = document.getElementById('world').getBoundingClientRect();
+    return { x: r.left + p.x, y: r.top + p.y };
+  });
+  await page.mouse.click(landingPt.x, landingPt.y);
+  await step(page, '25f-landing-bubble', 400);
+  await page.click('text=Build a fishing boat');
+  await step(page, '25g-boat', 900);
+  const boatUp = await api(() => window.OLW.world.buildings.some(b => b.type === 'boat' && b.state === 'built'));
+  console.log('fishing boat built:', boatUp);
+  if (!boatUp) throw new Error('the boat was not built');
+
+  await api(() => { const g = window.OLW; g.role = 'B'; g.other = 'A'; });
+  await page.waitForTimeout(300);
+  await page.mouse.click(landingPt.x, landingPt.y);
+  await page.waitForTimeout(300);
+  await page.click('text=Go fishing');
+  await step(page, '25h-fishing', 600);
+  // three casts: tap the water, then tap again the moment the float goes under
+  const fcv = await (await page.$('.panel canvas')).boundingBox();
+  const water = { x: fcv.x + fcv.width * 0.62, y: fcv.y + fcv.height * 0.7 };
+  for (let cast = 0; cast < 3; cast++) {
+    await page.mouse.click(water.x, water.y);
+    const bit = await page.waitForFunction(() => {
+      const p = document.querySelector('.readout');
+      return p && !/…$/.test(p.textContent.trim());
+    }, null, { timeout: 6000 }).catch(() => null);
+    if (!bit) break;
+    await page.waitForTimeout(200);
+  }
+  await step(page, '25i-fished', 500);
+  await page.click('text=Row back');
+  await page.waitForTimeout(300);
+
+  // the playground
+  await api(() => {
+    const g = window.OLW, w = g.world;
+    g.role = 'A'; g.other = 'B';
+    w.players.A.res.plank = 9; w.players.A.res.stone = 9;
+    const b = w.buildings.find(b => b.type === 'play');
+    g.look(b.x + b.w / 2, b.y + b.h / 2, 2);
+  });
+  await page.waitForTimeout(300);
+  const greenPt = await api(() => {
+    const g = window.OLW, b = g.world.buildings.find(b => b.type === 'play');
+    const p = g.renderer.toScreen((b.x + b.w / 2) * 24, (b.y + b.h / 2) * 24);
+    const r = document.getElementById('world').getBoundingClientRect();
+    return { x: r.left + p.x, y: r.top + p.y };
+  });
+  await page.mouse.click(greenPt.x, greenPt.y);
+  await step(page, '25j-green-bubble', 400);
+  await page.click('text=Build a playground');
+  await step(page, '25k-playground', 900);
+  const playUp = await api(() => window.OLW.world.buildings.some(b => b.type === 'play' && b.state === 'built'));
+  console.log('playground built:', playUp);
+  if (!playUp) throw new Error('the playground was not built');
+
+  // the changelog, tucked under the history
+  await page.click('#historyChip');
+  await page.waitForTimeout(300);
+  await page.click('.whats-new');
+  await step(page, '25l-changelog', 500);
+  const log = await page.textContent('.panel');
+  if (!/What is new/.test(log)) throw new Error('the changelog is not reachable from the history');
+  await page.click('text=Close');
+  await page.waitForTimeout(200);
   await page.click('text=Close');
 
   // run the block to its end quickly and check the checkpoint

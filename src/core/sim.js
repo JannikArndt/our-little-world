@@ -1,9 +1,9 @@
 // The living part of the world. Runs in fixed 100 ms steps so that the same
 // number of ticks always produces the same world, on any device.
 
-import { T, COST, GW, GH, tileAt, walkable, inBounds } from './grid.js';
+import { T, COST, GW, GH, tileAt, walkable, inBounds, rebuildBlocked } from './grid.js';
 import { findPath } from './pathfind.js';
-import { byId, freeBed, blockProgress } from './world.js';
+import { byId, freeBed, blockProgress, project, SAPLING_TICKS } from './world.js';
 import { rnd, rndInt } from './rng.js';
 import { fx, journal, note } from './actions.js';
 
@@ -94,7 +94,15 @@ function chooseVillagerTask(w, v) {
       return;
     }
   }
-  // 4. curiosity: try to visit the far bank
+  // 4. the children go and play, because there is a playground now
+  if (v.kid) {
+    const pg = project(w, 'play');
+    if (pg && pg.state === 'built' && rnd(w) < 0.4) {
+      const px = pg.x + rndInt(w, pg.w), py = pg.y + rndInt(w, pg.h);
+      if (goTo(w, v, px, py, 1)) { v.task = { kind: 'play' }; return; }
+    }
+  }
+  // 5. curiosity: try to visit the far bank
   if (rnd(w) < 0.16) {
     const spot = CURIOUS[rndInt(w, CURIOUS.length)];
     if (goTo(w, v, spot.x, spot.y, 1)) { v.task = { kind: 'visit' }; return; }
@@ -102,7 +110,7 @@ function chooseVillagerTask(w, v) {
     const bank = nearestBank(w, v);
     if (bank && goTo(w, v, bank.x, bank.y, 0)) { v.task = { kind: 'stare' }; return; }
   }
-  // 5. potter about
+  // 6. potter about
   const t = randomNearbyTile(w, v, 5);
   if (t && goTo(w, v, t.x, t.y)) v.task = { kind: 'wander' };
   else v.wait = 10 + rndInt(w, 20);
@@ -171,6 +179,12 @@ function finishVillagerTask(w, v) {
       v.wait = 15;
       break;
     }
+    case 'play':
+      v.hearts = w.tick;
+      fx(w, 'hearts', v.x, v.y - 0.7);
+      say(w, v, 'say.wheee', 40);
+      v.wait = 40 + rndInt(w, 60);
+      break;
     case 'stare':
       say(w, v, rnd(w) < 0.5 ? 'say.wishAcross' : 'say.niceOverThere', 55);
       v.wait = 45;
@@ -323,6 +337,30 @@ function tickVisitors(w) {
   w.visitors = w.visitors.filter(c => c.life > 0);
 }
 
+/** A planted sapling quietly becomes a tree again while you play. */
+function tickSaplings(w) {
+  if (w.tick % 10 !== 0) return;
+  let grown = false;
+  for (const t of w.trees) {
+    if (t.state !== 'sapling') continue;
+    if (w.tick - (t.plantedTick || 0) < SAPLING_TICKS) continue;
+    // never close a tile somebody is standing on
+    const busy = w.villagers.some(v => Math.floor(v.x) === t.x && Math.floor(v.y) === t.y) ||
+                 w.sheep.some(sh => Math.floor(sh.x) === t.x && Math.floor(sh.y) === t.y);
+    if (busy) continue;
+    t.state = 'standing';
+    t.grownTick = w.tick;
+    grown = true;
+    fx(w, 'sparkle', t.x + 0.5, t.y + 0.5);
+    note(w, 'grown_' + t.id, '🌳', 'notice.treeGrown', null, 'calm');
+  }
+  if (grown) {
+    rebuildBlocked(w);
+    for (const v of w.villagers) v.path = [];
+    for (const sh of w.sheep) sh.path = [];
+  }
+}
+
 function tickPlaces(w) {
   if (w.tick % 300 === 0) for (const b of w.stones) if (b.count < 6) b.count++;
   for (const b of w.buildings) {
@@ -344,6 +382,7 @@ export function tick(w) {
   for (const v of w.villagers) tickVillager(w, v);
   for (const s of w.sheep) tickSheep(w, s);
   tickPlots(w);
+  tickSaplings(w);
   tickVisitors(w);
   tickPlaces(w);
   pruneFx(w);

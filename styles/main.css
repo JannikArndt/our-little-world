@@ -322,6 +322,42 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
   font-size: 12px; font-weight: 700; white-space: nowrap;
 }
 .step.done .s-txt { color: var(--ink-soft); }
+/* why a step is ticked: 2/3 🪨 rather than a bare tick */
+.step .s-count {
+  -webkit-box-flex: 0; -ms-flex: none; flex: none;
+  margin-left: 8px; padding: 2px 8px; border-radius: 999px;
+  background: #fff3d8; color: #7a5c1e;
+  font-size: 14px; font-weight: 700; white-space: nowrap;
+}
+.step .s-count b { font-size: 15px; }
+.step .s-count.ok { background: #e6f2de; color: #3f6a34; }
+
+/* whoever the card is talking about */
+.guide-who {
+  display: -webkit-box; display: -ms-flexbox; display: flex;
+  -webkit-box-align: center; -ms-flex-align: center; align-items: center;
+  margin: 8px 2px 2px; padding: 6px 12px 6px 6px;
+  background: #fffdf8; border: 2px solid var(--line); border-radius: 16px;
+}
+.guide-who .who-face { width: 64px; height: 64px; -webkit-box-flex: 0; -ms-flex: none; flex: none; }
+.guide-who .who-name { margin-left: 10px; font-weight: 800; font-size: 19px; }
+
+/* the changelog, reached from the history */
+.whats-new {
+  display: block; width: 100%; margin: 10px 0 0; padding: 10px;
+  background: none; border: 0; border-top: 2px dashed var(--line);
+  color: var(--ink-soft); font: inherit; font-size: 14px; font-weight: 700;
+  text-align: center; -webkit-appearance: none; appearance: none;
+}
+.whats-new:active { color: var(--ink); }
+.log-v { margin: 12px 2px 2px; }
+.log-v b { font-size: 17px; }
+.log-date { margin-left: 8px; color: var(--ink-soft); font-size: 13px; }
+.log-line {
+  margin: 6px 2px; padding: 8px 12px;
+  background: #fffdf8; border: 2px solid var(--line); border-radius: 12px;
+  font-size: 15px; line-height: 1.35;
+}
 
 .cost { margin: 10px 4px 0; }
 .cost-row {

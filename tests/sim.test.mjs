@@ -178,8 +178,8 @@ test('a play block ends by itself and nothing is lost', () => {
   run(w, 4);
   assert.equal(w.block.active, false);
   assert.ok(w.block.endedAt > 0);
-  assert.equal(w.villagers.length, 4, 'the world is still all there');
-  assert.equal(w.buildings.length, 4);
+  assert.equal(w.villagers.length, 6, 'the world is still all there');
+  assert.equal(w.buildings.length, 6);
 });
 
 test('the world stops handing out new problems near the end of a block', () => {
@@ -215,7 +215,7 @@ test('nothing decays while nobody is playing', () => {
 test('the people who already live somewhere are holding their beds', () => {
   const w = createWorld(2024);
   const taken = w.buildings.reduce((n, b) => n + (b.residents ? b.residents.length : 0), 0);
-  assert.equal(taken, 3);
+  assert.equal(taken, 5, 'both families, children included, fill their beds');
   assert.equal(freeBed(w), null, 'there is no spare bed at the start');
   run(w, BLOCK_TICKS);
   assert.equal(w.villagers.filter(v => !v.homeId).length, 1,

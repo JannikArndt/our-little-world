@@ -4,9 +4,9 @@ import { Session } from './net/session.js';
 import { LocalTransport, WsTransport, SoloTransport } from './net/transport.js';
 import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
-import { installInput, renderModeBar, closeBubble } from './ui/interact.js';
+import { installInput, renderModeBar, closeBubble, buildProject } from './ui/interact.js';
 import { openPanel, message, closePanel } from './ui/overlay.js';
-import { ROLE, otherRole, byId, roleName } from './core/world.js';
+import { ROLE, otherRole, byId, roleName, can } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
 import { rememberRole, recallRole } from './core/persist.js';
@@ -15,6 +15,7 @@ import { openSawmill, openMill } from './minigames/sawmill.js';
 import { openBridge, openRepair } from './minigames/bridge.js';
 import { openHouse } from './minigames/house.js';
 import { openCare } from './minigames/care.js';
+import { openFish } from './minigames/fish.js';
 
 const qs = new URLSearchParams(location.search);
 
@@ -139,10 +140,15 @@ async function startGame(chosenRole, room) {
       renderModeBar(game);
     },
 
-    look(tx, ty, zoom) {
+    spotlight: null,
+
+    look(tx, ty, zoom, exact) {
       renderer.cam.x = tx * TILE;
       renderer.cam.y = ty * TILE;
-      if (zoom) { renderer.cam.zoom = Math.max(zoom, renderer.cam.zoom); renderer.userZoom = true; }
+      if (zoom) {
+        renderer.cam.zoom = exact ? zoom : Math.max(zoom, renderer.cam.zoom);
+        renderer.userZoom = true;
+      }
       renderer.clampCamera();
     },
 
@@ -155,21 +161,47 @@ async function startGame(chosenRole, room) {
       hud.last = {};
     },
 
-    /** Take us to whatever the guide is talking about. */
-    showMe(id) {
+    /**
+     * Take us to whatever the guide is talking about — all of it at once, and
+     * with a ring around whoever was named, so a name is never just a name.
+     */
+    showMe(problem, maxZoom) {
+      const pts = (problem && problem.points) || [];
+      game.spotlight = null;
+      if (!pts.length) { renderer.userZoom = false; renderer.resize(); return; }
+
+      let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+      for (const p of pts) {
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[1] < minY) minY = p[1];
+        if (p[1] > maxY) maxY = p[1];
+      }
+      // everything named, plus room to see what is around it
+      const spanX = (maxX - minX) + 8, spanY = (maxY - minY) + 6;
+      const vw = renderer.view.w || 640, vh = renderer.view.h || 480;
+      const fits = Math.min(vw / (spanX * TILE), vh / (spanY * TILE)) / (renderer.fit || 1);
+      game.look((minX + maxX) / 2, (minY + maxY) / 2,
+                Math.max(1, Math.min(maxZoom || 2.2, fits)), true);
+
+      if (problem.subject) {
+        game.spotlight = {
+          kind: problem.subject.kind, id: problem.subject.id,
+          r: problem.subject.kind === 'sheep' ? 20 : 17,
+          until: Date.now() + 25000,
+        };
+      }
+    },
+
+    /** Where the ring is right now — people walk about while you read. */
+    spotlightAt() {
+      const sp = game.spotlight;
+      if (!sp) return null;
+      if (Date.now() > sp.until) { game.spotlight = null; return null; }
       const w = game.world;
-      const s = w.bridge.site;
-      const at = {
-        bridge_broken: () => [(s.x0 + s.x1) / 2 + 0.5, s.row + 1],
-        no_bridge: () => [(s.x0 + s.x1) / 2 + 0.5, s.row + 1],
-        homeless: () => { const b = w.buildings.find(b => b.state === 'site'); return b ? [b.x + 1.5, b.y + 1] : null; },
-        hungry: () => { const p = w.plots[0]; return p ? [p.x + 1, p.y + 1] : [w.larder.x, w.larder.y]; },
-        wheat_ready: () => { const p = w.plots.find(p => p.state === 'ripe'); return p ? [p.x + 1, p.y + 1] : null; },
-        sheep: () => { const sh = w.sheep.find(x => x.mood !== 'ok') || w.sheep[0]; return [sh.x, sh.y]; },
-      }[id];
-      const at2 = at ? at() : null;
-      if (at2) game.look(at2[0], at2[1], 2);
-      else { renderer.userZoom = false; renderer.resize(); }
+      const o = sp.kind === 'sheep' ? byId(w.sheep, sp.id) : byId(w.villagers, sp.id);
+      if (!o) { game.spotlight = null; return null; }
+      return { x: o.x, y: o.y, r: sp.r };
     },
 
     pointAtSite() {
@@ -196,6 +228,28 @@ async function startGame(chosenRole, room) {
 
     goToAsk(a) {
       const w = game.world;
+      // some asks are about one particular thing rather than a whole trade
+      const target = a.targetId ? byId(w.buildings, a.targetId) : null;
+      if (target && target.type === 'boat') {
+        game.look(target.x + target.w, target.y + 0.5, 2);
+        if (target.state === 'plan') { if (can(w, game.role, 'bridge')) buildProject(game, 'boat'); else message(tr('teach.cannot')); }
+        else if (can(w, game.role, 'farm')) openFish(game, target);
+        else message(tr('teach.cannot'));
+        return;
+      }
+      if (target && target.type === 'play') {
+        game.look(target.x + target.w / 2, target.y + target.h / 2, 2);
+        if (can(w, game.role, 'house')) buildProject(game, 'play');
+        else message(tr('teach.cannot'));
+        return;
+      }
+      if (a.cap === 'farm' && a.targetId && byId(w.trees, a.targetId)) {
+        const t = byId(w.trees, a.targetId);
+        game.look(t.x + 0.5, t.y + 0.5, 2);
+        if (!can(w, game.role, 'farm')) { message(tr('teach.cannot')); return; }
+        if (game.dispatch({ type: 'tree.plant', role: game.role, treeId: t.id })) message(tr('msg.planted'));
+        return;
+      }
       const open = {
         fell: () => { const t = byId(w.trees, a.targetId); if (t && t.state === 'standing') { game.look(t.x, t.y, 2); openChop(game, t); } },
         saw: () => openSawmill(game),
@@ -278,6 +332,7 @@ async function startGame(chosenRole, room) {
       renderer.render(w, t, {
         overlay: game.mode && game.mode.overlay ? (ctx) => game.mode.overlay(ctx) : null,
         highlight: game.mode && game.mode.highlight ? game.mode.highlight() : null,
+        spotlight: game.spotlightAt(),
       });
       if ((frame++ % 5) === 0) { hud.update(); beat(); }
       if (game.mode && (frame % 5) === 0) renderModeBar(game);

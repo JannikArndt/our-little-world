@@ -4,7 +4,7 @@
 // browsers share one world, and what lets the tests be meaningful.
 
 import { T, inBounds, setTile, tileAt, rebuildBlocked } from './grid.js';
-import { addBuilding, byId, newId, CAPS, capName, BLOCK_TICKS } from './world.js';
+import { addBuilding, byId, newId, CAPS, capName, BLOCK_TICKS, PROJECT } from './world.js';
 
 /* ---- small helpers -------------------------------------------------- */
 
@@ -179,6 +179,66 @@ export function applyAction(w, a) {
       tally(w, a.role, 'house');
       journal(w, '🏠', 'j.house', { n: a.beds });
       clearAsk(w, 'house', a.siteId);
+      return true;
+    }
+
+    /* ---------------- the fishing boat ---------------- */
+    case 'boat.build': {
+      const plan = byId(w.buildings, 'plan_boat');
+      if (!plan || plan.state !== 'plan') return false;
+      if (!pay(w, a.role, PROJECT.boat)) return false;
+      plan.state = 'built';
+      plan.builtTick = w.tick;
+      plan.fishedTick = -9999;
+      rebuildBlocked(w);
+      fx(w, 'sparkle', plan.x + plan.w, plan.y + 0.5);
+      tally(w, a.role, 'boat');
+      journal(w, '⛵', 'j.boat');
+      clearAsk(w, 'bridge', 'plan_boat');
+      return true;
+    }
+    case 'fish.catch': {
+      const boat = byId(w.buildings, 'plan_boat');
+      if (!boat || boat.state !== 'built') return false;
+      const n = Math.max(0, Math.min(3, a.n | 0));
+      boat.fishedTick = w.tick;
+      if (n > 0) {
+        gain(w, a.role, 'food', n);
+        fx(w, 'float', boat.x + boat.w, boat.y - 0.2, '+' + n + ' 🐟');
+        journal(w, '🎣', 'j.fished', { n: n });
+      }
+      tally(w, a.role, 'fish');
+      clearAsk(w, 'farm', 'plan_boat');
+      return true;
+    }
+
+    /* ---------------- the playground ---------------- */
+    case 'play.build': {
+      const plan = byId(w.buildings, 'plan_play');
+      if (!plan || plan.state !== 'plan') return false;
+      if (!pay(w, a.role, PROJECT.play)) return false;
+      plan.state = 'built';
+      plan.builtTick = w.tick;
+      rebuildBlocked(w);
+      fx(w, 'sparkle', plan.x + plan.w / 2, plan.y + plan.h / 2);
+      for (const v of w.villagers) if (v.kid) { v.path = []; v.task = null; v.wait = 0; }
+      tally(w, a.role, 'play');
+      journal(w, '🛝', 'j.play');
+      clearAsk(w, 'house', 'plan_play');
+      return true;
+    }
+
+    /* ---------------- putting the forest back ---------------- */
+    case 'tree.plant': {
+      const t = byId(w.trees, a.treeId);
+      if (!t || t.state !== 'stump') return false;
+      t.state = 'sapling';
+      t.plantedTick = w.tick;
+      t.kind = 1 + (Math.abs((t.x * 7 + t.y * 13)) % 3);
+      fx(w, 'float', t.x + 0.5, t.y, '🌱');
+      tally(w, a.role, 'plant');
+      journal(w, '🌱', 'j.planted');
+      clearAsk(w, 'farm', a.treeId);
       return true;
     }
 

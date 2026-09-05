@@ -64,12 +64,17 @@ export function nextTimeHint(w) {
   const noBed = w.villagers.filter(v => !v.homeId).length;
   const sites = w.buildings.filter(b => b.state === 'site').length;
   const woolly = w.sheep.filter(s => s.fluff > 70).length;
+  const stumps = w.trees.filter(t => t.state === 'stump').length;
+  const plan = (type) => w.buildings.some(b => b.type === type && b.state === 'plan');
 
   if (ripe) return { icon: '🌾', key: 'next.ripe' };
   if (growing) return { icon: '🌱', key: 'next.growing' };
   if (noBed) return { icon: '🛏️', key: 'next.noBed' };
   if (!w.bridge.built) return { icon: '🌉', key: 'next.noBridge' };
   if (sites) return { icon: '📐', key: 'next.sites' };
+  if (stumps) return { icon: '🌱', key: 'next.stumps' };
+  if (plan('boat')) return { icon: '⛵', key: 'next.boat' };
+  if (plan('play')) return { icon: '🛝', key: 'next.play' };
   if (woolly) return { icon: '🧶', key: 'next.woolly' };
   return { icon: '🌤️', key: 'next.calm' };
 }

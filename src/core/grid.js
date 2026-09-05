@@ -49,7 +49,8 @@ export function rebuildBlocked(world) {
   const b = world.blocked;
   for (let i = 0; i < b.length; i++) b[i] = 0;
   for (const bl of world.buildings) {
-    if (bl.state === 'site') continue;             // an empty plot can be walked over
+    if (bl.state !== 'built') continue;            // a plot or a plan can be walked over
+    if (bl.walkable) continue;                     // a jetty and a playground are for walking on
     for (let y = bl.y; y < bl.y + bl.h; y++)
       for (let x = bl.x; x < bl.x + bl.w; x++)
         if (inBounds(x, y)) b[idx(x, y)] = 1;

@@ -1,12 +1,14 @@
 // The frame around the world: what we have, what time it is, what the world
 // is trying to tell us, and how a play block finishes.
 
-import { el, openPanel, message, messages, clearMessages } from './overlay.js';
+import { el, openPanel, message, messages, clearMessages, loop } from './overlay.js';
 import { openGive } from './share.js';
-import { RESOURCES, ROLE, CAPS, capName, roleName, blockProgress } from '../core/world.js';
-import { tr, trn } from '../core/i18n.js';
+import { RESOURCES, ROLE, CAPS, byId, capName, roleName, blockProgress } from '../core/world.js';
+import { tr, trn, currentLang } from '../core/i18n.js';
 import { nextTimeHint } from '../core/events.js';
 import { currentProblem } from '../core/guide.js';
+import { changelog, VERSION } from '../core/changelog.js';
+import { drawPortrait } from '../render/art.js';
 
 const PHASE = [
   [0.00, 'time.earlyMorning'],
@@ -163,6 +165,11 @@ export class Hud {
       onClose: opts && opts.onClose,
     });
 
+    // Nobody is named without being shown: the card draws them, and the world
+    // behind it is already looking at them when the card goes away.
+    if (pr.subject) this.addPortrait(p, pr.subject);
+    g.showMe(pr);
+
     const list = el('div', 'steps');
     let n = 0;
     for (const s of pr.steps) {
@@ -171,6 +178,13 @@ export class Hud {
       row.appendChild(el('span', 's-n', String(n)));
       row.appendChild(el('span', 's-ico', s.icon));
       row.appendChild(el('span', 's-txt', s.text));
+      // A tick with no number explains nothing. 2/3 🪨 explains itself.
+      if (s.count) {
+        const c = el('span', 's-count' + (s.done ? ' ok' : ''));
+        c.appendChild(el('b', '', s.count.have + '/' + s.count.need));
+        c.appendChild(document.createTextNode(' ' + s.count.icon));
+        row.appendChild(c);
+      }
       if (s.done) row.appendChild(el('span', 's-tick', '✓'));
       row.appendChild(el('span', 's-who', s.who));
       list.appendChild(row);
@@ -179,10 +193,48 @@ export class Hud {
 
     const r = p.row();
     r.appendChild(p.button(tr(first ? 'ui.offWeGo' : 'ui.gotIt'), 'go', () => p.close()));
-    if (!first && pr.id !== 'calm') {
-      r.appendChild(p.button(tr('ui.where'), 'soft', () => { p.close(); g.showMe(pr.id); }));
+    if (pr.points && pr.points.length) {
+      r.appendChild(p.button(tr('ui.where'), 'soft', () => { p.close(); g.showMe(pr, 2.4); }));
     }
     return p;
+  }
+
+  /** The face of whoever the card is about, drawn the way the world draws them. */
+  addPortrait(p, subject) {
+    const w = this.game.world;
+    const o = subject.kind === 'sheep' ? byId(w.sheep, subject.id) : byId(w.villagers, subject.id);
+    if (!o) return;
+    const card = el('div', 'guide-who');
+    const cv = el('canvas', 'who-face');
+    cv.width = 96; cv.height = 96;
+    const ctx = cv.getContext('2d');
+    card.appendChild(cv);
+    const name = el('div', 'who-name', o.name);
+    card.appendChild(name);
+    p.body.appendChild(card);
+
+    // room above the head for whatever they are thinking about
+    const sheep = subject.kind === 'sheep';
+    const stop = loop((t) => {
+      if (!document.body.contains(cv)) { stop(); return; }
+      const live = sheep ? byId(w.sheep, subject.id) : byId(w.villagers, subject.id);
+      ctx.clearRect(0, 0, 96, 96);
+      drawPortrait(ctx, subject.kind, live || o, sheep ? 44 : 40, sheep ? 74 : 84, sheep ? 2.9 : 2.0, t, w.tick);
+    });
+  }
+
+  /** Tucked under the history, for whoever wonders what changed. */
+  showChangelog() {
+    const p = openPanel({ title: tr('log.title'), lead: tr('log.lead') });
+    for (const e of changelog(currentLang())) {
+      const head = el('div', 'log-v');
+      head.appendChild(el('b', '', 'v' + e.v));
+      head.appendChild(el('span', 'log-date', e.date));
+      p.body.appendChild(head);
+      for (const line of e.lines) p.body.appendChild(el('p', 'log-line', line));
+    }
+    const r = p.row();
+    r.appendChild(p.button(tr('ui.close'), 'soft', () => { p.close(); this.showHistory(); }));
   }
 
   /** Everything the world has said, newest first. */
@@ -200,6 +252,9 @@ export class Hud {
     }
     const r = p.row();
     r.appendChild(p.button(tr('ui.close'), 'soft', () => p.close()));
+    const nw = el('button', 'whats-new', tr('hist.whatsNew', { v: VERSION }));
+    nw.addEventListener('click', () => { p.close(); this.showChangelog(); });
+    p.panel.appendChild(nw);
   }
 
   /* ---------------- what each of us knows ---------------- */
@@ -329,5 +384,9 @@ export function summarise(w) {
   add('👐', 'sum.taught');
   add('👨‍👩‍👧', 'sum.family');
   add('🦌', 'sum.deer');
+  add('⛵', 'sum.boat');
+  add('🛝', 'sum.play');
+  add('🎣', 'sum.fished', null, { n: num['🎣'] });
+  add('🌱', 'sum.planted', n['🌱'], { n: n['🌱'] });
   return out;
 }

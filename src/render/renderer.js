@@ -300,12 +300,18 @@ export class Renderer {
       const o = th.o;
       switch (th.kind) {
         case 'building':
-          if (o.state === 'site') art.drawSite(ctx, o, time);
+          if (o.type === 'boat') art.drawLanding(ctx, o, time, w.tick);
+          else if (o.type === 'play') {
+            if (o.state === 'built') art.drawPlayground(ctx, o, time, w.tick);
+            else art.drawPlan(ctx, o, time, '🛝');
+          }
+          else if (o.state === 'site') art.drawSite(ctx, o, time);
           else if (o.type === 'workshop') art.drawWorkshop(ctx, o, time, w.tick);
           else art.drawHouse(ctx, o, time, w.tick);
           break;
         case 'tree': {
           if (o.state === 'standing') art.drawTree(ctx, o, time);
+          else if (o.state === 'sapling') art.drawSapling(ctx, o, time);
           else {
             const age = w.tick - (o.fellTick != null ? o.fellTick : -999);
             if (age < 18) { art.drawStump(ctx, o); art.drawFallingTree(ctx, o, age / 18); }
@@ -366,6 +372,17 @@ export class Renderer {
     if (extra && extra.highlight) {
       const h = extra.highlight;
       ring(h.x * TILE, h.y * TILE, h.r || 20, 'rgba(255,255,255,.95)');
+    }
+    if (extra && extra.spotlight) {
+      // who the guide is talking about: a slower, wider ring than the rest
+      const sp = extra.spotlight;
+      const beat = 0.45 + 0.35 * Math.sin(time * 0.0022);
+      ctx.strokeStyle = 'rgba(242,193,78,.95)'; ctx.lineWidth = 3;
+      ctx.globalAlpha = beat;
+      ctx.beginPath();
+      ctx.ellipse(sp.x * TILE, sp.y * TILE + 3, sp.r || 22, (sp.r || 22) * 0.55, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
     }
   }
 

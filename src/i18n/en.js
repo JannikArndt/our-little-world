@@ -461,7 +461,7 @@ export const en = {
   'guide.step.lookAfter': 'Tap {name} and look after her',
   'guide.calm.title': 'Make something, just because!',
   'guide.calm.why': 'Everybody has what they need. A good moment to build something for the fun of it.',
-  'guide.step.orFish': 'Or take the boat out and catch supper',
+  'guide.step.orFish': 'Quickest: take the boat out and catch supper',
   'guide.boat.title': 'Build a fishing boat!',
   'guide.boat.why': 'There are fish in the river and an old landing nobody uses. A boat means supper is not always bread.',
   'guide.step.boatPlanks': 'Saw planks for the hull',

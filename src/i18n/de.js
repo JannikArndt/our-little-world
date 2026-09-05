@@ -461,7 +461,7 @@ export const de = {
   'guide.step.lookAfter': '{name} antippen und versorgen',
   'guide.calm.title': 'Baut etwas, einfach so!',
   'guide.calm.why': 'Alle haben, was sie brauchen. Ein guter Moment, um zum Spaß etwas zu bauen.',
-  'guide.step.orFish': 'Oder mit dem Boot rausfahren und Abendessen fangen',
+  'guide.step.orFish': 'Am schnellsten: mit dem Boot rausfahren und Abendessen fangen',
   'guide.boat.title': 'Baut ein Fischerboot!',
   'guide.boat.why': 'Im Fluss sind Fische, und der alte Anleger steht ungenutzt da. Mit einem Boot gibt es nicht immer nur Brot.',
   'guide.step.boatPlanks': 'Bretter für den Rumpf sägen',

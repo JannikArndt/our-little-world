@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createWorld, serialize, deserialize, BLOCK_TICKS, freeBed } from '../src/core/world.js';
+import { SCENARIOS } from '../src/core/content.js';
 import { applyAction } from '../src/core/actions.js';
 import { tick } from '../src/core/sim.js';
 import { maybeEvent } from '../src/core/events.js';
@@ -178,8 +179,10 @@ test('a play block ends by itself and nothing is lost', () => {
   run(w, 4);
   assert.equal(w.block.active, false);
   assert.ok(w.block.endedAt > 0);
-  assert.equal(w.villagers.length, 6, 'the world is still all there');
-  assert.equal(w.buildings.length, 6);
+  const scen = SCENARIOS.valley;
+  assert.equal(w.villagers.length, scen.villagers.length, 'the world is still all there');
+  assert.equal(w.buildings.length,
+    scen.houses.length + scen.sites.length + scen.works.length + scen.plans.length);
 });
 
 test('the world stops handing out new problems near the end of a block', () => {

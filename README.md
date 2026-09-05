@@ -106,18 +106,16 @@ Then add the domain, enable HTTPS, and force it.
 
 ### Where the world lives
 
-The relay only passes messages along. The world itself lives in the browsers:
-whoever connects first runs the clock and reads their own `localStorage`; the
+The world lives in the browsers: whoever connects first runs the clock, and the
 other player receives that world and follows it.
 
-So the same person should open the page first each time — otherwise a device
-with no save (or an old one) can become the authority and the world that
-appears is the one that device remembers. Nothing is lost while both are
-playing; the risk is only in who starts.
-
-Keeping the world on the server instead would remove that ordering rule: the
-relay would hold the last snapshot per room and hand it to whoever arrives.
-`Session` is already shaped for it — see **Multiplayer** below.
+The relay now keeps one thing of its own — the last snapshot it saw in each
+room, for half a day — and hands it to whoever joins next. So it no longer
+matters who opens the page first: when nobody is running the clock, a browser
+takes whichever world has got furthest, the relay's or its own save, and carries
+on from there. That is the first half of holding worlds on the server properly;
+the second half is running the clock there too, which `Session` is already
+shaped for — see **Multiplayer** below.
 
 ## English and German
 
@@ -175,6 +173,9 @@ Tapping any of the world's notices opens the same card.
 | 🛤️ **Lay a road** | Drag across the ground. One stone for every two steps, counted as you drag. People immediately start using it. |
 | 🌱 **Work the field** | Sow, then carry water. The can holds three plots and the field has six. |
 | 🌀 **Run the mill** | Turn the stone with your finger, then bake. Two wheat, three loaves. |
+| 🪣 **Dig a well** | Until there is one, everybody drinks from the river — and sooner or later somebody has a poorly tummy: a slow walk home and a sit down, nothing worse. A well is clean water, and a trough the sheep find on their own. |
+| 🚪 **Build the little house** | The one at the bottom of the garden. What used to end up in the river stops doing so, which is why the water was not safe and why the fishing was poor. Either it or the well settles the tummies; both is a tidy village. |
+| 🚧 **Fence the wheat field** | Six planks of posts and rails with a gap to walk through. The sheep keep to the meadow — unless you take one in yourself, which still works. |
 | ⛵ **Build the fishing boat** | Four planks and a stone at the old landing on the west bank. Then somebody has to take her out. |
 | 🎣 **Go fishing** | Cast, watch the float, and tap the moment it goes under. Too early and the line comes up empty. Three casts, then row back — the fish go quiet for a while. |
 | 🛝 **Build the playground** | A swing, a slide and a sandpit on the green by the water. Lina and Sam go and use it, which is the whole point of it. |
@@ -288,9 +289,11 @@ It also checks that nothing overflows sideways on an iPad, an iPhone and a Mac.
 The world is described as data and brought up to date on load, so adding to it
 does not cost anybody their village.
 
-- **A new project, villager, plan or scenario** is an entry in
+- **A new project, villager, plan, role or scenario** is an entry in
   `src/core/content.js`. `ensureWorld()` runs on every load and puts anything
   new into worlds that were saved before it existed. No schema bump, no reset.
+  A project row carries everything: what it costs, who knows how to make it,
+  what to call it and what it changes — one action builds all of them.
 - **A new task** is one entry in `CONCERNS` in `src/core/guide.js` — an `id`, a
   `when(world)` and a card — placed in the order it matters. The card says what
   to do, names who it is about, and counts what can be counted.
@@ -302,9 +305,22 @@ does not cost anybody their village.
   the network untouched.
 
 A scenario is a recipe — which terrain to paint, what stands on it, who lives
-there, which projects are marked out — and a world remembers which one it was
-made from in `world.scenario`. A second scenario is a second entry in the table:
-an island where the boat comes first, a winter valley, a hill farm.
+there, which projects are marked out, **which roles are at the table** and
+**which parts of the map are there yet** — and a world remembers which one it
+was made from in `world.scenario`. A second scenario is a second entry in the
+table: an island where the boat comes first, a winter valley, a hill farm.
+
+Two things that are ready but not used yet, so that the world can grow without
+another rebuild:
+
+- **A third role.** `ROLES` is a table and `world.players` is built from it, so
+  a Cook — bread, the larder, something warm out of what the other two bring
+  in — is one entry plus a line in a scenario's `roles`. The seat appears in
+  worlds that were saved before the role existed.
+- **A map that opens up.** A scenario's `regions` are named boxes, each either
+  here or not yet. A closed one is baked into the blocked overlay (so it costs
+  the pathfinder nothing) and drawn as soft weather rather than a wall;
+  `{ type: 'region.open' }` is how the hills stop being a rumour.
 
 Only a world saved by a *newer* build is refused, and even then it is kept aside
 in `olw.world.<room>.kept` rather than written over.

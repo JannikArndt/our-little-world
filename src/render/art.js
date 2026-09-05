@@ -158,7 +158,7 @@ export function drawLog(ctx, l) {
 /* people                                                             */
 /* ------------------------------------------------------------------ */
 
-const MOOD_GLYPH = { hungry: '🍞', sad: '🛏️' };
+const MOOD_GLYPH = { hungry: '🍞', sad: '🛏️', poorly: '🤒' };
 
 export function drawVillager(ctx, v, time, tick) {
   const x = v.x * TILE, y = v.y * TILE;
@@ -206,7 +206,7 @@ export function drawVillager(ctx, v, time, tick) {
   ctx.strokeStyle = C.ink; ctx.lineWidth = 0.8;
   ctx.beginPath();
   if (v.mood === 'happy') ctx.arc(0.5 * f, -10.8, 1.8, 0.15 * Math.PI, 0.85 * Math.PI);
-  else if (v.mood === 'hungry' || v.mood === 'sad') ctx.arc(0.5 * f, -9.4, 1.8, 1.15 * Math.PI, 1.85 * Math.PI);
+  else if (v.mood === 'hungry' || v.mood === 'sad' || v.mood === 'poorly') ctx.arc(0.5 * f, -9.4, 1.8, 1.15 * Math.PI, 1.85 * Math.PI);
   else { ctx.moveTo(-1 + 0.5 * f, -10.6); ctx.lineTo(1.8 + 0.5 * f, -10.6); }
   ctx.stroke();
   ctx.restore();
@@ -501,6 +501,105 @@ export function drawPlayground(ctx, b, time, tick) {
   ctx.beginPath(); ctx.moveTo(-3, 0); ctx.lineTo(-3, 13); ctx.moveTo(3, 0); ctx.lineTo(3, 13); ctx.stroke();
   ctx.fillStyle = '#c8783c'; rr(ctx, -5.5, 13, 11, 2.8, 1.2); ctx.fill();
   ctx.restore();
+  ctx.restore();
+}
+
+/** Clean water, a bucket on a rope, and a trough the sheep have found. */
+export function drawWell(ctx, b, time, tick) {
+  const x = b.x * TILE + b.w * TILE / 2, y = b.y * TILE + b.h * TILE;
+  const grow = b.builtTick != null && tick - b.builtTick < 22 ? (tick - b.builtTick) / 22 : 1;
+  const e = grow < 1 ? 1 - Math.pow(1 - grow, 3) : 1;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(1, e);
+  shadow(ctx, 0, -1, 11, 4);
+
+  // the round wall
+  ctx.fillStyle = C.stone;
+  rr(ctx, -10, -13, 20, 13, 4); ctx.fill();
+  ctx.fillStyle = C.stoneDark;
+  for (let i = 0; i < 6; i++) {
+    const px = -9 + (i % 3) * 7, py = -12 + ((i / 3) | 0) * 6;
+    rr(ctx, px, py, 5.4, 4.4, 1.6); ctx.fill();
+  }
+  ctx.fillStyle = '#7fb3cc';                       // the water, a long way down
+  ctx.beginPath(); ctx.ellipse(0, -13, 9, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+
+  // posts and a little roof
+  ctx.strokeStyle = C.woodDark; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-7, -13); ctx.lineTo(-7, -26);
+  ctx.moveTo(7, -13); ctx.lineTo(7, -26);
+  ctx.stroke();
+  ctx.fillStyle = C.roof;
+  ctx.beginPath();
+  ctx.moveTo(-12, -26); ctx.lineTo(0, -33); ctx.lineTo(12, -26);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = C.roofDark;
+  ctx.fillRect(-12, -26, 24, 2);
+
+  // the bucket, swinging a little
+  const sway = Math.sin(time * 0.0016) * 1.4;
+  ctx.strokeStyle = '#8a7a63'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, -25); ctx.lineTo(sway, -19); ctx.stroke();
+  ctx.fillStyle = C.wood;
+  rr(ctx, sway - 3.4, -19, 6.8, 5.4, 1.4); ctx.fill();
+  ctx.restore();
+}
+
+/** The little house at the bottom of the garden. Everybody has one. */
+export function drawPrivy(ctx, b, time, tick) {
+  const x = b.x * TILE + b.w * TILE / 2, y = b.y * TILE + b.h * TILE;
+  const grow = b.builtTick != null && tick - b.builtTick < 22 ? (tick - b.builtTick) / 22 : 1;
+  const e = grow < 1 ? 1 - Math.pow(1 - grow, 3) : 1;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(1, e);
+  shadow(ctx, 0, -1, 9, 3.5);
+
+  ctx.fillStyle = C.woodLite;
+  rr(ctx, -8, -20, 16, 20, 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.14)'; ctx.lineWidth = 1;
+  for (let px = -5; px < 8; px += 4) { ctx.beginPath(); ctx.moveTo(px, -20); ctx.lineTo(px, 0); ctx.stroke(); }
+  ctx.fillStyle = C.roofDark;                       // a plank roof, slightly askew
+  ctx.beginPath();
+  ctx.moveTo(-10, -20); ctx.lineTo(9, -23); ctx.lineTo(10, -20); ctx.lineTo(-9, -17);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = C.wood;                           // the door
+  rr(ctx, -5, -16, 10, 16, 1.5); ctx.fill();
+  ctx.fillStyle = '#6d543a';                        // and the little moon in it
+  ctx.beginPath(); ctx.arc(0, -11, 2.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = C.woodLite;
+  ctx.beginPath(); ctx.arc(1.1, -11.6, 2.4, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+/** Posts and rails round the wheat, with a gap to walk through. */
+export function drawFence(ctx, b, time) {
+  const x0 = b.x * TILE, y0 = b.y * TILE;
+  const x1 = (b.x + b.w) * TILE, y1 = (b.y + b.h) * TILE;
+  const gateY = y0 + (b.h * TILE) / 2;              // the way in, on the near side
+
+  ctx.save();
+  ctx.strokeStyle = '#a9743f'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  const rail = (ax, ay, bx, by) => {
+    ctx.beginPath();
+    ctx.moveTo(ax, ay - 6); ctx.lineTo(bx, by - 6);
+    ctx.moveTo(ax, ay - 11); ctx.lineTo(bx, by - 11);
+    ctx.stroke();
+  };
+  rail(x0, y0, x1, y0);
+  rail(x0, y1, x1, y1);
+  // the sides, minus the gateway
+  rail(x0, y0, x0, gateY - 14);
+  rail(x0, gateY + 14, x0, y1);
+  rail(x1, y0, x1, y1);
+
+  ctx.fillStyle = C.woodDark;
+  const post = (px, py) => { rr(ctx, px - 1.6, py - 15, 3.2, 16, 1.2); ctx.fill(); };
+  for (let px = x0; px <= x1; px += TILE * 2) { post(px, y0); post(px, y1); }
+  for (let py = y0; py <= y1; py += TILE * 2) { post(x0, py); post(x1, py); }
+  post(x0, gateY - 14); post(x0, gateY + 14);
   ctx.restore();
 }
 

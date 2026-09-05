@@ -3,7 +3,11 @@
 
 import { T, COST, GW, GH, tileAt, walkable, inBounds, rebuildBlocked } from './grid.js';
 import { findPath } from './pathfind.js';
-import { byId, freeBed, blockProgress, project, SAPLING_TICKS } from './world.js';
+import {
+  byId, freeBed, blockProgress, project, hasWell, riverClean, fieldFenced,
+  SAPLING_TICKS,
+} from './world.js';
+import { POORLY_TICKS, POORLY_CHANCE } from './content.js';
 import { rnd, rndInt } from './rng.js';
 import { fx, journal, note } from './actions.js';
 
@@ -39,11 +43,21 @@ function advance(w, e, mult) {
   return false;
 }
 
-function goTo(w, e, tx, ty, within) {
-  const p = findPath(w, Math.floor(e.x), Math.floor(e.y), tx, ty, { within: within || 0 });
+function goTo(w, e, tx, ty, within, avoid) {
+  const p = findPath(w, Math.floor(e.x), Math.floor(e.y), tx, ty,
+                     { within: within || 0, avoid: avoid == null ? -1 : avoid });
   if (!p) { e.path = []; return false; }
   e.path = p;
   return true;
+}
+
+/**
+ * A sheep and a fence. She will not cross the wheat to get somewhere else, but
+ * she goes wherever she is taken — including in, if that is where you take her.
+ */
+function sheepAvoid(w, tx, ty) {
+  if (!fieldFenced(w)) return -1;
+  return tileAt(w, tx, ty) === T.FIELD ? -1 : T.FIELD;
 }
 
 function randomNearbyTile(w, e, r) {
@@ -64,6 +78,7 @@ function say(w, e, text, ticks) { e.said = text; e.saidUntil = w.tick + (ticks |
 const CURIOUS = [{ x: 27, y: 8 }, { x: 30, y: 17 }, { x: 24, y: 12 }];
 
 function villagerMood(w, v) {
+  if (v.poorly > 0) return 'poorly';
   if (v.hunger > 72) return 'hungry';
   if (!v.homeId) return 'sad';
   if (w.tick - (v.hearts || -999) < 30) return 'happy';
@@ -72,6 +87,11 @@ function villagerMood(w, v) {
 }
 
 function chooseVillagerTask(w, v) {
+  // 0. a poorly tummy: go home, sit down, and wait for it to pass
+  if (v.poorly > 0 && v.homeId) {
+    const home = byId(w.buildings, v.homeId);
+    if (home && goTo(w, v, home.door.x, home.door.y, 1)) { v.task = { kind: 'rest' }; return; }
+  }
   // 1. hungry, and there is bread in the basket
   if (v.hunger > 62) {
     if (w.larder.food > 0) {
@@ -179,6 +199,10 @@ function finishVillagerTask(w, v) {
       v.wait = 15;
       break;
     }
+    case 'rest':
+      say(w, v, 'say.restingUp', 60);
+      v.wait = 90;
+      break;
     case 'play':
       v.hearts = w.tick;
       fx(w, 'hearts', v.x, v.y - 0.7);
@@ -200,11 +224,12 @@ function finishVillagerTask(w, v) {
 
 function tickVillager(w, v) {
   v.hunger = Math.min(100, v.hunger + 0.012);
+  if (v.poorly > 0) v.poorly--;
   v.mood = villagerMood(w, v);
   if (v.saidUntil && w.tick > v.saidUntil) { v.said = null; v.saidUntil = 0; }
 
   if (v.path && v.path.length) {
-    if (advance(w, v, 1)) finishVillagerTask(w, v);
+    if (advance(w, v, v.poorly > 0 ? 0.6 : 1)) finishVillagerTask(w, v);
     return;
   }
   if (v.wait > 0) { v.wait--; return; }
@@ -223,12 +248,20 @@ function sheepMood(s) {
   return 'ok';
 }
 
-function nearWater(w, s) {
-  const x = Math.floor(s.x), y = Math.floor(s.y);
+/** Somewhere to drink: the river, or the trough beside the well. */
+function drinkAt(w, x, y) {
   for (let dy = -1; dy <= 1; dy++)
     for (let dx = -1; dx <= 1; dx++)
       if (tileAt(w, x + dx, y + dy) === T.WATER) return true;
+  const well = project(w, 'well');
+  if (well && well.state === 'built') {
+    if (Math.abs(x - well.x) <= 1 && Math.abs(y - well.y) <= 1) return true;
+  }
   return false;
+}
+
+function nearWater(w, s) {
+  return drinkAt(w, Math.floor(s.x), Math.floor(s.y));
 }
 
 function tickSheep(w, s) {
@@ -255,7 +288,7 @@ function tickSheep(w, s) {
   if (s.path && s.path.length) { advance(w, s, 0.62); return; }
 
   if (s.led) {
-    const ok = goTo(w, s, s.led.x, s.led.y, 1);
+    const ok = goTo(w, s, s.led.x, s.led.y, 1, sheepAvoid(w, s.led.x, s.led.y));
     if (!ok) {
       // it wants to go, but it cannot get there from here
       s.gaveUp = true;
@@ -276,10 +309,12 @@ function tickSheep(w, s) {
   // a thirsty sheep goes looking for the river by herself
   if (s.thirst > 62) {
     const drink = nearestDrink(w, s);
-    if (drink && goTo(w, s, drink.x, drink.y)) { s.wait = 0; return; }
+    if (drink && goTo(w, s, drink.x, drink.y, 0, sheepAvoid(w, drink.x, drink.y))) { s.wait = 0; return; }
   }
   const t = randomNearbyTile(w, s, 3);
-  if (t && tileAt(w, t.x, t.y) !== T.BRIDGE) goTo(w, s, t.x, t.y);
+  // a fence is a fence: she does not wander into the wheat, or through it
+  const intoField = t && fieldFenced(w) && tileAt(w, t.x, t.y) === T.FIELD;
+  if (t && !intoField && tileAt(w, t.x, t.y) !== T.BRIDGE) goTo(w, s, t.x, t.y, 0, sheepAvoid(w, t.x, t.y));
   s.wait = 20 + rndInt(w, 60);
 }
 
@@ -298,11 +333,7 @@ function nearestDrink(w, s) {
         const x = sx + dx, y = sy + dy;
         if (!inBounds(x, y) || !walkable(w, x, y)) continue;
         if (tileAt(w, x, y) === T.BRIDGE) continue;
-        let touches = false;
-        for (let a = -1; a <= 1 && !touches; a++)
-          for (let b = -1; b <= 1; b++)
-            if (tileAt(w, x + a, y + b) === T.WATER) { touches = true; break; }
-        if (!touches) continue;
+        if (!drinkAt(w, x, y)) continue;
         const d = dx * dx + dy * dy;
         if (d < bd) { bd = d; best = { x, y }; }
       }
@@ -335,6 +366,35 @@ function tickVisitors(w) {
     c.wait = 20 + rndInt(w, 50);
   }
   w.visitors = w.visitors.filter(c => c.life > 0);
+}
+
+/**
+ * Where the water comes from. Everybody drinks; if there is no well the water
+ * comes out of the river, and if there is no little house at the bottom of the
+ * garden the river is not what it should be. Then somebody, sooner or later,
+ * gets a poorly tummy: a slow walk home, a sit down, and it passes. Nobody is
+ * ever really ill here — it is a reason to build something, not a punishment.
+ */
+function tickWater(w) {
+  if (w.tick % 100 !== 0) return;
+  if (!w.block.active || blockProgress(w) > 0.8) return;
+  if (w.tick < 1500) return;                       // never on a first quiet morning
+  if (hasWell(w) || riverClean(w)) {
+    w.notices = w.notices.filter(n => n.id !== 'poorly');
+    return;
+  }
+  if (w.villagers.some(v => v.poorly > 0)) return;  // one at a time, and only just
+  if (rnd(w) > POORLY_CHANCE) return;
+
+  const grown = w.villagers.filter(v => !v.kid);
+  if (!grown.length) return;
+  const who = grown[rndInt(w, grown.length)];
+  who.poorly = POORLY_TICKS;
+  who.path = [];
+  who.task = null;
+  who.wait = 0;
+  fx(w, 'float', who.x, who.y - 0.8, '🤒');
+  note(w, 'poorly', '🤒', 'notice.poorly', { name: who.name }, 'ask');
 }
 
 /** A planted sapling quietly becomes a tree again while you play. */
@@ -382,6 +442,7 @@ export function tick(w) {
   for (const v of w.villagers) tickVillager(w, v);
   for (const s of w.sheep) tickSheep(w, s);
   tickPlots(w);
+  tickWater(w);
   tickSaplings(w);
   tickVisitors(w);
   tickPlaces(w);
@@ -400,6 +461,7 @@ export function tick(w) {
     if (noBed.length && !freeBed(w))
       note(w, 'homeless', '🛏️', 'notice.homeless', { name: noBed[0].name }, 'ask');
 
+    if (!w.villagers.some(v => v.poorly > 0)) w.notices = w.notices.filter(n => n.id !== 'poorly');
     if (!w.plots.some(p => p.state === 'ripe')) w.notices = w.notices.filter(n => n.id !== 'wheat_ready');
     if (!noBed.length) w.notices = w.notices.filter(n => n.id !== 'homeless');
     if (!w.buildings.some(b => b.id === 'site_east' && b.state === 'site'))

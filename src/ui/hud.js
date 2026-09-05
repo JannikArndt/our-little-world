@@ -391,6 +391,9 @@ export function summarise(w) {
   add('🦌', 'sum.deer');
   add('⛵', 'sum.boat');
   add('🛝', 'sum.play');
+  add('🪣', 'sum.well');
+  add('🚪', 'sum.privy');
+  add('🚧', 'sum.fence');
   add('🎣', 'sum.fished', null, { n: num['🎣'] });
   add('🌱', 'sum.planted', n['🌱'], { n: n['🌱'] });
   return out;

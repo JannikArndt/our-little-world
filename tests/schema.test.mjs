@@ -2,10 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  createWorld, serialize, deserialize, ensureWorld, SCHEMA, freeBed, project,
+  createWorld, serialize, deserialize, ensureWorld, SCHEMA, freeBed, project, otherRoles,
 } from '../src/core/world.js';
+import { findPath } from '../src/core/pathfind.js';
+import { walkable } from '../src/core/grid.js';
 import { MIGRATIONS, runMigrations } from '../src/core/migrate.js';
-import { SCENARIOS, DEFAULT_SCENARIO } from '../src/core/content.js';
+import { SCENARIOS, DEFAULT_SCENARIO, ROLES } from '../src/core/content.js';
 import { applyAction } from '../src/core/actions.js';
 import { tick } from '../src/core/sim.js';
 
@@ -118,4 +120,49 @@ test('a scenario is a recipe the world remembers', () => {
   for (const p of scen.plans) assert.ok(w.buildings.some(b => b.id === p.id), p.id + ' is marked out');
   // an unknown scenario falls back rather than making an empty world
   assert.equal(createWorld(19, 'atlantis').scenario, DEFAULT_SCENARIO);
+});
+
+test('a part of the map can be somewhere the world has not got to yet', () => {
+  const w = createWorld(23);
+  // the valley is all here, so nothing is out of bounds
+  assert.deepEqual(w.regionBoxes, []);
+  assert.ok(findPath(w, 4, 4, 10, 8, { within: 1 }), 'the forest is walkable');
+
+  // a scenario that keeps part of itself back behaves like weather, not a wall
+  SCENARIOS.valley.regions.push({ id: 'hills', box: [30, 0, 39, 10], open: false });
+  try {
+    const later = createWorld(23);
+    assert.equal(later.regions.hills, 'later');
+    assert.deepEqual(later.regionBoxes, [[30, 0, 39, 10]]);
+    assert.equal(walkable(later, 35, 5), false, 'nobody wanders into it');
+    assert.ok(walkable(later, 2, 21), 'and the rest of the world is untouched');
+
+    assert.equal(applyAction(later, { type: 'region.open', id: 'hills' }), true);
+    assert.equal(walkable(later, 35, 5), true, 'until the day it opens');
+    assert.equal(applyAction(later, { type: 'region.open', id: 'hills' }), false, 'and only once');
+
+    // and it survives being saved and read back
+    const back = deserialize(serialize(later));
+    assert.equal(back.regions.hills, 'open');
+  } finally {
+    SCENARIOS.valley.regions = SCENARIOS.valley.regions.filter(r => r.id !== 'hills');
+  }
+});
+
+test('a role that joins the table later gets a seat', () => {
+  const w = createWorld(29);
+  assert.deepEqual(Object.keys(w.players).sort(), ['A', 'B']);
+  // pretend a Cook has been added to the catalogue since this world was saved
+  ROLES.C = { id: 'C', emoji: '🍲', colour: '#b07a4a', caps: { mill: 1 }, res: { food: 1 } };
+  SCENARIOS.valley.roles.push('C');
+  try {
+    const back = deserialize(serialize(w));
+    assert.ok(back.players.C, 'the new role has a place at the table');
+    assert.equal(back.players.C.caps.mill, 1);
+    assert.equal(back.players.A.res.wood, w.players.A.res.wood, 'and nobody else is disturbed');
+    assert.deepEqual(otherRoles(back, 'A').sort(), ['B', 'C']);
+  } finally {
+    delete ROLES.C;
+    SCENARIOS.valley.roles = SCENARIOS.valley.roles.filter(r => r !== 'C');
+  }
 });

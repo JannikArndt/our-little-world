@@ -238,6 +238,7 @@ async function startGame(chosenRole, room) {
       const w = game.world;
       const at = {
         hungry: () => [w.larder.x, w.larder.y],
+        poorly: () => { const v = w.villagers.find(x => x.poorly > 0); return v ? [v.x, v.y] : null; },
         homeless: () => { const s = w.buildings.find(b => b.state === 'site'); return s ? [s.x + 1.5, s.y + 1] : null; },
         sheep_far: () => [w.sheep[0].x, w.sheep[0].y],
         sheep_in_field: () => { const s = w.sheep.find(s => s.x > 24); return s ? [s.x, s.y] : null; },

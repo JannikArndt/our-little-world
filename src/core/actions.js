@@ -4,7 +4,8 @@
 // browsers share one world, and what lets the tests be meaningful.
 
 import { T, inBounds, setTile, tileAt, rebuildBlocked } from './grid.js';
-import { addBuilding, byId, newId, CAPS, capName, BLOCK_TICKS, PROJECT } from './world.js';
+import { addBuilding, byId, newId, CAPS, capName, BLOCK_TICKS, cacheRegions } from './world.js';
+import { PROJECTS } from './content.js';
 
 /* ---- small helpers -------------------------------------------------- */
 
@@ -182,25 +183,40 @@ export function applyAction(w, a) {
       return true;
     }
 
-    /* ---------------- the fishing boat ---------------- */
-    case 'boat.build': {
-      const plan = byId(w.buildings, 'plan_boat');
+    /* ---------------- the things a village builds for itself ---------------- */
+    // One action for all of them: what a project costs, who can make it and
+    // what it changes all live in the content tables, so a new project is a
+    // row there and nothing here.
+    case 'project.build': {
+      const def = PROJECTS[a.what];
+      if (!def) return false;
+      const plan = w.buildings.find(b => b.type === def.type);
       if (!plan || plan.state !== 'plan') return false;
-      if (!pay(w, a.role, PROJECT.boat)) return false;
+      if (!pay(w, a.role, def.cost)) return false;
       plan.state = 'built';
       plan.builtTick = w.tick;
-      plan.fishedTick = -9999;
+      if (def.type === 'boat') plan.fishedTick = -9999;
       rebuildBlocked(w);
-      fx(w, 'sparkle', plan.x + plan.w, plan.y + 0.5);
-      tally(w, a.role, 'boat');
-      journal(w, '⛵', 'j.boat');
-      clearAsk(w, 'bridge', 'plan_boat');
+      fx(w, 'sparkle', plan.x + plan.w / 2, plan.y + plan.h / 2);
+      // the children hear the swing go up and go straight to it
+      if (def.type === 'play') for (const v of w.villagers) if (v.kid) { v.path = []; v.task = null; v.wait = 0; }
+      // clean water means nobody has to feel poorly about the river
+      if (def.type === 'well' || def.type === 'privy')
+        for (const v of w.villagers) if (v.poorly > 0) { v.poorly = 0; v.hearts = w.tick; }
+      tally(w, a.role, def.type);
+      journal(w, def.journal, 'j.' + def.type);
+      w.notices = w.notices.filter(n => n.id !== 'poorly' && n.id !== 'sheep_in_field');
+      clearAsk(w, def.cap, plan.id);
       return true;
     }
+    // the two projects that shipped before there was one action for all of them
+    case 'boat.build': return applyAction(w, { type: 'project.build', role: a.role, what: 'boat' });
+    case 'play.build': return applyAction(w, { type: 'project.build', role: a.role, what: 'play' });
+
     case 'fish.catch': {
       const boat = byId(w.buildings, 'plan_boat');
       if (!boat || boat.state !== 'built') return false;
-      const n = Math.max(0, Math.min(3, a.n | 0));
+      const n = Math.max(0, Math.min(4, a.n | 0));
       boat.fishedTick = w.tick;
       if (n > 0) {
         gain(w, a.role, 'food', n);
@@ -212,19 +228,15 @@ export function applyAction(w, a) {
       return true;
     }
 
-    /* ---------------- the playground ---------------- */
-    case 'play.build': {
-      const plan = byId(w.buildings, 'plan_play');
-      if (!plan || plan.state !== 'plan') return false;
-      if (!pay(w, a.role, PROJECT.play)) return false;
-      plan.state = 'built';
-      plan.builtTick = w.tick;
+    /* ---------------- the map opening up ---------------- */
+    case 'region.open': {
+      if (!w.regions || w.regions[a.id] !== 'later') return false;
+      w.regions[a.id] = 'open';
+      cacheRegions(w);
       rebuildBlocked(w);
-      fx(w, 'sparkle', plan.x + plan.w / 2, plan.y + plan.h / 2);
-      for (const v of w.villagers) if (v.kid) { v.path = []; v.task = null; v.wait = 0; }
-      tally(w, a.role, 'play');
-      journal(w, '🛝', 'j.play');
-      clearAsk(w, 'house', 'plan_play');
+      for (const v of w.villagers) v.path = [];
+      for (const sh of w.sheep) sh.path = [];
+      journal(w, '🗺️', 'j.region', { id: a.id });
       return true;
     }
 

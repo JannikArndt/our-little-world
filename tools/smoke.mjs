@@ -62,6 +62,36 @@ async function main() {
 
   const api = async (fn, arg) => page.evaluate(fn, arg);
 
+  /**
+   * Tap a tile, choosing whichever of the given ones nobody is standing on —
+   * people answer a tap before the ground does, which is right in the game and
+   * flaky in a test.
+   */
+  const tapTile = async (cands, lookAt) => {
+    const pt = await api((arg) => {
+      const g = window.OLW, w = g.world;
+      const canvas = document.getElementById('world');
+      const r = canvas.getBoundingClientRect();
+      g.look(arg.at[0], arg.at[1], 2);
+      const busy = (c) => w.villagers.some(v => Math.abs(v.x - c[0]) < 1.3 && Math.abs(v.y - c[1]) < 1.3) ||
+                          w.sheep.some(sh => Math.abs(sh.x - c[0]) < 1.3 && Math.abs(sh.y - c[1]) < 1.3);
+      // a spot nobody is standing on, that nothing on top of the world covers
+      for (const c of arg.cands) {
+        if (busy(c)) continue;
+        const p = g.renderer.toScreen(c[0] * 24, c[1] * 24);
+        const x = r.left + p.x, y = r.top + p.y;
+        if (x < r.left + 4 || x > r.right - 4 || y < r.top + 4 || y > r.bottom - 4) continue;
+        if (document.elementFromPoint(x, y) !== canvas) continue;
+        return { x, y };
+      }
+      const p = g.renderer.toScreen(arg.cands[0][0] * 24, arg.cands[0][1] * 24);
+      return { x: r.left + p.x, y: r.top + p.y };
+    }, { cands, at: lookAt || cands[0] });
+    await page.waitForTimeout(300);
+    await page.mouse.click(pt.x, pt.y);
+    return pt;
+  };
+
   // world sanity
   const info = await api(() => {
     const w = window.OLW.world;
@@ -342,17 +372,12 @@ async function main() {
     const g = window.OLW, w = g.world;
     g.role = 'A'; g.other = 'B';
     w.players.A.res.plank = 9; w.players.A.res.stone = 9;
-    const b = w.buildings.find(b => b.type === 'boat');
-    g.look(b.x + b.w, b.y + 0.5, 2);
   });
-  await page.waitForTimeout(300);
-  const landingPt = await api(() => {
-    const g = window.OLW, b = g.world.buildings.find(b => b.type === 'boat');
-    const p = g.renderer.toScreen((b.x + 0.5) * 24, (b.y + 0.5) * 24);
-    const r = document.getElementById('world').getBoundingClientRect();
-    return { x: r.left + p.x, y: r.top + p.y };
+  const landing = await api(() => {
+    const b = window.OLW.world.buildings.find(b => b.type === 'boat');
+    return [[b.x + 0.5, b.y + 0.5], [b.x + 1.5, b.y + 0.5], [b.x + 2.5, b.y + 0.5]];
   });
-  await page.mouse.click(landingPt.x, landingPt.y);
+  await tapTile(landing);
   await step(page, '25f-landing-bubble', 400);
   await page.click('text=Build a fishing boat');
   await step(page, '25g-boat', 900);
@@ -361,8 +386,7 @@ async function main() {
   if (!boatUp) throw new Error('the boat was not built');
 
   await api(() => { const g = window.OLW; g.role = 'B'; g.other = 'A'; });
-  await page.waitForTimeout(300);
-  await page.mouse.click(landingPt.x, landingPt.y);
+  await tapTile(landing);
   await page.waitForTimeout(300);
   await page.click('text=Go fishing');
   await step(page, '25h-fishing', 600);
@@ -382,28 +406,45 @@ async function main() {
   await page.click('text=Row back');
   await page.waitForTimeout(300);
 
-  // the playground
-  await api(() => {
+  // the playground, the well, the little house and the fence: every project
+  // is built the same way, so this walks all of them
+  const projects = [
+    { type: 'play',  label: 'Build a playground', role: 'A', shot: '25k-playground' },
+    { type: 'well',  label: 'Dig a well',         role: 'B', shot: '25m-well' },
+    { type: 'privy', label: 'Build the little house', role: 'A', shot: '25n-privy' },
+    { type: 'fence', label: 'Fence the field',    role: 'A', shot: '25o-fence' },
+  ];
+  for (const pr of projects) {
+    await api((arg) => {
+      const g = window.OLW, w = g.world;
+      g.role = arg.role; g.other = arg.role === 'A' ? 'B' : 'A';
+      w.players.A.res.plank = 9; w.players.A.res.stone = 9;
+      w.players.B.res.plank = 9; w.players.B.res.stone = 9;
+    }, pr);
+    const spots = await api((arg) => {
+      const b = window.OLW.world.buildings.find(b => b.type === arg.type);
+      const out = [];
+      for (let dy = 0; dy < b.h; dy++)
+        for (let dx = 0; dx < b.w; dx++) out.push([b.x + dx + 0.5, b.y + dy + 0.5]);
+      return out;
+    }, pr);
+    await tapTile(spots, spots[Math.floor(spots.length / 2)]);
+    await page.waitForTimeout(300);
+    await page.click('text=' + pr.label);
+    await step(page, pr.shot, 800);
+    const up = await api((arg) => window.OLW.world.buildings.some(b => b.type === arg.type && b.state === 'built'), pr);
+    console.log(pr.type + ' built:', up);
+    if (!up) throw new Error('the ' + pr.type + ' was not built');
+  }
+
+  // a poorly tummy is impossible once there is clean water
+  const noPoorly = await api(() => {
     const g = window.OLW, w = g.world;
-    g.role = 'A'; g.other = 'B';
-    w.players.A.res.plank = 9; w.players.A.res.stone = 9;
-    const b = w.buildings.find(b => b.type === 'play');
-    g.look(b.x + b.w / 2, b.y + b.h / 2, 2);
+    w.villagers[0].poorly = 100;
+    for (let i = 0; i < 400; i++) window.OLW.session.update(100);
+    return w.villagers.filter(v => v.poorly > 0).length;
   });
-  await page.waitForTimeout(300);
-  const greenPt = await api(() => {
-    const g = window.OLW, b = g.world.buildings.find(b => b.type === 'play');
-    const p = g.renderer.toScreen((b.x + b.w / 2) * 24, (b.y + b.h / 2) * 24);
-    const r = document.getElementById('world').getBoundingClientRect();
-    return { x: r.left + p.x, y: r.top + p.y };
-  });
-  await page.mouse.click(greenPt.x, greenPt.y);
-  await step(page, '25j-green-bubble', 400);
-  await page.click('text=Build a playground');
-  await step(page, '25k-playground', 900);
-  const playUp = await api(() => window.OLW.world.buildings.some(b => b.type === 'play' && b.state === 'built'));
-  console.log('playground built:', playUp);
-  if (!playUp) throw new Error('the playground was not built');
+  console.log('poorly villagers once the well is dug:', noPoorly);
 
   // the changelog, tucked under the history
   await page.click('#historyChip');

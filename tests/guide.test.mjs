@@ -6,6 +6,7 @@ import { applyAction } from '../src/core/actions.js';
 import { tick } from '../src/core/sim.js';
 import { currentProblem } from '../src/core/guide.js';
 import { walkable } from '../src/core/grid.js';
+import { findPath } from '../src/core/pathfind.js';
 import { setLang } from '../src/core/i18n.js';
 
 const run = (w, n) => { for (let i = 0; i < n; i++) tick(w); return w; };
@@ -65,18 +66,30 @@ test('every countable step carries its count, and the tick follows the count', (
   }
 });
 
-test('the boat, the playground and the saplings are what is left to do', () => {
+test('the projects queue up in the order a village would want them', () => {
   const w = settled(5);
-  const first = currentProblem(w);
-  assert.equal(first.id, 'boat', 'got: ' + first.id + ' — ' + first.title);
+  const order = ['boat', 'play', 'well', 'privy'];
+  assert.equal(currentProblem(w).id, order[0], 'got: ' + currentProblem(w).id);
 
-  w.players.A.res.plank = PROJECT.boat.plank; w.players.A.res.stone = PROJECT.boat.stone;
-  assert.equal(applyAction(w, { type: 'boat.build', role: 'A' }), true);
-  assert.equal(currentProblem(w).id, 'play');
-
-  w.players.A.res.plank = PROJECT.play.plank; w.players.A.res.stone = PROJECT.play.stone;
-  assert.equal(applyAction(w, { type: 'play.build', role: 'A' }), true);
+  for (const what of order) {
+    w.players.A.res.plank = 9; w.players.A.res.stone = 9;
+    assert.equal(applyAction(w, { type: 'project.build', role: 'A', what }), true, what);
+  }
+  // the fence waits until a sheep has actually been at the wheat
   assert.equal(currentProblem(w).id, 'calm');
+});
+
+test('the fence is only worth mentioning once a sheep has found the wheat', () => {
+  const w = settled(5);
+  assert.ok(currentProblem(w).id !== 'fence');
+  w.plots[0].nibbled = 1;
+  const pr = currentProblem(w);
+  assert.equal(pr.id, 'fence', 'got: ' + pr.id);
+  assert.equal(pr.steps[0].count.need, PROJECT.fence.plank);
+
+  w.players.A.res.plank = 9;
+  assert.equal(applyAction(w, { type: 'project.build', role: 'A', what: 'fence' }), true);
+  assert.ok(currentProblem(w).id !== 'fence', 'and then it stops being mentioned');
 });
 
 test('a felled forest asks to be replanted before anything else quiet', () => {
@@ -121,7 +134,7 @@ test('the boat costs what it says and then feeds people', () => {
   applyAction(w, { type: 'fish.catch', role: 'B', n: 2 });
   assert.equal(w.players.B.res.food, food + 2);
   applyAction(w, { type: 'fish.catch', role: 'B', n: 99 });
-  assert.equal(w.players.B.res.food, food + 5, 'a cast can never land more than three');
+  assert.equal(w.players.B.res.food, food + 6, 'never more than a boatful, however it is asked');
 });
 
 test('the children use the playground once it is there', () => {
@@ -159,4 +172,63 @@ test('a plan is not a building site, and nothing stands in it', () => {
   assert.equal(sites.length, 1, 'only the house plot is a site');
   for (const plan of w.buildings.filter(b => b.state === 'plan'))
     assert.ok(walkable(w, plan.x, plan.y), 'a plan can be walked over: ' + plan.id);
+});
+
+test('river water is why somebody gets a poorly tummy, and clean water is the cure', () => {
+  const w = settled(31);
+  w.tick = 3000;
+  applyAction(w, { type: 'block.start' });
+  w.block.startTick = w.tick;
+
+  // left alone, sooner or later somebody drinks the wrong water
+  let ill = null;
+  for (let i = 0; i < 20000 && !ill; i++) { tick(w); ill = w.villagers.find(v => v.poorly > 0); }
+  assert.ok(ill, 'somebody eventually gets a poorly tummy');
+  assert.ok(!ill.kid, 'and it is never one of the children');
+  assert.ok(w.notices.some(n => n.id === 'poorly'), 'and the world says why');
+
+  const pr = currentProblem(w);
+  assert.equal(pr.id, 'poorly');
+  assert.match(pr.title, /clean water/i, 'got: ' + pr.title);
+  assert.equal(pr.subject.id, ill.id, 'and it is about them');
+
+  // a well settles it at once, and it cannot happen again
+  w.players.B.res.plank = 9; w.players.B.res.stone = 9;
+  assert.equal(applyAction(w, { type: 'project.build', role: 'B', what: 'well' }), true);
+  assert.equal(ill.poorly, 0, 'they feel better straight away');
+  run(w, 3000);
+  assert.equal(w.villagers.filter(v => v.poorly > 0).length, 0, 'and nobody else takes ill');
+});
+
+test('the little house keeps the river clean, which the fish notice', () => {
+  const w = settled(33);
+  w.tick = 3000;
+  applyAction(w, { type: 'block.start' });
+  w.block.startTick = w.tick;
+  w.players.A.res.plank = 9; w.players.A.res.stone = 9;
+  assert.equal(applyAction(w, { type: 'project.build', role: 'A', what: 'privy' }), true);
+  run(w, 6000);
+  assert.equal(w.villagers.filter(v => v.poorly > 0).length, 0, 'a clean river is a safe river');
+});
+
+test('a fenced field is one the sheep leave alone', () => {
+  const w = settled(37);
+  const sheep = w.sheep[0];
+  w.players.A.res.plank = 9;
+  applyAction(w, { type: 'project.build', role: 'A', what: 'fence' });
+  const inField = (s) => s.x > 25 && s.x < 35 && s.y > 15 && s.y < 22;
+
+  // she still goes where she is taken — a fence is not a wall
+  applyAction(w, { type: 'sheep.send', role: 'B', sheepId: sheep.id, x: 29, y: 17 });
+  let arrived = false;
+  for (let i = 0; i < 1200 && !arrived; i++) { tick(w); arrived = inField(sheep); }
+  assert.ok(arrived, 'led in, she goes in');
+  assert.ok(findPath(w, 24, 18, 33, 18, { within: 1 }), 'and people walk through the gap');
+
+  // left to herself she keeps to the meadow
+  sheep.x = 23.5; sheep.y = 12.5; sheep.path = []; sheep.led = null;
+  for (const s2 of w.sheep) { s2.x = 23.5; s2.y = 12.5; s2.path = []; s2.led = null; }
+  let strayed = false;
+  for (let i = 0; i < 6000 && !strayed; i++) { tick(w); strayed = w.sheep.some(inField); }
+  assert.equal(strayed, false, 'nobody wandered into the wheat');
 });

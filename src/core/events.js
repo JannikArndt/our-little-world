@@ -73,6 +73,8 @@ export function nextTimeHint(w) {
   if (!w.bridge.built) return { icon: '🌉', key: 'next.noBridge' };
   if (sites) return { icon: '📐', key: 'next.sites' };
   if (stumps) return { icon: '🌱', key: 'next.stumps' };
+  if (plan('well')) return { icon: '🪣', key: 'next.well' };
+  if (plan('privy')) return { icon: '🚪', key: 'next.privy' };
   if (plan('boat')) return { icon: '⛵', key: 'next.boat' };
   if (plan('play')) return { icon: '🛝', key: 'next.play' };
   if (woolly) return { icon: '🧶', key: 'next.woolly' };

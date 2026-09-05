@@ -14,7 +14,8 @@
 // is one entry in CONCERNS plus its card — no branching to unpick.
 
 import {
-  freeBed, homeless, kids, openSite, project, stumps,
+  freeBed, homeless, poorly, kids, openSite, project, stumps,
+  hasWell, riverClean, fieldFenced,
   PROJECT, REPLANT_GOAL,
 } from './world.js';
 import { tr } from './i18n.js';
@@ -157,6 +158,72 @@ function sheepCard(w) {
   };
 }
 
+/** Somebody has a poorly tummy, and the reason is the water. */
+function poorlyCard(w) {
+  const person = poorly(w)[0] || w.villagers[0];
+  const well = project(w, 'well');
+  const built = !well || well.state !== 'plan';
+  return {
+    id: 'poorly', icon: '🤒',
+    title: tr('guide.poorly.title', { name: person.name }),
+    why: tr('guide.poorly.why', { name: person.name }),
+    subject: { kind: 'villager', id: person.id },
+    points: well ? [villagerPoint(person), buildingPoint(well)] : [villagerPoint(person)],
+    steps: [
+      counted('🪨', tr('guide.step.wellStones'), EITHER, '🪨', stonesBetween(w), PROJECT.well.stone),
+      counted('🪚', tr('guide.step.wellPlank'), A, '🪚', planksBetween(w), PROJECT.well.plank),
+      step('🪣', tr('guide.step.buildWell'), B, built),
+      step('🚪', tr('guide.step.orPrivy'), A, riverClean(w)),
+    ],
+  };
+}
+
+function wellCard(w) {
+  const well = project(w, 'well');
+  return {
+    id: 'well', icon: '🪣',
+    title: tr('guide.well.title'),
+    why: tr('guide.well.why'),
+    points: [buildingPoint(well)],
+    steps: [
+      counted('🪨', tr('guide.step.wellStones'), EITHER, '🪨', stonesBetween(w), PROJECT.well.stone),
+      counted('🪚', tr('guide.step.wellPlank'), A, '🪚', planksBetween(w), PROJECT.well.plank),
+      step('🪣', tr('guide.step.buildWell'), B, false),
+    ],
+  };
+}
+
+function privyCard(w) {
+  const privy = project(w, 'privy');
+  return {
+    id: 'privy', icon: '🚪',
+    title: tr('guide.privy.title'),
+    why: tr('guide.privy.why'),
+    points: [buildingPoint(privy)],
+    steps: [
+      counted('🪚', tr('guide.step.privyPlanks'), A, '🪚', planksBetween(w), PROJECT.privy.plank),
+      counted('🪨', tr('guide.step.privyStone'), EITHER, '🪨', stonesBetween(w), PROJECT.privy.stone),
+      step('🚪', tr('guide.step.buildPrivy'), A, false),
+    ],
+  };
+}
+
+function fenceCard(w) {
+  const fence = project(w, 'fence');
+  const sheepIn = w.sheep.find(sh => sh.x > 24 && sh.x < 35 && sh.y > 14 && sh.y < 22);
+  return {
+    id: 'fence', icon: '🚧',
+    title: tr('guide.fence.title'),
+    why: tr('guide.fence.why'),
+    subject: sheepIn ? { kind: 'sheep', id: sheepIn.id } : null,
+    points: fence ? [buildingPoint(fence)] : [],
+    steps: [
+      counted('🪚', tr('guide.step.fencePlanks'), A, '🪚', planksBetween(w), PROJECT.fence.plank),
+      step('🚧', tr('guide.step.buildFence'), A, false),
+    ],
+  };
+}
+
 function calmCard(w) {
   return {
     id: 'calm', icon: '🌤️',
@@ -191,14 +258,24 @@ export const CONCERNS = [
   { id: 'no_bridge', when: (w) => !w.bridge.built, card: noBridgeCard },
   // wheat standing in the field
   { id: 'wheat_ready', when: (w) => w.plots.some(p => p.state === 'ripe'), card: wheatCard },
+  // somebody has a poorly tummy, and the water is why
+  { id: 'poorly', when: (w) => poorly(w).length > 0, card: poorlyCard },
   // an animal that wants something
   { id: 'sheep', when: (w) => w.sheep.some(s => s.mood !== 'ok'), card: sheepCard },
+  // a sheep has been at the wheat
+  { id: 'fence',
+    when: (w) => !fieldFenced(w) && planWaiting('fence')(w) &&
+                 (w.plots.some(p => p.nibbled) || w.sheep.some(sh => sh.x > 24 && sh.x < 35 && sh.y > 14 && sh.y < 22)),
+    card: fenceCard },
   // the forest is looking thin
   { id: 'replant', when: (w) => stumps(w).length >= REPLANT_GOAL, card: replantCard },
   // nobody has to fish, but everybody would like to
   { id: 'boat', when: planWaiting('boat'), card: boatCard },
   // the children have nowhere to play
   { id: 'play', when: planWaiting('play'), card: playCard },
+  // clean water to drink, and a river worth drinking from
+  { id: 'well', when: planWaiting('well'), card: wellCard },
+  { id: 'privy', when: planWaiting('privy'), card: privyCard },
   // one stump left over
   { id: 'replant_last', when: (w) => stumps(w).length > 0, card: replantCard },
   // nothing is wrong

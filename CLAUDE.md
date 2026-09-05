@@ -29,6 +29,9 @@ A saved world is brought up to date on load; it is never thrown away.
   same commit. Never delete an old step.
 - Free-form room for extensions already exists: `w.ext` (namespaced data) and
   `w.flags` (one-off switches). Both survive save, load and the network.
+- Roles come from the `ROLES` table and regions from a scenario's `regions`;
+  both are filled in by `ensureWorld()`, so a third role or a new part of the
+  map costs nobody their village either.
 - Only a world saved by a *newer* build is refused, and `persist.js` keeps it
   under `olw.world.<room>.kept` rather than overwriting it.
 

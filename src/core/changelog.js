@@ -4,9 +4,28 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '1.1';
+export const VERSION = '1.2';
 
 export const CHANGELOG = [
+  {
+    v: '1.2', date: '2026-09-05',
+    en: [
+      'Clean water: dig a well in the middle of the village. Until there is one, everybody drinks from the river, and sooner or later somebody gets a poorly tummy — a slow walk home and a sit down, nothing worse.',
+      'Build the little house at the bottom of the garden, and what used to end up in the river stops doing so: the water is safe again and the fishing is better for it.',
+      'Fence the wheat field. The sheep keep to the meadow — unless you take one in yourself, which still works.',
+      'Everything fits on a phone now: nothing hides under the notch, and a card\u2019s buttons are always the last thing on screen.',
+      'A world is never thrown away to make room for something new. Adding to the village no longer resets it.',
+      'The relay remembers the last world it saw in a room, so opening the page second no longer loses your village.',
+    ],
+    de: [
+      'Sauberes Wasser: grabt einen Brunnen mitten im Dorf. Solange es keinen gibt, trinken alle aus dem Fluss — und irgendwann hat jemand Bauchweh. Langsam nach Hause, hinsetzen, mehr passiert nicht.',
+      'Baut das Häuschen hinten im Garten, dann landet nicht mehr alles im Fluss: das Wasser ist wieder in Ordnung, und die Fische kommen zurück.',
+      'Zäunt das Weizenfeld ein. Die Schafe bleiben auf der Wiese — außer ihr führt eines selbst hinein, das geht weiterhin.',
+      'Alles passt jetzt aufs Handy: nichts versteckt sich hinter der Kamera, und die Knöpfe einer Karte sind immer das Unterste auf dem Bildschirm.',
+      'Für etwas Neues wird keine Welt mehr weggeworfen. Das Dorf zu erweitern setzt es nicht zurück.',
+      'Der Relay merkt sich die zuletzt gesehene Welt eines Raums — wer die Seite als Zweiter öffnet, verliert sein Dorf nicht mehr.',
+    ],
+  },
   {
     v: '1.1', date: '2026-09-05',
     en: [

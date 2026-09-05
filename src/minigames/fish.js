@@ -7,9 +7,9 @@
 import { openPanel, makeCanvas, onPointer, loop } from '../ui/overlay.js';
 import { C, rr, glyph } from '../render/art.js';
 import { tr, trn } from '../core/i18n.js';
+import { riverClean } from '../core/world.js';
 
 const W = 420, H = 300;
-const CASTS = 3;
 const BITE_MS = 950;                 // how long a fish stays interested
 
 export function openFish(game, boat) {
@@ -18,12 +18,14 @@ export function openFish(game, boat) {
   const cv = makeCanvas(W, H);
   p.body.appendChild(cv.canvas);
 
-  let casts = CASTS, caught = 0;
+  // a river nobody has spoiled is a river with more in it
+  const clean = riverClean(game.world);
+  let casts = clean ? 4 : 3, caught = 0;
   let phase = 'ready';               // ready → waiting → bite → (ready | over)
   let timer = 0, dip = 0, splash = 0;
   let float = { x: 250, y: 200 };
 
-  p.readout(tr('fish.cast') + ' ' + trn('fish.casts', casts, { n: casts }));
+  p.readout((clean ? tr('fish.clean') + ' ' : '') + tr('fish.cast') + ' ' + trn('fish.casts', casts, { n: casts }));
 
   onPointer(cv.canvas, W, H, {
     down(pt) {

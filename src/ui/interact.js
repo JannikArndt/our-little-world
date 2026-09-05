@@ -3,7 +3,8 @@
 // player — which is usually the more interesting option.
 
 import { TILE, T, tileAt } from '../core/grid.js';
-import { ROLE, can, roleName, PROJECT, project, kids } from '../core/world.js';
+import { ROLE, can, roleName, PROJECT, project, kids, hasWell } from '../core/world.js';
+import { PROJECTS } from '../core/content.js';
 import { canPay } from '../core/actions.js';
 import { tr, trn } from '../core/i18n.js';
 import { el, message, renderCost } from './overlay.js';
@@ -116,22 +117,40 @@ export function buildProject(game, type) {
     }));
     return false;
   }
-  const ok = game.dispatch({ type: type + '.build', role: r });
-  if (ok) message(tr(type === 'boat' ? 'msg.boatUp' : 'msg.playUp'));
+  const ok = game.dispatch({ type: 'project.build', role: r, what: type });
+  if (ok) message(tr(PROJECTS[type].built));
   return ok;
 }
 
-function projectActions(game, type, cap, verb, label) {
+/** The one button that builds any of them, in whoever's hands it belongs. */
+function projectActions(game, type, label) {
   const w = game.world, r = game.role;
-  if (!can(w, r, cap)) return [askAction(game, cap, project(w, type).id, verb)];
-  const cost = PROJECT[type];
+  const def = PROJECTS[type];
+  const plan = project(w, type);
+  if (!can(w, r, def.cap)) return [askAction(game, def.cap, plan ? plan.id : null, def.verb)];
+  const cost = def.cost;
   const me = w.players[r].res;
+  const bits = [];
+  if (cost.plank) bits.push(cost.plank + ' 🪚');
+  if (cost.stone) bits.push(cost.stone + ' 🪨');
   return [{
     label: label,
-    cost: cost.plank + ' 🪚 · ' + cost.stone + ' 🪨',
-    cls: (me.plank >= cost.plank && me.stone >= cost.stone) ? '' : 'soft',
+    cost: bits.join(' · '),
+    cls: (me.plank >= (cost.plank || 0) && me.stone >= (cost.stone || 0)) ? '' : 'soft',
     fn: () => buildProject(game, type),
   }];
+}
+
+/** A project's own bubble: what it is, and the one thing to do with it. */
+function projectBubble(game, b) {
+  const t = (PROJECTS[b.type] || {}).text || {};
+  if (b.state === 'plan') {
+    return {
+      title: tr(t.plan), hint: tr(t.planHint),
+      actions: projectActions(game, b.type, tr(t.build)),
+    };
+  }
+  return { title: tr(t.done), hint: tr(t.doneHint), actions: [] };
 }
 
 function actionsFor(game, h) {
@@ -191,7 +210,8 @@ function actionsFor(game, h) {
 
     case 'villager': {
       const v = h.o;
-      const hint = v.hunger > 72 ? tr('w.villagerHungry')
+      const hint = v.poorly > 0 ? tr('w.villagerPoorly', { name: v.name })
+        : v.hunger > 72 ? tr('w.villagerHungry')
         : !v.homeId ? tr('w.villagerHomeless', { name: v.name })
         : v.carrying ? tr('w.villagerCarrying')
         : tr('w.villagerFine');
@@ -227,27 +247,18 @@ function actionsFor(game, h) {
     case 'building': {
       const b = h.o;
       if (b.type === 'boat') {
-        if (b.state === 'plan') {
-          return {
-            title: tr('w.landing'), hint: tr('w.landingHint'),
-            actions: projectActions(game, 'boat', 'bridge', 'boat', tr('w.buildBoat')),
-          };
-        }
+        if (b.state === 'plan') return projectBubble(game, b);
         const resting = (w.tick - (b.fishedTick || -9999)) < 600;
         if (!can(w, r, 'farm')) A.push(askAction(game, 'farm', b.id, 'fish'));
         else if (!resting) A.push({ label: tr('w.goFishing'), fn: () => openFish(game, b) });
         return { title: tr('w.boat'), hint: resting ? tr('w.boatResting') : tr('w.boatHint'), actions: A };
       }
       if (b.type === 'play') {
-        if (b.state === 'plan') {
-          return {
-            title: tr('w.green'), hint: tr('w.greenHint'),
-            actions: projectActions(game, 'play', 'house', 'play', tr('w.buildPlay')),
-          };
-        }
+        if (b.state === 'plan') return projectBubble(game, b);
         const names = kids(w).map(k => k.name).join(tr('w.and'));
         return { title: tr('w.playground'), hint: tr('w.playgroundHint', { names: names }), actions: [] };
       }
+      if (b.type === 'well' || b.type === 'privy' || b.type === 'fence') return projectBubble(game, b);
       if (b.state === 'site') {
         if (can(w, r, 'house')) A.push({ label: tr('w.buildHouse'), fn: () => openHouse(game, b) });
         else A.push(askAction(game, 'house', b.id));

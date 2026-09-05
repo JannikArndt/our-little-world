@@ -305,6 +305,18 @@ export class Renderer {
             if (o.state === 'built') art.drawPlayground(ctx, o, time, w.tick);
             else art.drawPlan(ctx, o, time, '🛝');
           }
+          else if (o.type === 'well') {
+            if (o.state === 'built') art.drawWell(ctx, o, time, w.tick);
+            else art.drawPlan(ctx, o, time, '🪣');
+          }
+          else if (o.type === 'privy') {
+            if (o.state === 'built') art.drawPrivy(ctx, o, time, w.tick);
+            else art.drawPlan(ctx, o, time, '🚪');
+          }
+          else if (o.type === 'fence') {
+            if (o.state === 'built') art.drawFence(ctx, o, time);
+            else art.drawPlan(ctx, o, time, '🚧');
+          }
           else if (o.state === 'site') art.drawSite(ctx, o, time);
           else if (o.type === 'workshop') art.drawWorkshop(ctx, o, time, w.tick);
           else art.drawHouse(ctx, o, time, w.tick);
@@ -330,6 +342,7 @@ export class Renderer {
       }
     }
 
+    if (w.regionBoxes && w.regionBoxes.length) this.drawMist(ctx, w, time);
     if (w.fx) for (const f of w.fx) art.drawFx(ctx, f, w.tick - f.born);
     if (extra && extra.overlay) extra.overlay(ctx, s);
 
@@ -353,6 +366,24 @@ export class Renderer {
     ctx.globalAlpha = 1;
   }
 
+  /** Somewhere the world has not got to yet: soft weather, not a wall. */
+  drawMist(ctx, w, time) {
+    for (const box of w.regionBoxes) {
+      const x = box[0] * TILE, y = box[1] * TILE;
+      const bw = (box[2] - box[0] + 1) * TILE, bh = (box[3] - box[1] + 1) * TILE;
+      ctx.save();
+      ctx.fillStyle = 'rgba(236,240,238,.88)';
+      ctx.fillRect(x, y, bw, bh);
+      ctx.fillStyle = 'rgba(255,255,255,.5)';
+      for (let i = 0; i < 14; i++) {
+        const cx = x + ((i * 137) % bw), cy = y + ((i * 89) % bh);
+        const r = 18 + (i % 4) * 9 + Math.sin(time * 0.0006 + i) * 4;
+        ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
   /** A slow, quiet ring around things that would like some attention. */
   drawHalos(ctx, w, time, extra) {
     const pulse = 0.35 + 0.25 * Math.sin(time * 0.003);
@@ -365,7 +396,7 @@ export class Renderer {
     for (const s of w.sheep) if (s.mood !== 'ok') ring(s.x * TILE, s.y * TILE + 3, 15, 'rgba(93,145,80,.9)');
     for (const p of w.plots) if (p.state === 'ripe' || (p.state === 'growing' && p.water <= 8))
       ring(p.x * TILE + TILE, p.y * TILE + TILE, 24, 'rgba(224,185,80,.95)');
-    for (const b of w.buildings) if (b.state === 'site')
+    for (const b of w.buildings) if (b.state === 'site' && b.type === 'site')
       ring(b.x * TILE + b.w * TILE / 2, b.y * TILE + b.h * TILE - 4, b.w * TILE * 0.5, 'rgba(200,120,60,.9)');
     for (const l of w.logs) ring(l.x * TILE, l.y * TILE + 3, 16, 'rgba(169,116,63,.9)');
     if (w.bridge.damaged) ring((w.bridge.site.x0 + w.bridge.site.x1 + 1) * TILE / 2, (w.bridge.site.row + 1) * TILE, 34, 'rgba(200,90,70,.95)');

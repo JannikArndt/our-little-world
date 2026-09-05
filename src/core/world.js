@@ -5,7 +5,7 @@
 import { GW, GH, T, idx, inBounds, rebuildBlocked } from './grid.js';
 import { rnd, rndInt, rndRange } from './rng.js';
 import { tr } from './i18n.js';
-import { SCENARIOS, DEFAULT_SCENARIO, scenarioOf } from './content.js';
+import { SCENARIOS, DEFAULT_SCENARIO, scenarioOf, ROLES, PROJECTS } from './content.js';
 import { runMigrations } from './migrate.js';
 
 // The shape of a saved world. It only goes up when an existing field changes
@@ -27,10 +27,8 @@ export const RESOURCES = [
 // what things cost and how fast they grow lives with the rest of the content
 export { PROJECT, PROJECTS, SAPLING_TICKS, REPLANT_GOAL, SCENARIOS } from './content.js';
 
-export const ROLE = {
-  A: { id: 'A', emoji: '🔨', colour: '#c8783c' },
-  B: { id: 'B', emoji: '🌿', colour: '#5d9150' },
-};
+/** The roles in play, drawn from the catalogue. */
+export const ROLE = ROLES;
 
 export const CAPS = {
   fell:   { icon: '🪓', owner: 'A' },
@@ -123,14 +121,8 @@ export function createWorld(seed, scenarioId) {
     visitors: [],
     bridge: { built: false, tiles: [], quality: 0, damaged: false },
     larder: { x: scen.larder.x, y: scen.larder.y, food: scen.larder.food },
-    players: {
-      A: { res: { wood: 2, plank: 1, stone: 2, wheat: 0, food: 0, wool: 0 },
-           caps: { fell: 1, saw: 1, bridge: 1, house: 1, mill: 1 },
-           done: {}, busy: null, seen: 0 },
-      B: { res: { wood: 0, plank: 0, stone: 3, wheat: 0, food: 2, wool: 0 },
-           caps: { herd: 1, care: 1, road: 1, farm: 1 },
-           done: {}, busy: null, seen: 0 },
-    },
+    players: {},
+    regions: {},
     asks: [],
     notices: [],
     journal: [],
@@ -138,6 +130,9 @@ export function createWorld(seed, scenarioId) {
     ext: {},          // room for anything a later version wants to keep
     seq: 0,
   };
+
+  for (const id of scen.roles) w.players[id] = newPlayer(id);
+  for (const r of scen.regions || []) w.regions[r.id] = r.open === false ? 'later' : 'open';
 
   (PAINTERS[scen.terrain] || paintValley)(w);
 
@@ -208,6 +203,15 @@ export function createWorld(seed, scenarioId) {
   return w;
 }
 
+/** A player's side of the table, as their role starts out. */
+function newPlayer(id) {
+  const role = ROLES[id] || {};
+  const res = {}, caps = {};
+  for (const k in (role.res || {})) res[k] = role.res[k];
+  for (const k in (role.caps || {})) caps[k] = role.caps[k];
+  return { res, caps, done: {}, busy: null, seen: 0 };
+}
+
 /** Somebody from the roster, at home if their house has room for them. */
 function makeVillager(w, spec) {
   const home = spec.home != null ? houseFor(w, spec.home) : null;
@@ -248,12 +252,19 @@ export function ensureWorld(w) {
   }
   if (!w.flags || typeof w.flags !== 'object') w.flags = {};
   if (!w.ext || typeof w.ext !== 'object') w.ext = {};
+  if (!w.players || typeof w.players !== 'object') w.players = {};
+  if (!w.regions || typeof w.regions !== 'object') w.regions = {};
+
+  // a role the scenario plays that this world has never heard of gets a seat
+  for (const id of scen.roles || ['A', 'B']) if (!w.players[id]) w.players[id] = newPlayer(id);
+  for (const r of scen.regions || []) if (!w.regions[r.id]) w.regions[r.id] = r.open === false ? 'later' : 'open';
+  cacheRegions(w);
   if (!w.block) w.block = { active: false, startTick: 0, length: BLOCK_TICKS, endedAt: null };
 
   // fields that later versions expect to find on things that already exist
   for (const t of w.trees) { if (!t.state) t.state = 'standing'; }
   for (const b of w.buildings) { if (!b.residents) b.residents = []; if (b.beds == null) b.beds = 0; }
-  for (const v of w.villagers) { if (v.kid === undefined) v.kid = false; }
+  for (const v of w.villagers) { if (v.kid === undefined) v.kid = false; if (!v.poorly) v.poorly = 0; }
 
   ensurePeople(w, scen);
   ensurePlans(w, scen);
@@ -359,6 +370,37 @@ export function freeBed(w) {
   return null;
 }
 export function homeless(w) { return w.villagers.filter(v => !v.homeId); }
+export function poorly(w) { return w.villagers.filter(v => v.poorly > 0); }
+
+/** Whose turn it is not: everybody else at the table. */
+export function otherRoles(w, id) { return Object.keys(w.players).filter(r => r !== id); }
+
+/** Clean water to drink, and a river nobody has spoiled. */
+export function hasWell(w) { return hasProject(w, 'well'); }
+export function riverClean(w) { return hasProject(w, 'privy'); }
+export function fieldFenced(w) { return hasProject(w, 'fence'); }
+
+/**
+ * The boxes the pathfinder should treat as not-there-yet, worked out once and
+ * kept on the world so rebuildBlocked() does not have to think about it.
+ */
+export function cacheRegions(w) {
+  const out = [];
+  for (const r of scenarioOf(w).regions || []) if (w.regions[r.id] === 'later') out.push(r.box);
+  w.regionBoxes = out;
+  return out;
+}
+
+/** Which part of the map a tile is in, and whether that part is there yet. */
+export function regionAt(w, x, y) {
+  const list = scenarioOf(w).regions || [];
+  for (const r of list) {
+    const b = r.box;
+    if (x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) return r;
+  }
+  return null;
+}
+export function regionOpen(w, id) { return (w.regions || {})[id] !== 'later'; }
 export function kids(w) { return w.villagers.filter(v => v.kid); }
 
 /** The house plot people are waiting on — never one of the project plans. */

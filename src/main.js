@@ -40,7 +40,32 @@ function applyStartText() {
   }
 }
 
+/**
+ * How tall the browser is actually showing us. On a phone the toolbars sit on
+ * top of the page, so 100% of the body reaches under them and the last thing on
+ * screen ends up behind the address bar. The visual viewport knows better.
+ */
+function trackViewportHeight() {
+  const vv = window.visualViewport;
+  const apply = () => {
+    // while the keyboard is up the viewport is tiny; leave the layout alone
+    const el = document.activeElement;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
+    const h = Math.round((vv && vv.height) || window.innerHeight || 0);
+    if (h > 0) document.documentElement.style.setProperty('--app-h', h + 'px');
+  };
+  apply();
+  window.addEventListener('resize', apply);
+  window.addEventListener('orientationchange', () => setTimeout(apply, 300));
+  if (vv) {
+    vv.addEventListener('resize', apply);
+    vv.addEventListener('scroll', apply);
+  }
+  document.addEventListener('focusout', () => setTimeout(apply, 60));
+}
+
 function boot() {
+  trackViewportHeight();
   detectLang();
   applyStartText();
   const start = document.getElementById('start');

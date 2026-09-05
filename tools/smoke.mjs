@@ -496,6 +496,60 @@ async function main() {
     await c.close();
   }
 
+  /* ---------- 4. a phone with a notch and a toolbar ---------- */
+  // The safe-area insets are CSS variables with env() defaults, so a desktop
+  // browser can be told to pretend it is an iPhone.
+  const SAFE_T = 59, SAFE_B = 34;
+  const notch = { content: ':root{--safe-t:' + SAFE_T + 'px !important;--safe-b:' + SAFE_B + 'px !important;}' };
+  const phone = await browser.newContext({
+    viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true,
+  });
+  const ph = await phone.newPage();
+  watch(ph, 'phone');
+  await ph.goto(BASE + '/?room=notch&role=BOTH');
+  await ph.addStyleTag(notch);
+  await ph.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+  await ph.addStyleTag(notch);
+  await ph.waitForTimeout(700);
+
+  await ph.click('text=Five minutes together');
+  await ph.waitForTimeout(900);
+  await ph.addStyleTag(notch);
+  await step(ph, '31-phone-guide', 300);
+
+  const fit = await ph.evaluate((safe) => {
+    const vh = window.innerHeight;
+    const btns = [].slice.call(document.querySelectorAll('.panel-foot .btn'));
+    const steps = [].slice.call(document.querySelectorAll('.step'));
+    return {
+      buttons: btns.length,
+      lowest: Math.round(Math.max.apply(null, btns.map(b => b.getBoundingClientRect().bottom))),
+      floor: vh - safe.b,
+      narrowest: Math.min.apply(null, steps.map(st =>
+        st.querySelector('.s-txt').getBoundingClientRect().width / st.getBoundingClientRect().width)),
+      scrolls: (() => { const sc = document.querySelector('.panel-scroll'); return sc.scrollHeight > sc.clientHeight; })(),
+    };
+  }, { b: SAFE_B });
+  console.log('phone panel:', JSON.stringify(fit));
+  if (!fit.buttons) throw new Error('the card has no buttons in its foot');
+  if (fit.lowest > fit.floor) throw new Error('a panel button is hidden behind the bottom of the screen');
+  if (!(fit.narrowest > 0.55)) throw new Error('step text is squeezed into a column too narrow to read');
+
+  // the start screen must clear the notch, and never hide its own top
+  const ph2 = await phone.newPage();
+  watch(ph2, 'phone-start');
+  await ph2.goto(BASE + '/?room=notch2');
+  await ph2.addStyleTag(notch);
+  await ph2.waitForTimeout(500);
+  await step(ph2, '32-phone-start', 200);
+  const startTop = await ph2.evaluate(() => {
+    const r = document.querySelector('.lang-row').getBoundingClientRect();
+    return { top: Math.round(r.top), scrollTop: document.getElementById('start').scrollTop };
+  });
+  console.log('start screen clears the notch:', JSON.stringify(startTop));
+  if (startTop.top < SAFE_T) throw new Error('the start screen runs under the notch');
+  await phone.close();
+
   await browser.close();
   if (errors.length) { console.log('\nBROWSER ERRORS:\n' + errors.join('\n')); process.exit(1); }
   console.log('\nsmoke test: all good');

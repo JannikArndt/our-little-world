@@ -178,15 +178,20 @@ export class Hud {
       row.appendChild(el('span', 's-n', String(n)));
       row.appendChild(el('span', 's-ico', s.icon));
       row.appendChild(el('span', 's-txt', s.text));
+      // The count and the label go in one block, so on a narrow screen they
+      // drop to a line of their own instead of squeezing the words into a
+      // column one word wide.
+      const meta = el('span', 's-meta');
       // A tick with no number explains nothing. 2/3 🪨 explains itself.
       if (s.count) {
         const c = el('span', 's-count' + (s.done ? ' ok' : ''));
         c.appendChild(el('b', '', s.count.have + '/' + s.count.need));
         c.appendChild(document.createTextNode(' ' + s.count.icon));
-        row.appendChild(c);
+        meta.appendChild(c);
       }
-      if (s.done) row.appendChild(el('span', 's-tick', '✓'));
-      row.appendChild(el('span', 's-who', s.who));
+      if (s.done) meta.appendChild(el('span', 's-tick', '✓'));
+      meta.appendChild(el('span', 's-who', s.who));
+      row.appendChild(meta);
       list.appendChild(row);
     }
     p.body.appendChild(list);

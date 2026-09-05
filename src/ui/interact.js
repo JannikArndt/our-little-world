@@ -34,7 +34,11 @@ function showBubble(sx, sy, opts) {
   if (opts.title) b.appendChild(el('h4', '', opts.title));
   if (opts.hint) b.appendChild(el('p', 'hint', opts.hint));
   for (const a of opts.actions || []) {
-    const btn = el('button', a.cls || '', a.label);
+    const btn = el('button', a.cls || '');
+    btn.appendChild(el('span', 'b-label', a.label));
+    // what it costs goes on its own line, never in brackets at the end of a
+    // sentence where it breaks across lines
+    if (a.cost) btn.appendChild(el('span', 'b-cost', a.cost));
     btn.addEventListener('click', (e) => { e.stopPropagation(); closeBubble(); a.fn(); });
     b.appendChild(btn);
   }
@@ -123,7 +127,8 @@ function projectActions(game, type, cap, verb, label) {
   const cost = PROJECT[type];
   const me = w.players[r].res;
   return [{
-    label: label + '  (' + cost.plank + '🪚 ' + cost.stone + '🪨)',
+    label: label,
+    cost: cost.plank + ' 🪚 · ' + cost.stone + ' 🪨',
     cls: (me.plank >= cost.plank && me.stone >= cost.stone) ? '' : 'soft',
     fn: () => buildProject(game, type),
   }];

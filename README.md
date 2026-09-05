@@ -214,6 +214,8 @@ src/
     sim.js       villagers, sheep, crops, weather in the sky
     events.js    problems, but only when they make sense
     guide.js     the one card: what to do next, who, and how far along
+    content.js   what a world is made of, as data: scenarios and projects
+    migrate.js   bringing an older saved world up to date
     changelog.js what has changed, per language
     rng.js       seeded, so two browsers agree
     persist.js   localStorage
@@ -280,6 +282,46 @@ work. It also checks the opening card: that it says what to do, that whoever it
 names is drawn on it and ringed in the world, and that every counted step reads
 `have/need`.
 It also checks that nothing overflows sideways on an iPad, an iPhone and a Mac.
+
+## Adding to the world
+
+The world is described as data and brought up to date on load, so adding to it
+does not cost anybody their village.
+
+- **A new project, villager, plan or scenario** is an entry in
+  `src/core/content.js`. `ensureWorld()` runs on every load and puts anything
+  new into worlds that were saved before it existed. No schema bump, no reset.
+- **A new task** is one entry in `CONCERNS` in `src/core/guide.js` — an `id`, a
+  `when(world)` and a card — placed in the order it matters. The card says what
+  to do, names who it is about, and counts what can be counted.
+- **A change to what an existing field means** is the only thing that costs a
+  version: a numbered step in `src/core/migrate.js` and `SCHEMA` up by one.
+  Steps are small, kept forever, and run in order.
+- **Anything else** has room already: `world.ext` for namespaced extension data
+  and `world.flags` for one-off switches. Both are saved, loaded and sent over
+  the network untouched.
+
+A scenario is a recipe — which terrain to paint, what stands on it, who lives
+there, which projects are marked out — and a world remembers which one it was
+made from in `world.scenario`. A second scenario is a second entry in the table:
+an island where the boat comes first, a winter valley, a hill farm.
+
+Only a world saved by a *newer* build is refused, and even then it is kept aside
+in `olw.world.<room>.kept` rather than written over.
+
+## Fitting on a phone
+
+Two things the layout will not do, and there are tests that keep it that way:
+
+- **Nothing hides under the notch or the home indicator.** The insets are CSS
+  variables (`--safe-t`, `--safe-b`, `--safe-l`, `--safe-r`) that default to
+  `env(safe-area-inset-*)`, so a headless browser can be told to pretend it is
+  an iPhone.
+- **A panel's buttons are always reachable.** A panel is a scrolling middle and
+  a foot that does not move: however long the card is, and however much browser
+  chrome sits at the bottom of the screen, the buttons are the last thing on
+  screen. The visible height comes from the visual viewport (`--app-h`), not
+  from `100%`, because a phone's toolbars sit on top of the page.
 
 ## What is new
 

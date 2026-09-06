@@ -31,6 +31,7 @@ export const de = {
   'ui.where': '👀 Wo denn?',
   'ui.neverMind': 'Doch nicht',
   'ui.startOver': 'Nochmal',
+  'ui.backToStart': '🏡 Zurück zum Startbildschirm',
   'ui.waiting': 'wartet…',
   'ui.partnerHere': '{role} ist da',
   'ui.partnerTap': '{role} — zum Teilen tippen',
@@ -112,6 +113,7 @@ export const de = {
   'teach.done': '👐 Du hast es gezeigt. Jetzt könnt ihr beide {what}.',
   'teach.notice': 'Jetzt könnt ihr beide {what}.',
   'teach.cannot': 'Das kannst du noch nicht — lass es dir zeigen.',
+  'teach.saved': 'Alles ist gespeichert. Du kannst rausgehen und genau hierher zurückkommen.',
 
   /* ---- Blasen in der Welt ---- */
   'w.tree': 'Ein Baum',
@@ -239,6 +241,7 @@ export const de = {
   'hist.justNow': 'gerade eben',
   'hist.minsAgo': 'vor {n} Min',
   'hist.whatsNew': '✨ Was ist neu (v{v})',
+  'hist.whatsNewShort': '✨ Was ist neu',
   'log.title': '✨ Was ist neu',
   'log.lead': 'Alles, was sich in unserer kleinen Welt geändert hat, das Neueste zuerst.',
 

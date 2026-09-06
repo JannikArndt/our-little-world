@@ -10,6 +10,7 @@ import { ROLE, otherRole, byId, roleName, can } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
 import { rememberRole, recallRole } from './core/persist.js';
+import { showChangelog, VERSION } from './ui/whatsnew.js';
 import { openChop } from './minigames/chop.js';
 import { openSawmill, openMill } from './minigames/sawmill.js';
 import { openBridge, openRepair } from './minigames/bridge.js';
@@ -26,6 +27,8 @@ const qs = new URLSearchParams(location.search);
 /** Fill in the start screen in whichever language, and offer the other one. */
 function applyStartText() {
   document.title = tr('app.title');
+  const version = document.getElementById('versionBtn');
+  if (version) version.textContent = 'v' + VERSION + ' · ' + tr('hist.whatsNewShort');
   const nodes = document.querySelectorAll('[data-t]');
   for (let i = 0; i < nodes.length; i++) nodes[i].textContent = tr(nodes[i].getAttribute('data-t'));
   const row = document.getElementById('langRow');
@@ -71,6 +74,8 @@ function boot() {
   const start = document.getElementById('start');
   const roomInput = document.getElementById('roomInput');
   roomInput.value = (qs.get('room') || 'home').slice(0, 24);
+
+  document.getElementById('versionBtn').addEventListener('click', () => showChangelog());
 
   const remembered = recallRole();
   if (remembered) {
@@ -178,6 +183,16 @@ async function startGame(chosenRole, room) {
     },
 
     hint(text) { message(text); },
+
+    /**
+     * Out of the world and back to the front door. Everything is saved first,
+     * and the world's name goes in the address, so coming back is one tap and
+     * the village is exactly as it was.
+     */
+    leave() {
+      session.checkpoint();
+      location.href = location.pathname + '?room=' + encodeURIComponent(room);
+    },
 
     swapRole() {
       game.role = game.role === 'A' ? 'B' : 'A';

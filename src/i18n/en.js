@@ -31,6 +31,7 @@ export const en = {
   'ui.where': '👀 Where?',
   'ui.neverMind': 'Never mind',
   'ui.startOver': 'Start over',
+  'ui.backToStart': '🏡 Back to the start screen',
   'ui.waiting': 'waiting…',
   'ui.partnerHere': '{role} is here',
   'ui.partnerTap': '{role} — tap to share',
@@ -112,6 +113,7 @@ export const en = {
   'teach.done': '👐 You showed them how. Now you both know {what}.',
   'teach.notice': 'Now you both know {what}.',
   'teach.cannot': 'You do not know how to do that yet — ask them to show you.',
+  'teach.saved': 'Everything is saved. You can step out and come back to exactly this.',
 
   /* ---- world bubbles ---- */
   'w.tree': 'A tree',
@@ -239,6 +241,7 @@ export const en = {
   'hist.justNow': 'just now',
   'hist.minsAgo': '{n} min ago',
   'hist.whatsNew': '✨ What is new (v{v})',
+  'hist.whatsNewShort': '✨ What is new',
   'log.title': '✨ What is new',
   'log.lead': 'Everything that has changed in our little world, newest first.',
 

@@ -341,11 +341,16 @@ Two things the layout will not do, and there are tests that keep it that way:
 
 ## What is new
 
-There is a changelog, and it is not in your way: open 📜 (what has happened) and
-there is a line at the bottom of it — **✨ What is new (v1.1)**. Every version,
-newest first, in whichever language the screen is in. It lives in
-`src/core/changelog.js`, outside the language tables, so an entry can be written
-once and shipped without waiting for the other language.
+The start screen says which version this is — **v1.2 · ✨ What is new** at the
+bottom — and tapping it opens the changelog. The same list is under 📜 (what has
+happened) once you are in the world, next to **🏡 Back to the start screen**,
+which saves the village and puts you back at the front door with its name
+already filled in. (The role card — tap the role chip when you are playing one
+role rather than both — has the same way out.)
+
+Every version is listed newest first, in whichever language the screen is in. It
+lives in `src/core/changelog.js`, outside the language tables, so an entry can be
+written once and shipped without waiting for the other language.
 
 ## What is deliberately missing
 

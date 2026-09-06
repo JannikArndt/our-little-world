@@ -4,10 +4,10 @@
 import { el, openPanel, message, messages, clearMessages, loop } from './overlay.js';
 import { openGive } from './share.js';
 import { RESOURCES, ROLE, CAPS, byId, capName, roleName, blockProgress } from '../core/world.js';
-import { tr, trn, currentLang } from '../core/i18n.js';
+import { tr, trn } from '../core/i18n.js';
 import { nextTimeHint } from '../core/events.js';
 import { currentProblem } from '../core/guide.js';
-import { changelog, VERSION } from '../core/changelog.js';
+import { showChangelog as openChangelog, VERSION } from './whatsnew.js';
 import { drawPortrait } from '../render/art.js';
 
 const PHASE = [
@@ -230,16 +230,7 @@ export class Hud {
 
   /** Tucked under the history, for whoever wonders what changed. */
   showChangelog() {
-    const p = openPanel({ title: tr('log.title'), lead: tr('log.lead') });
-    for (const e of changelog(currentLang())) {
-      const head = el('div', 'log-v');
-      head.appendChild(el('b', '', 'v' + e.v));
-      head.appendChild(el('span', 'log-date', e.date));
-      p.body.appendChild(head);
-      for (const line of e.lines) p.body.appendChild(el('p', 'log-line', line));
-    }
-    const r = p.row();
-    r.appendChild(p.button(tr('ui.close'), 'soft', () => { p.close(); this.showHistory(); }));
+    openChangelog(() => this.showHistory());
   }
 
   /** Everything the world has said, newest first. */
@@ -260,6 +251,9 @@ export class Hud {
     const nw = el('button', 'whats-new', tr('hist.whatsNew', { v: VERSION }));
     nw.addEventListener('click', () => { p.close(); this.showChangelog(); });
     p.panel.appendChild(nw);
+    const out = el('button', 'whats-new', tr('ui.backToStart'));
+    out.addEventListener('click', () => { p.close(); this.game.leave(); });
+    p.panel.appendChild(out);
   }
 
   /* ---------------- what each of us knows ---------------- */
@@ -296,8 +290,11 @@ export class Hud {
       })));
     }
 
+    p.body.appendChild(el('p', 'lead', tr('teach.saved')));
+
     const r = p.row();
     r.appendChild(p.button(tr('ui.alright'), 'soft', () => p.close()));
+    r.appendChild(p.button(tr('ui.backToStart'), 'soft', () => { p.close(); this.game.leave(); }));
   }
 
   /* ---------------- the end of a play block ---------------- */

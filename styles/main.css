@@ -105,6 +105,14 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
   border: 2px solid var(--line); border-radius: 12px; background: #fffdf8;
 }
 .start-note { color: var(--ink-soft); font-size: 14px; margin: 12px 6px 0; }
+.start-foot { margin: 18px 6px 0; }
+.link-btn {
+  min-height: 44px; padding: 0 14px;
+  background: none; border: 0; border-radius: 999px;
+  color: var(--ink-soft); font-size: 14px; font-weight: 700;
+  -webkit-appearance: none; appearance: none;
+}
+.link-btn:active { background: var(--paper-deep); color: var(--ink); }
 
 /* ---------------- game shell ---------------- */
 #game {

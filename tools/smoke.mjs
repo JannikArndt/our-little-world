@@ -35,6 +35,17 @@ async function main() {
   await page.goto(BASE + '/?room=smoke', { waitUntil: 'load' });
   await step(page, '01-start');
 
+  // the front door says which version this is, and what changed in it
+  const version = (await page.textContent('#versionBtn')).trim();
+  console.log('the start screen says:', version);
+  if (!/^v\d+\.\d+/.test(version)) throw new Error('no version on the start screen');
+  await page.click('#versionBtn');
+  await page.waitForTimeout(400);
+  const startLog = await page.textContent('.panel');
+  if (!/What is new/.test(startLog)) throw new Error('the changelog does not open from the start screen');
+  await page.click('text=Close');
+  await page.waitForTimeout(300);
+
   await page.click('[data-role="BOTH"]');
   await page.waitForSelector('#game:not(.hidden)');
   await page.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
@@ -589,6 +600,29 @@ async function main() {
   });
   console.log('start screen clears the notch:', JSON.stringify(startTop));
   if (startTop.top < SAFE_T) throw new Error('the start screen runs under the notch');
+
+  // and there is a way back out of the world, with the village kept
+  await ph.click('text=Off we go');
+  await ph.waitForTimeout(400);
+  await ph.click('#historyChip');
+  await ph.waitForTimeout(400);
+  await ph.click('text=Back to the start screen');
+  await ph.waitForTimeout(1200);
+  const outAgain = await ph.evaluate(() => ({
+    start: !document.getElementById('start').classList.contains('hidden'),
+    room: document.getElementById('roomInput').value,
+  }));
+  console.log('back at the front door:', JSON.stringify(outAgain));
+  if (!outAgain.start) throw new Error('there is no way back to the start screen');
+  if (outAgain.room !== 'notch') throw new Error('the world name was not carried back');
+
+  await ph.click('[data-role="BOTH"]');
+  await ph.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+  await ph.waitForTimeout(600);
+  const kept = await ph.evaluate(() => window.OLW.world.buildings.length);
+  console.log('the village was still there when we walked back in:', kept, 'buildings');
+  if (kept < 9) throw new Error('the world did not come back');
+  await step(ph, '33-phone-back', 200);
   await phone.close();
 
   await browser.close();

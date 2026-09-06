@@ -10,7 +10,7 @@ p.on('pageerror', e => errs.push('pageerror: ' + e.message));
 p.on('console', m => { if (m.type() === 'error' && !/404/.test(m.text())) errs.push(m.text()); });
 
 // any text that still looks like a key is a hole in the tables
-const KEYISH = /\b(?:ui|w|msg|sum|guide|chop|saw|mill|bridge|house|care|road|herd|notice|say|give|teach|ask|verb|res|cap|time|block|hist|next|app|role|start|j)\.[a-zA-Z][a-zA-Z0-9_.]*\b/;
+const KEYISH = /\b(?:ui|w|msg|sum|guide|chop|saw|mill|bridge|house|care|road|herd|notice|say|give|teach|ask|verb|res|cap|next|app|role|start|day|menu|over)\.[a-zA-Z][a-zA-Z0-9_.]*\b/;
 const scan = async (where) => {
   const txt = await p.evaluate(() => document.body.innerText);
   const m = txt.match(KEYISH);
@@ -25,15 +25,22 @@ if (!/Unsere kleine Welt/.test(await p.textContent('.start-card'))) throw new Er
 
 await p.click('[data-role="BOTH"]');
 await p.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+// the day starts on its own now, no offer panel to click through
+await p.waitForFunction(() => window.OLW.world.block.active, null, { timeout: 8000 });
 await p.waitForTimeout(700);
-await scan('offer');
-await p.click('text=Fünf Minuten zusammen');
+await scan('world');
+
+// the task guide lives behind your own role chip now
+await p.click('#roleBar button.me');
+await p.waitForTimeout(300);
+await scan('menu');
+await p.click('text=Was zu tun ist');
 await p.waitForTimeout(900);
 await scan('guide');
 await p.screenshot({ path: out + '61-de-guide.png' });
 const guide = await p.textContent('.panel');
 console.log('Wegweiser:', guide.replace(/\s+/g, ' ').trim().slice(0, 120));
-await p.click('text=Los geht');
+await p.click('text=Verstanden');
 await p.waitForTimeout(800);
 
 const api = (fn, a) => p.evaluate(fn, a);
@@ -102,16 +109,17 @@ await scan('care');
 await p.screenshot({ path: out + '67-de-care.png' });
 await p.click('text=Fertig');
 
-// sharing, the role card and the history
-await p.click('#partnerChip'); await p.waitForTimeout(300); await scan('share');
+// sharing, from the bottom resource bar
+await p.click('.res'); await p.waitForTimeout(300); await scan('share');
 await p.screenshot({ path: out + '68-de-share.png' });
 await p.click('text=Schließen');
-await api(() => { window.OLW.canSwap = false; window.OLW.world.players.B.done.care = 3; });
-await p.click('#roleChip'); await p.waitForTimeout(300); await scan('role card');
+
+// teaching now lives behind the OTHER role's chip, not your own
+await api(() => { window.OLW.world.players.B.done.care = 3; });
+await p.click('#roleBar button[data-role="A"]'); await p.waitForTimeout(300); await scan('role menu');
 await p.screenshot({ path: out + '69-de-role.png' });
-await p.click('text=Alles klar');
-await p.click('#historyChip'); await p.waitForTimeout(300); await scan('history');
-await p.click('text=Schließen');
+await p.click('text=Ihnen Tiere versorgen zeigen');
+await p.waitForTimeout(300);
 
 // the end of the block
 await api(() => { const w = window.OLW.world; w.block.startTick = w.tick - w.block.length + 20; });
@@ -121,7 +129,7 @@ await scan('summary');
 await p.screenshot({ path: out + '70-de-summary.png' });
 const sum = await p.textContent('.panel');
 console.log('Rückblick:', sum.replace(/\s+/g, ' ').trim().slice(0, 180));
-if (!/Der Morgen ist vorbei/.test(sum)) throw new Error('the summary is not German');
+if (!/Tag \d+ ist vorbei/.test(sum)) throw new Error('the summary is not German');
 
 await b.close();
 if (errs.length) { console.log('\nPROBLEMS:\n' + errs.join('\n')); process.exit(1); }

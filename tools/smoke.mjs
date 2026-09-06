@@ -38,16 +38,21 @@ async function main() {
   await page.click('[data-role="BOTH"]');
   await page.waitForSelector('#game:not(.hidden)');
   await page.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
-  await step(page, '02-offer-block', 900);
+  // the day now starts on its own, with no offer panel to click through
+  await page.waitForFunction(() => window.OLW.world.block.active, null, { timeout: 8000 });
+  await step(page, '02-world', 900);
 
-  await page.click('text=Five minutes together');
-  await step(page, '02b-guide', 900);
+  // the task guide lives behind your own role chip now
+  await page.click('#roleBar button.me');
+  await step(page, '02b-menu', 400);
+  await page.click('text=What needs doing');
+  await step(page, '02c-guide', 900);
   const guide = await page.textContent('.panel');
   console.log('opening card says:', guide.replace(/\s+/g, ' ').trim().slice(0, 150));
-  if (!/nowhere to sleep|river cuts/.test(guide)) throw new Error('the opening card names no problem');
-  if ((await page.$$eval('.step', ns => ns.length)) < 2) throw new Error('the opening card has no steps');
-  await page.click('text=Off we go');
-  await step(page, '03-world', 1200);
+  if (!/nowhere to sleep|river cuts/.test(guide)) throw new Error('the task guide names no problem');
+  if ((await page.$$eval('.step', ns => ns.length)) < 2) throw new Error('the task guide has no steps');
+  await page.click('text=Right, got it');
+  await step(page, '03-world', 600);
 
   const api = async (fn, arg) => page.evaluate(fn, arg);
 
@@ -146,7 +151,9 @@ async function main() {
   if (!built) throw new Error('the bridge was not built');
 
   // swap to the Keeper and look after a sheep
-  await page.click('#roleChip');
+  await page.click('#roleBar button.me');
+  await step(page, '15b-menu', 300);
+  await page.click('text=Play as the Keeper');
   await step(page, '16-keeper', 500);
   const sheepPt = await api(() => {
     const g = window.OLW, s = g.world.sheep[0];
@@ -259,24 +266,20 @@ async function main() {
   if (!/asks/.test(noticeText)) throw new Error('the ask did not reach the other player');
   await step(page, '25a-ask', 300);
 
-  // teaching: having done it a few times, you can show the other player how
-  await api(() => {
-    const g = window.OLW;
-    g.canSwap = false;                       // make the role chip open the card
-    g.world.players.A.done.fell = 3;
-  });
-  await page.click('#roleChip');
+  // teaching: having done it a few times, you can show the other player how.
+  // This lives behind the OTHER role's chip now (yours is your own tools).
+  await api(() => { window.OLW.world.players.A.done.fell = 3; });
+  await page.click('#roleBar button[data-role="B"]');
   await step(page, '25b-role-card', 500);
-  const teach = await page.$('text=teach felling trees');
+  const teach = await page.$('text=Teach them felling trees');
   if (!teach) throw new Error('no way to teach a capability across');
   await teach.click();
   await page.waitForTimeout(400);
   const learned = await api(() => !!window.OLW.world.players.B.caps.fell);
   console.log('taught the other player to fell trees:', learned);
   if (!learned) throw new Error('teaching did not stick');
-  await api(() => { window.OLW.canSwap = true; });
 
-  // messages wait to be read and then go into the history
+  // messages wait to be read; there is no history sheet any more
   const standing = await page.$$eval('.msg', ns => ns.length);
   console.log('messages standing on screen:', standing, '(never more than 3)');
   if (standing > 3) throw new Error('messages piled up');
@@ -285,15 +288,9 @@ async function main() {
     const after = await page.$$eval('.msg', ns => ns.length);
     if (after !== standing - 1) throw new Error('the x did not put a message away');
   }
-  await page.click('#historyChip');
-  await step(page, '25c-history', 400);
-  const hist = await page.$$eval('.hist-line', ns => ns.length);
-  console.log('messages kept in the history:', hist);
-  if (hist < 3) throw new Error('the history is not keeping messages');
-  await page.click('text=Close');
 
-  // sharing
-  await page.click('#partnerChip');
+  // sharing, from the bottom resource bar
+  await page.click('.res');
   await step(page, '25-share', 500);
   await page.click('text=Close');
 
@@ -306,7 +303,7 @@ async function main() {
   await step(page, '26-summary', 1200);
   const summaryText = await page.textContent('.panel');
   console.log('summary contains:', summaryText.replace(/\s+/g, ' ').slice(0, 260));
-  if (!/morning is finished/i.test(summaryText)) throw new Error('no checkpoint summary');
+  if (!/day \d+ is over/i.test(summaryText)) throw new Error('no day-end summary');
 
   // the world must still be there, and saved
   const saved = await api(() => {
@@ -316,7 +313,7 @@ async function main() {
   console.log('saved buildings:', saved);
   if (saved < 4) throw new Error('the world was not saved');
 
-  await page.click('text=Another five minutes');
+  await page.click('text=Play another day');
   await step(page, '27-new-morning', 1000);
   await ipad.close();
 
@@ -327,7 +324,7 @@ async function main() {
   watch(pa, 'A'); watch(pb, 'B');
   await pa.goto(BASE + '/?room=duo&role=A');
   await pa.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
-  await pa.click('text=Five minutes together').catch(() => {});
+  // the day starts on its own now, nothing to click through
   await pb.goto(BASE + '/?room=duo&role=B');
   await pb.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
   await pb.waitForTimeout(2500);
@@ -368,7 +365,6 @@ async function main() {
     watch(pg, name);
     await pg.goto(BASE + '/?room=look&role=BOTH');
     await pg.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
-    await pg.click('text=Five minutes together').catch(() => {});
     await pg.waitForTimeout(1200);
     await pg.screenshot({ path: SHOTS + '30-' + name + '.png' });
     const overflow = await pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

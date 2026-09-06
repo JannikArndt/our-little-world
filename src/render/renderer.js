@@ -4,6 +4,21 @@
 
 import { GW, GH, TILE, WORLD_W, WORLD_H, T, idx } from '../core/grid.js';
 import { blockProgress, dayPhase } from '../core/world.js';
+
+// The colour of the day, in eight moments. Everything between them is mixed.
+// wash is laid over the picture; dark is multiplied into it as shade.
+const DAY_LIGHT = [
+  { at: 0.00, wash: [120, 110, 200, 0.44], dark: [ 70,  80, 140, 0.34] },  // first light
+  { at: 0.12, wash: [206, 232, 255, 0.10], dark: [ 80,  90, 140, 0.02] },  // morning
+  { at: 0.35, wash: [255, 250, 220, 0.06], dark: [255, 255, 255, 0.00] },  // midday
+  { at: 0.62, wash: [255, 236, 180, 0.08], dark: [255, 255, 255, 0.00] },  // afternoon
+  { at: 0.80, wash: [255, 190,  95, 0.20], dark: [150, 105,  80, 0.08] },  // gold
+  { at: 0.90, wash: [255, 140,  55, 0.34], dark: [140,  85,  80, 0.20] },  // sunset
+  { at: 0.97, wash: [150, 110, 175, 0.34], dark: [ 70,  70, 130, 0.36] },  // afterglow
+  { at: 1.00, wash: [ 90,  95, 170, 0.30], dark: [ 52,  58, 118, 0.46] },  // dark
+];
+
+const rgba = (c) => 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + c[3] + ')';
 import * as art from './art.js';
 
 const C = art.C;
@@ -277,6 +292,7 @@ export class Renderer {
     ctx.scale(s, s);
     ctx.translate(-this.cam.x, -this.cam.y);
 
+    art.setSun(this.sunFor(w));
     ctx.drawImage(this.terrain, 0, 0);
     this.drawWaterShimmer(ctx, time);
     art.drawBridge(ctx, w.bridge, time);
@@ -370,38 +386,49 @@ export class Renderer {
   }
 
   /**
-   * The day, told as light. Cool and pale at dawn, clear at midday, gold in
-   * the afternoon, deep blue once everybody has gone in. No clock anywhere:
-   * if you want to know how late it is, you look outside.
+   * The day, told as light. Two passes over the finished picture: a wash that
+   * gives the hour its colour, and a multiply that puts shade under it — warm
+   * shade while the sun is low, cold once it has gone. No clock anywhere: if
+   * you want to know how late it is, you look outside.
    */
   dayLight(w) {
+    if (dayPhase(w) === 'night') return { wash: [70, 90, 190, 0.26], dark: [44, 52, 110, 0.55] };
     const p = blockProgress(w);
-    const ph = dayPhase(w);
-    if (ph === 'night') return { top: [26, 38, 86], bottom: [16, 24, 60], a: 0.46 };
-    if (ph === 'dawn') {
-      const k = 1 - Math.min(1, p / 0.12);
-      return { top: [122, 110, 170], bottom: [255, 186, 150], a: 0.34 * k };
-    }
-    if (ph === 'evening') {
-      const k = Math.min(1, (p - 0.84) / 0.16);
-      return { top: [255, 158, 92], bottom: [150, 108, 130], a: 0.10 + 0.30 * k };
-    }
-    if (ph === 'afternoon') {
-      const k = (p - 0.66) / 0.18;
-      return { top: [255, 196, 120], bottom: [255, 172, 110], a: 0.06 + 0.10 * k };
-    }
-    if (ph === 'midday') return { top: [255, 246, 214], bottom: [255, 246, 224], a: 0.05 };
-    return { top: [214, 236, 255], bottom: [230, 244, 226], a: 0.07 };   // morning
+    const k = DAY_LIGHT;
+    let i = 0;
+    while (i < k.length - 2 && p >= k[i + 1].at) i++;
+    const a = k[i], b = k[i + 1];
+    const t = Math.max(0, Math.min(1, (p - a.at) / (b.at - a.at)));
+    const mix = (x, y) => x.map((v, n) => v + (y[n] - v) * t);
+    return { wash: mix(a.wash, b.wash), dark: mix(a.dark, b.dark) };
+  }
+
+  /** Where the sun stands, for everything that casts a shadow. */
+  sunFor(w) {
+    if (dayPhase(w) === 'night') return { dx: 0, stretch: 1, alpha: 0.07 };
+    const angle = blockProgress(w) * 2 - 1;              // -1 in the east, +1 in the west
+    return {
+      dx: angle * 1.7,
+      stretch: 1 + Math.abs(angle) * 1.5,
+      alpha: 0.20 - Math.abs(angle) * 0.10,
+    };
   }
 
   drawDayLight(ctx, w) {
     const l = this.dayLight(w);
-    if (l.a <= 0.004) return;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    const g = ctx.createLinearGradient(0, 0, 0, this.view.h);
-    g.addColorStop(0, 'rgba(' + l.top.join(',') + ',' + l.a + ')');
-    g.addColorStop(1, 'rgba(' + l.bottom.join(',') + ',' + (l.a * 0.72) + ')');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, this.view.w, this.view.h);
+    if (l.dark[3] > 0.004) {
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = rgba(l.dark);
+      ctx.fillRect(0, 0, this.view.w, this.view.h);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    if (l.wash[3] > 0.004) {
+      const g = ctx.createLinearGradient(0, 0, 0, this.view.h);
+      g.addColorStop(0, rgba(l.wash));
+      g.addColorStop(1, rgba([l.wash[0], l.wash[1], l.wash[2], l.wash[3] * 0.62]));
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, this.view.w, this.view.h);
+    }
   }
 }

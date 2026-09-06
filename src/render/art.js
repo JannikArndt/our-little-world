@@ -31,9 +31,15 @@ export function rr(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+// Where the sun is, in one place. Everything that casts a shadow reads it, so
+// the whole world leans the same way as the day goes past.
+let sun = { dx: 0, stretch: 1, alpha: 0.18 };
+export function setSun(s) { sun = s; }
+
 function shadow(ctx, x, y, rx, ry) {
-  ctx.fillStyle = C.shadow;
-  ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(60,50,35,' + sun.alpha + ')';
+  ctx.beginPath();
+  ctx.ellipse(x + sun.dx * rx, y, rx * sun.stretch, ry, 0, 0, Math.PI * 2); ctx.fill();
 }
 
 /** Emoji advance widths are wider than their ink, so centring on the advance

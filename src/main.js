@@ -6,7 +6,7 @@ import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
 import { installInput, renderModeBar, closeBubble, buildProject } from './ui/interact.js';
 import { openPanel, message, closePanel } from './ui/overlay.js';
-import { ROLE, otherRole, byId, roleName, can } from './core/world.js';
+import { ROLE, otherRole, byId, can } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
 import { rememberRole, recallRole } from './core/persist.js';
@@ -327,10 +327,10 @@ async function startGame(chosenRole, room) {
   session.on((what, data) => {
     if (what === 'block-ended') { session.checkpoint(); hud.showSummary(); }
     if (what === 'status') updatePartner();
-    // if the other player starts the morning, put our invitation away
+    // if the other player starts the morning, put our invitation away and let
+    // them get on with it — the card going is answer enough
     if (what === 'acted' && data && data.type === 'block.start' && game._offer) {
       game._offer.close(); game._offer = null;
-      message(tr('block.otherStarted', { role: roleName(game.other) }));
     }
   });
 
@@ -382,14 +382,10 @@ async function startGame(chosenRole, room) {
   }
   requestAnimationFrame(step);
 
-  // a phone held upright shows very little of the world
-  if (window.innerHeight > window.innerWidth * 1.25) {
-    setTimeout(() => message(tr('msg.sideways')), 2600);
-  }
-
-  // the shared ritual: agree to play for five minutes
+  // the shared ritual: agree to play for five minutes. Somebody arriving in the
+  // middle of one is simply in it: the clock is already running where they can
+  // see it, so nothing needs to be said.
   if (!session.world.block.active) offerBlock(game);
-  else message(tr('block.joined'));
 
   window.OLW = game;      // handy when poking at it from a console
 }

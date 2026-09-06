@@ -61,8 +61,6 @@ export const de = {
   'block.start': '☀️ Fünf Minuten zusammen',
   'block.look': 'Nur mal umschauen',
   'block.note': 'Wenn die fünf Minuten um sind, hört nichts auf. Die Welt kommt nur zur Ruhe, und wir finden eine gute Stelle zum Aufhören.',
-  'block.joined': '🌅 Der Morgen läuft schon — du steigst mit ein.',
-  'block.otherStarted': '🌅 {role} hat den Morgen begonnen.',
 
   /* ---- Rohstoffe ---- */
   'res.wood': 'Holz',
@@ -221,13 +219,11 @@ export const de = {
   'msg.inBasket': '🍞 {n} im Korb. Die Hungrigen kommen bestimmt.',
   'msg.saved': 'Gespeichert. Beim nächsten Mal ist alles genau so.',
   'msg.plotHere': 'Hier ist ein Bauplatz, bereit für ein Haus.',
-  'msg.sideways': 'Dreh den Bildschirm quer, dann siehst du die ganze Welt. Ziehen und Zoomen geht auch.',
   'msg.roadLaid': '🛤️ {n} Schritte Weg. Schau, wie sie ihn benutzen.',
   'msg.cannotStand': 'Da kann sie nicht stehen.',
   'msg.houseUp': '🏠 Das Dach ist drauf. Gleich kommt jemand.',
   'msg.bridgeStrong': '🌉 Sie hält. Bombenfest.',
   'msg.bridgeCreaky': '🌉 Sie hält — aber sie knarzt ein bisschen.',
-  'msg.splash': '💦 PLATSCH. Alle sind heil. Die Bretter sind ans Ufer getrieben.',
   'msg.mended': '🌉 Geflickt. Es geht wieder rüber.',
   'msg.boatUp': '⛵ Es schwimmt. Jemand sollte damit rausfahren.',
   'msg.playUp': '🛝 Die Schaukel steht. Die Kinder haben es gehört.',

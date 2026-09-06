@@ -4,9 +4,18 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '1.2';
+export const VERSION = '1.3';
 
 export const CHANGELOG = [
+  {
+    v: '1.3', date: '2026-09-06',
+    en: [
+      'The world says less. Notes that turned up on their own — arriving in the middle of a morning, being told to turn the phone sideways, the splash when a bridge gives way — are gone. What you are looking at already says it.',
+    ],
+    de: [
+      'Die Welt sagt weniger. Zettel, die von allein kamen — mitten in einen Morgen kommen, das Handy quer drehen, der Platsch, wenn eine Brücke nachgibt — sind weg. Was man sieht, sagt es schon.',
+    ],
+  },
   {
     v: '1.2', date: '2026-09-05',
     en: [

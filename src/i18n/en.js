@@ -61,8 +61,6 @@ export const en = {
   'block.start': '☀️ Five minutes together',
   'block.look': 'Just look around',
   'block.note': 'When the five minutes are up nothing stops. The world just settles, and we get a good place to leave it.',
-  'block.joined': '🌅 Joining a morning already in progress.',
-  'block.otherStarted': '🌅 The {role} started the morning.',
 
   /* ---- resources ---- */
   'res.wood': 'wood',
@@ -221,13 +219,11 @@ export const en = {
   'msg.inBasket': '🍞 {n} in the basket. The hungry ones will come.',
   'msg.saved': 'Saved. It will be exactly like this when you come back.',
   'msg.plotHere': 'There is a plot here, ready for a house.',
-  'msg.sideways': 'Turn the screen sideways to see the whole world. Pinch and drag works too.',
   'msg.roadLaid': '🛤️ {n} steps of road. Watch them use it.',
   'msg.cannotStand': 'She cannot stand there.',
   'msg.houseUp': '🏠 The roof is on. Somebody will be along shortly.',
   'msg.bridgeStrong': '🌉 It holds. Solid as anything.',
   'msg.bridgeCreaky': '🌉 It holds — with a bit of a creak.',
-  'msg.splash': '💦 SPLASH. Everybody is fine. The planks floated to the bank.',
   'msg.mended': '🌉 Mended. People are crossing again.',
   'msg.boatUp': '⛵ She floats. Somebody should take her out.',
   'msg.playUp': '🛝 The swing is up. The children heard it happen.',

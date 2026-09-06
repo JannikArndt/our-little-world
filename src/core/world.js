@@ -93,9 +93,13 @@ function paintRoad(w, ax, ay, bx, by) {
 /* world creation                                                        */
 /* --------------------------------------------------------------------- */
 
-export function createWorld(seed) {
-  nextId = 1;
-  const w = {
+/**
+ * The bare shape of a world, with nothing in it yet: every field a world has,
+ * set to what it looks like on day one. `createWorld` fills it in, and
+ * `fillDefaults` uses it to give an older save the fields it never had.
+ */
+function defaultShape(seed) {
+  return {
     schema: SCHEMA,
     seed: seed >>> 0,
     rng: seed >>> 0,
@@ -126,6 +130,11 @@ export function createWorld(seed) {
     journal: [],
     seq: 0,
   };
+}
+
+export function createWorld(seed) {
+  nextId = 1;
+  const w = defaultShape(seed);
 
   paintTerrain(w);
 
@@ -260,9 +269,80 @@ export function blockProgress(w) {
 
 export function serialize(w) { return JSON.stringify(w); }
 
+/**
+ * How to carry a world written by older code up to the current SCHEMA.
+ *
+ * MIGRATIONS[n] takes a world at schema n and returns it at schema n + 1.
+ * Add an entry in the same commit that raises SCHEMA and the worlds people
+ * already have keep working; leave a gap and those worlds are unreadable.
+ *
+ * Most changes need no entry at all. Adding a field, a resource or a
+ * capability is handled by `fillDefaults`, which gives an old save whatever a
+ * fresh world would have. Write a migration only when the meaning of existing
+ * data changes — a renamed field, a different unit, a restructured list.
+ *
+ * For example, if SCHEMA 6 -> 7 renamed `larder.food` to `larder.bread`:
+ *
+ *   6: (w) => { w.larder.bread = w.larder.food; delete w.larder.food; return w; },
+ */
+export const MIGRATIONS = {
+};
+
+/**
+ * The oldest schema this build can still read. Raise it only when you
+ * deliberately drop support for saves that old — every schema from here up to
+ * SCHEMA must have a migration, and `tests/persist.test.mjs` checks that.
+ */
+export const OLDEST_SCHEMA = 6;
+
+/**
+ * Bring a parsed world up to the current schema, or return null if there is
+ * no way to. Refusing is the honest answer for a world written by *newer*
+ * code than this: we cannot know what changed, and guessing would corrupt it.
+ */
+export function migrate(w) {
+  if (!w || typeof w !== 'object' || typeof w.schema !== 'number') return null;
+  if (w.schema > SCHEMA) return null;
+  while (w.schema < SCHEMA) {
+    const step = MIGRATIONS[w.schema];
+    if (!step) return null;
+    const from = w.schema;
+    w = step(w);
+    if (!w || typeof w !== 'object') return null;
+    w.schema = from + 1;
+  }
+  return w;
+}
+
+/**
+ * Give a world any field it is missing, using the value a fresh world has.
+ * This is what makes additive changes free: a save from before a resource or
+ * a capability existed simply gains it, rather than being thrown away.
+ */
+function fillDefaults(w) {
+  const fresh = defaultShape(w.seed >>> 0);
+  for (const k of Object.keys(fresh)) if (!(k in w)) w[k] = fresh[k];
+
+  if (!w.players || typeof w.players !== 'object') w.players = fresh.players;
+  for (const role of ['A', 'B']) {
+    const fp = fresh.players[role];
+    const p = w.players[role];
+    if (!p || typeof p !== 'object') { w.players[role] = fp; continue; }
+    for (const k of Object.keys(fp)) if (!(k in p)) p[k] = fp[k];
+    for (const group of ['res', 'caps']) {
+      if (!p[group] || typeof p[group] !== 'object') { p[group] = fp[group]; continue; }
+      for (const k of Object.keys(fp[group])) if (!(k in p[group])) p[group][k] = fp[group][k];
+    }
+  }
+  return w;
+}
+
 export function deserialize(text) {
-  const w = JSON.parse(text);
-  if (!w || w.schema !== SCHEMA) return null;
+  let w;
+  try { w = JSON.parse(text); } catch (e) { return null; }
+  w = migrate(w);
+  if (!w) return null;
+  fillDefaults(w);
   // keep the id counter ahead of anything already in the world
   let max = 0;
   const scan = (list) => { for (const o of list) { const n = parseInt(String(o.id).split('_')[1], 10); if (n > max) max = n; } };

@@ -119,6 +119,56 @@ Keeping the world on the server instead would remove that ordering rule: the
 relay would hold the last snapshot per room and hand it to whoever arrives.
 `Session` is already shaped for it — see **Multiplayer** below.
 
+Because the world lives in the browser and not in the container, deploying a
+new version never touches it. The one thing that can is a change to the shape
+of the world itself, which is what the next two sections are about.
+
+### A world to throw away
+
+Every world name is a world of its own, with its own save and its own seed. So
+a name other than `home` gives you somewhere to test without going near the
+world you actually play in:
+
+    https://your-host/?room=test
+
+Type any name but `home` on the start screen and a quiet dashed button appears
+under it, offering to empty that world. It asks twice, and a mis-tap undoes
+itself if you leave it alone for a few seconds. It never appears for `home`.
+
+Emptying only clears the device you tap on. The other device still has its own
+copy of that world, and if it opens the page first it will hand that copy
+back — so empty it on both, or start the emptied device first.
+
+### Changing the shape of a world
+
+`SCHEMA` in `core/world.js` is the version of the world's shape. A save whose
+schema does not match is not loaded, and this is the one way a deployment can
+cost you the world.
+
+Three things keep that from happening:
+
+- **Most changes need nothing.** Adding a field, a resource or a capability is
+  handled by `fillDefaults`, which gives an old save whatever a fresh world
+  would have. Do not raise `SCHEMA` for those.
+- **The rest need a migration.** When the meaning of existing data changes — a
+  renamed field, a different unit, a restructured list — raise `SCHEMA` and add
+  the matching entry to `MIGRATIONS` in the same commit. `MIGRATIONS[n]` carries
+  a world from schema `n` to `n + 1`, and `migrate` walks the ladder as far as
+  it needs to. A test fails if you raise `SCHEMA` and forget.
+- **Anything still unreadable is kept, not lost.** A save this build cannot
+  read — too old for the ladder, or written by a *newer* build — is copied to
+  `olw.world.<room>.kept.<schema>` before the fresh world saves over it.
+
+#### Recovering a world
+
+If a world came back empty, the old one is probably sitting in that kept key.
+In the browser console:
+
+    Object.keys(localStorage).filter(k => k.startsWith('olw.world.'))
+    localStorage.setItem('olw.world.home', localStorage.getItem('olw.world.home.kept.6'))
+
+Then reload, on the device that starts first.
+
 ## English and German
 
 The game picks its language from the device and remembers what you choose; the
@@ -197,7 +247,7 @@ src/
     sim.js       villagers, sheep, crops, weather in the sky
     events.js    problems, but only when they make sense
     rng.js       seeded, so two browsers agree
-    persist.js   localStorage
+    persist.js   localStorage, and keeping a save we cannot read
   net/
     transport.js the seam: local windows, a relay, or nothing
     session.js   one peer hosts the clock; the rest follow snapshots
@@ -207,7 +257,7 @@ src/
 server/
   serve.mjs      static files + the relay, no dependencies
   relay.mjs      a ~180 line WebSocket relay, no dependencies
-tests/           deterministic simulation and relay tests
+tests/           deterministic simulation, relay and persistence tests
 tools/           browser smoke test that plays a whole block
 ```
 

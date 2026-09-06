@@ -46,6 +46,13 @@
     </div>
 
     <p class="start-note" id="startNote" data-t="start.note">Both players type the same world name.</p>
+
+    <!-- Only for worlds other than the default one, so the world you actually
+         play in cannot be emptied by a mis-tap. -->
+    <div id="resetRow" class="reset-row hidden">
+      <button id="resetBtn" class="reset-btn" type="button"></button>
+      <p id="resetNote" class="start-note"></p>
+    </div>
   </div>
 </div>
 

@@ -9,7 +9,7 @@ import { openPanel, message, closePanel } from './ui/overlay.js';
 import { ROLE, otherRole, byId, roleName } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
-import { rememberRole, recallRole } from './core/persist.js';
+import { rememberRole, recallRole, forget } from './core/persist.js';
 import { openChop } from './minigames/chop.js';
 import { openSawmill, openMill } from './minigames/sawmill.js';
 import { openBridge, openRepair } from './minigames/bridge.js';
@@ -17,6 +17,10 @@ import { openHouse } from './minigames/house.js';
 import { openCare } from './minigames/care.js';
 
 const qs = new URLSearchParams(location.search);
+
+// The world everyone actually plays in. Any other name is a world of its own,
+// with its own save, which is what makes a throwaway one for testing possible.
+const DEFAULT_ROOM = 'home';
 
 /* ------------------------------------------------------------------ */
 /* start screen                                                       */
@@ -37,6 +41,58 @@ function applyStartText() {
     b.addEventListener('click', () => { setLang(l.id); applyStartText(); });
     row.appendChild(b);
   }
+  syncResetRow();
+}
+
+/** What the typed name comes out as: the one place that decides it. */
+function roomName() {
+  const el = document.getElementById('roomInput');
+  const raw = (el && el.value) || DEFAULT_ROOM;
+  return raw.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '') || DEFAULT_ROOM;
+}
+
+/* ------------------------------------------------------------------ */
+/* emptying a world                                                   */
+/* ------------------------------------------------------------------ */
+
+// Two taps, and only ever for a world that is not the default one. The first
+// tap asks; if it was a mis-tap, saying nothing for a few seconds undoes it.
+let askingUntil = 0;
+let askTimer = null;
+
+function syncResetRow() {
+  const row = document.getElementById('resetRow');
+  if (!row) return;
+  const room = roomName();
+  askingUntil = 0;
+  if (askTimer) { clearTimeout(askTimer); askTimer = null; }
+
+  if (room === DEFAULT_ROOM) { row.classList.add('hidden'); return; }
+  row.classList.remove('hidden');
+  const btn = document.getElementById('resetBtn');
+  btn.classList.remove('asking');
+  btn.textContent = tr('start.reset', { room });
+  document.getElementById('resetNote').textContent = tr('start.resetNote', { room });
+}
+
+function onReset() {
+  const room = roomName();
+  if (room === DEFAULT_ROOM) return;              // the row is hidden, but be sure
+  const btn = document.getElementById('resetBtn');
+  const note = document.getElementById('resetNote');
+
+  if (Date.now() > askingUntil) {
+    askingUntil = Date.now() + 4000;
+    btn.classList.add('asking');
+    btn.textContent = tr('start.resetAsk', { room });
+    if (askTimer) clearTimeout(askTimer);
+    askTimer = setTimeout(syncResetRow, 4000);
+    return;
+  }
+
+  forget(room);
+  syncResetRow();
+  note.textContent = tr('start.resetDone', { room });
 }
 
 function boot() {
@@ -44,7 +100,10 @@ function boot() {
   applyStartText();
   const start = document.getElementById('start');
   const roomInput = document.getElementById('roomInput');
-  roomInput.value = (qs.get('room') || 'home').slice(0, 24);
+  roomInput.value = (qs.get('room') || DEFAULT_ROOM).slice(0, 24);
+  roomInput.addEventListener('input', syncResetRow);
+  document.getElementById('resetBtn').addEventListener('click', onReset);
+  syncResetRow();
 
   const remembered = recallRole();
   if (remembered) {
@@ -56,7 +115,7 @@ function boot() {
     const btn = e.target.closest ? e.target.closest('[data-role]') : null;
     if (!btn) return;
     const role = btn.getAttribute('data-role');
-    const room = (roomInput.value || 'home').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'home';
+    const room = roomName();
     rememberRole(role);
     start.classList.add('hidden');
     document.getElementById('game').classList.remove('hidden');

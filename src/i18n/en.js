@@ -13,6 +13,10 @@ export const en = {
   'start.room': "Our world's name",
   'start.note': 'Both players type the same world name.',
   'start.lang': 'Language',
+  'start.reset': 'Start “{room}” over',
+  'start.resetAsk': 'Tap again to empty “{room}”',
+  'start.resetDone': '“{room}” is empty. It begins again the next time you open it.',
+  'start.resetNote': 'Only on this device — the other one still remembers its own “{room}”.',
 
   'art.plot': 'a plot',
   'art.forFamily': 'for the new family',

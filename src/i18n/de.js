@@ -13,6 +13,10 @@ export const de = {
   'start.room': 'Der Name unserer Welt',
   'start.note': 'Beide tippen denselben Namen ein.',
   'start.lang': 'Sprache',
+  'start.reset': '„{room}“ neu anfangen',
+  'start.resetAsk': 'Nochmal tippen, um „{room}“ zu leeren',
+  'start.resetDone': '„{room}“ ist leer. Beim nächsten Öffnen fängt die Welt neu an.',
+  'start.resetNote': 'Nur auf diesem Gerät — das andere kennt sein eigenes „{room}“ weiterhin.',
 
   'art.plot': 'Bauplatz',
   'art.forFamily': 'für die neue Familie',

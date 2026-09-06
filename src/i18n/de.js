@@ -19,21 +19,35 @@ export const de = {
   'art.workshop': 'WERKSTATT',
 
   /* ---- Rahmen ---- */
-  'ui.finish': '🌇 Schluss',
-  'ui.newMorning': '🌅 Neuer Morgen',
+  'ui.here': 'da',
+  'ui.away': 'gerade nicht da',
+
+  /* ---- die Klappmenüs ---- */
+  'menu.tasks': 'Was zu tun ist',
+  'menu.swap': 'Als {role} spielen',
+  'menu.share': 'Etwas abgeben',
+  'menu.reload': 'Spiel neu laden',
+  'menu.startOver': 'Diese Welt neu anfangen',
+  'menu.home': 'Zurück zum Startbildschirm',
+  'over.title': '🧹 Diese Welt neu anfangen?',
+  'over.lead': 'Alles, was hier gebaut wurde, ist dann weg, und der erste Morgen beginnt von vorn. Zurück geht es nicht.',
+  'over.yes': 'Ja, neu anfangen',
+
+  /* ---- der Tag ---- */
+  'day.overTitle': '🌙 Tag {n} ist vorbei',
+  'day.overLead': 'Alle sind hineingegangen. Ohne dich geht es nicht weiter.',
+  'day.another': '🌅 Noch einen Tag spielen',
+  'day.stop': 'Für jetzt gut sein lassen',
+
   'ui.close': 'Schließen',
   'ui.done': 'Fertig',
   'ui.later': 'Später',
   'ui.notNow': 'Jetzt nicht',
+  'ui.startOver': 'Von vorn',
   'ui.alright': 'Alles klar',
   'ui.gotIt': 'Verstanden',
-  'ui.offWeGo': '☀️ Los geht’s',
   'ui.where': '👀 Wo denn?',
   'ui.neverMind': 'Doch nicht',
-  'ui.startOver': 'Nochmal',
-  'ui.waiting': 'wartet…',
-  'ui.partnerHere': '{role} ist da',
-  'ui.partnerTap': '{role} — zum Teilen tippen',
   'ui.have': 'hast',
   'ui.need': 'brauchst',
   'ui.stillMissing_one': 'fehlt noch',
@@ -41,27 +55,8 @@ export const de = {
   'ui.cost': 'hast {have}, brauchst {need}',
 
   /* ---- Tageszeit ---- */
-  'time.earlyMorning': 'früher Morgen',
-  'time.midMorning': 'Vormittag',
-  'time.midday': 'Mittag',
-  'time.afternoon': 'Nachmittag',
-  'time.evening': 'Abend',
-  'time.quiet': 'ein ruhiger Moment',
-  'time.done': 'der Tag ist vorbei',
-  'time.notStarted': 'noch nicht los',
-  'time.left': 'Noch ungefähr {mins}{secs} s von diesem Morgen. Keine Eile.',
-  'time.finished': 'Die Spielzeit ist vorbei. Alles ist gespeichert.',
 
   /* ---- Spielblock ---- */
-  'block.titleNew': '🌤️ Unsere kleine Welt',
-  'block.titleBack': '🌤️ Unsere kleine Welt ist noch da',
-  'block.leadNew': 'Ein Fluss, ein Wald, ein paar Häuser und Leute, die Hilfe gebrauchen können.',
-  'block.leadBack': 'Alles ist genau so, wie ihr es verlassen habt. Wollen wir ein bisschen aufpassen?',
-  'block.start': '☀️ Fünf Minuten zusammen',
-  'block.look': 'Nur mal umschauen',
-  'block.note': 'Wenn die fünf Minuten um sind, hört nichts auf. Die Welt kommt nur zur Ruhe, und wir finden eine gute Stelle zum Aufhören.',
-  'block.joined': '🌅 Der Morgen läuft schon — du steigst mit ein.',
-  'block.otherStarted': '🌅 {role} hat den Morgen begonnen.',
 
   /* ---- Rohstoffe ---- */
   'res.wood': 'Holz',
@@ -97,9 +92,6 @@ export const de = {
   'verb.care': 'ein Schaf versorgen',
   'verb.road': 'einen Weg bauen',
   'verb.farm': 'auf dem Feld arbeiten',
-  'teach.title': '{emoji} Du bist {role}',
-  'teach.lead': 'Das kannst du:',
-  'teach.can': '👐 Das könntest du {role} zeigen',
   'teach.button': '{icon} {what} zeigen',
   'teach.theyKnow': '{role} kann Sachen, die du noch nicht kannst: {list}. Frag danach.',
   'teach.done': '👐 Du hast es gezeigt. Jetzt könnt ihr beide {what}.',
@@ -178,9 +170,7 @@ export const de = {
   /* ---- Nachrichten ---- */
   'msg.gaveAcross': '🤝 {n} sind zu {role} gegangen.',
   'msg.inBasket': '🍞 {n} im Korb. Die Hungrigen kommen bestimmt.',
-  'msg.saved': 'Gespeichert. Beim nächsten Mal ist alles genau so.',
   'msg.plotHere': 'Hier ist ein Bauplatz, bereit für ein Haus.',
-  'msg.sideways': 'Dreh den Bildschirm quer, dann siehst du die ganze Welt. Ziehen und Zoomen geht auch.',
   'msg.roadLaid': '🛤️ {n} Schritte Weg. Schau, wie sie ihn benutzen.',
   'msg.cannotStand': 'Da kann sie nicht stehen.',
   'msg.houseUp': '🏠 Das Dach ist drauf. Gleich kommt jemand.',
@@ -188,11 +178,6 @@ export const de = {
   'msg.bridgeCreaky': '🌉 Sie hält — aber sie knarzt ein bisschen.',
   'msg.splash': '💦 PLATSCH. Alle sind heil. Die Bretter sind ans Ufer getrieben.',
   'msg.mended': '🌉 Geflickt. Es geht wieder rüber.',
-  'hist.title': '📜 Was passiert ist',
-  'hist.lead': 'Alle Nachrichten, die neuesten zuerst.',
-  'hist.empty': 'Noch nichts. Die Welt war still.',
-  'hist.justNow': 'gerade eben',
-  'hist.minsAgo': 'vor {n} Min',
 
   /* ---- Teilen ---- */
   'give.title': '🤝 Teilen',
@@ -337,17 +322,12 @@ export const de = {
   'say.madeIt': 'geschafft!',
 
   /* ---- Tagebuch und Rückblick ---- */
-  'sum.title': '🌇 Der Morgen ist vorbei',
-  'sum.lead': 'Unsere kleine Welt ist in Sicherheit. Alles, was wir gebaut haben, ist gespeichert.',
-  'sum.today': 'Heute haben wir…',
   'sum.nothing': 'meistens einfach zugeschaut',
   'sum.beds': '{n} von {total} haben ein Bett',
   'sum.basket': '🍞 {n} im Korb',
   'sum.sheepOk': '{n} von {total} Schafen sind zufrieden',
   'sum.sheepNeed': '🐑 die Schafe hätten gern noch Hilfe',
   'sum.nextTime': 'Nächstes Mal',
-  'sum.again': '☀️ Nochmal fünf Minuten',
-  'sum.stop': 'Hier aufhören',
   'sum.felled_one': 'einen Baum gefällt',
   'sum.felled_other': '{n} Bäume gefällt',
   'sum.sawed': '{n} Bretter gesägt',

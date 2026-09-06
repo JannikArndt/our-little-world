@@ -5,11 +5,11 @@ import { LocalTransport, WsTransport, SoloTransport } from './net/transport.js';
 import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
 import { installInput, renderModeBar, closeBubble } from './ui/interact.js';
-import { openPanel, message, closePanel } from './ui/overlay.js';
-import { ROLE, otherRole, byId, roleName } from './core/world.js';
+import { message, closePanel, closeMenu, clearMessages } from './ui/overlay.js';
+import { ROLE, otherRole, byId } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
-import { rememberRole, recallRole } from './core/persist.js';
+import { rememberRole, recallRole, forget } from './core/persist.js';
 import { openChop } from './minigames/chop.js';
 import { openSawmill, openMill } from './minigames/sawmill.js';
 import { openBridge, openRepair } from './minigames/bridge.js';
@@ -133,6 +133,15 @@ async function startGame(chosenRole, room) {
 
     dispatch(a) { return session.dispatch(a); },
 
+    /** Is that role at the screen right now? Yours always is. */
+    isOnline(id) {
+      if (id === game.role) return true;
+      if (solo) return true;
+      const w = session.world;
+      if (!w || !w.players[id]) return false;
+      return (w.tick - (w.players[id].seen || -9999)) < 120;
+    },
+
     setMode(m) {
       game.mode = m;
       closeBubble();
@@ -152,7 +161,27 @@ async function startGame(chosenRole, room) {
       game.role = game.role === 'A' ? 'B' : 'A';
       game.other = otherRole(game.role);
       game.setMode(null);
-      hud.last = {};
+      hud.relabel();
+    },
+
+    /** The language changed: everything holding words draws itself again. */
+    relabel() {
+      document.title = tr('app.title');
+      applyStartText();
+      hud.relabel();
+      renderModeBar(game);
+    },
+
+    /** Back to the start screen, where the world and the role are chosen. */
+    goHome() {
+      session.checkpoint();
+      location.href = location.pathname;
+    },
+
+    /** Forget this world and begin it again from the first morning. */
+    startOver() {
+      forget(room);
+      location.href = location.pathname + '?room=' + encodeURIComponent(room);
     },
 
     /** Take us to whatever the guide is talking about. */
@@ -214,15 +243,12 @@ async function startGame(chosenRole, room) {
       if (open) open();
     },
 
-    startBlock(newDay) {
-      session.startBlock(newDay);
+    /** A day begins. Nothing else starts one; somebody has to want it. */
+    startDay(newDay) {
       closePanel();
-      setTimeout(() => hud.showGuide({ first: true }), 120);
-    },
-    endBlock() {
-      session.dispatch({ type: 'block.end' });
-      session.checkpoint();
-      hud.showSummary();
+      closeMenu();
+      clearMessages();
+      session.startBlock(newDay);
     },
   };
 
@@ -230,12 +256,12 @@ async function startGame(chosenRole, room) {
   game.hud = hud;
 
   session.on((what, data) => {
-    if (what === 'block-ended') { session.checkpoint(); hud.showSummary(); }
+    if (what === 'block-ended') { session.checkpoint(); hud.showDayEnd(); }
     if (what === 'status') updatePartner();
-    // if the other player starts the morning, put our invitation away
-    if (what === 'acted' && data && data.type === 'block.start' && game._offer) {
-      game._offer.close(); game._offer = null;
-      message(tr('block.otherStarted', { role: roleName(game.other) }));
+    // the other player started the next day: come along with them
+    if (what === 'acted' && data && data.type === 'block.start') {
+      closePanel();
+      clearMessages();
     }
   });
 
@@ -249,9 +275,7 @@ async function startGame(chosenRole, room) {
   window.addEventListener('pagehide', () => session.checkpoint());
 
   function updatePartner() {
-    const w = session.world;
-    if (!w) return;
-    game.partnerOnline = solo ? true : (w.tick - (w.players[game.other].seen || -9999)) < 120;
+    game.partnerOnline = game.isOnline(game.other);
   }
 
   // presence heartbeat
@@ -286,35 +310,11 @@ async function startGame(chosenRole, room) {
   }
   requestAnimationFrame(step);
 
-  // a phone held upright shows very little of the world
-  if (window.innerHeight > window.innerWidth * 1.25) {
-    setTimeout(() => message(tr('msg.sideways')), 2600);
-  }
-
-  // the shared ritual: agree to play for five minutes
-  if (!session.world.block.active) offerBlock(game);
-  else message(tr('block.joined'));
+  // The day starts with the game. If the world is already in the middle of
+  // one — the other player got here first — we simply join it.
+  if (!session.world.block.active) game.startDay(session.world.block.endedAt !== null);
 
   window.OLW = game;      // handy when poking at it from a console
-}
-
-function offerBlock(game) {
-  const w = game.world;
-  const returning = w.tick > 0;
-  const p = openPanel({
-    title: tr(returning ? 'block.titleBack' : 'block.titleNew'),
-    lead: tr(returning ? 'block.leadBack' : 'block.leadNew'),
-    center: true,
-  });
-  game._offer = p;
-  const r = p.row();
-  r.appendChild(p.button(tr('block.start'), 'go', () => { game._offer = null; p.close(); game.startBlock(returning); }));
-  r.appendChild(p.button(tr('block.look'), 'soft', () => { game._offer = null; p.close(); game.hud.showGuide(); }));
-  const note = document.createElement('p');
-  note.className = 'lead center';
-  note.style.marginTop = '10px';
-  note.textContent = tr('block.note');
-  p.body.appendChild(note);
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

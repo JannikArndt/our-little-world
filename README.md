@@ -167,17 +167,30 @@ notices opens the same card.
 Anything that costs materials shows the cost as the materials themselves — one
 picture per plank and per stone, the ones you have in colour and the ones you
 are missing greyed out. Messages from the world wait on screen until somebody
-taps them away, and everything said so far is kept behind the 📜 button.
+taps them away.
 
-## Five minutes
+## A day
 
-Before you start, you agree on a play block: five minutes. A sun crosses the top
-of the screen — no numbers unless you tap it, and never a countdown.
+The day starts when the game does. Nobody agrees to anything first, and there is
+no clock: the light says how late it is. Pale and cool at dawn, clear at midday,
+gold in the afternoon, and then the sun goes and everybody walks home. Windows
+come on one by one. The people who have a bed go to it; the one who hasn't is
+still standing outside, which is the whole reason you notice them.
 
-When the five minutes are up **nothing stops**. The light warms, the world stops
-raising new problems, and a card says what you did, who is better off, and one
-small thing still waiting. Then you either carry on or you don't. The world is
-saved either way, exactly as it is, with nothing rotting while you are away.
+Then it is night, and **nothing carries on**. A card says what the day came to,
+who is better off, and one small thing still waiting. The next day only begins
+because somebody taps *play another day* — the game will not pull you into
+another one. The world is saved either way, exactly as it is, with nothing
+rotting while you are away.
+
+## The two rows
+
+The top row is the people playing: one chip per role, yours marked, the others
+showing whether they are at their screen. Tapping your own opens what you do to
+the game — what needs doing, the language, starting over, back to the start
+screen. Tapping theirs opens what you do together: giving them something, and
+teaching them anything you have done often enough to show. The bottom row is
+nothing but what we have.
 
 ## How it is put together
 
@@ -208,7 +221,7 @@ server/
   serve.mjs      static files + the relay, no dependencies
   relay.mjs      a ~180 line WebSocket relay, no dependencies
 tests/           deterministic simulation and relay tests
-tools/           browser smoke test that plays a whole block
+tools/           browser smoke test that plays a whole day
 ```
 
 Two rules keep it honest:
@@ -247,14 +260,14 @@ shapes.
 
 ```
 npm test              # simulation determinism, costs, pathing, relay framing
-node tools/smoke.mjs  # a headless browser plays a whole five minute block
+node tools/smoke.mjs  # a headless browser plays a whole day
 node tools/german.mjs # the same, in German, checking no untranslated key leaks
 ```
 
 The smoke test needs the server running (`npm start` on port 8099, or set
 `BASE`). It picks a role, fells a tree, saws it, designs and tests a bridge,
 looks after a sheep, sows the field, lays a road, designs a house, watches
-somebody move in, asks the other player for help, runs the block to its
+somebody move in, asks the other player for help, runs the day to its
 checkpoint, and then checks that two separate browsers see each other's work.
 It also checks that nothing overflows sideways on an iPad, an iPhone and a Mac.
 

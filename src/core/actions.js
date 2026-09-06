@@ -68,6 +68,18 @@ export function applyAction(w, a) {
       w.eventsSeen = [];
       w.lastEventTick = w.tick;
       w.day = a.newDay ? w.day + 1 : w.day;
+      // morning: everybody steps out of their door, a few seconds apart, so
+      // the village wakes up rather than appearing all at once
+      let n = 0;
+      for (const v of w.villagers) {
+        if (!v.inside) continue;
+        const b = byId(w.buildings, v.homeId);
+        v.inside = false;
+        v.path = [];
+        v.task = null;
+        v.wait = 6 + (n++) * 9;
+        if (b) { v.x = b.door.x + 0.5; v.y = b.door.y + 0.9; }
+      }
       return true;
     }
     case 'block.end': {

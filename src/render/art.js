@@ -354,12 +354,21 @@ export function drawHouse(ctx, b, time, tick) {
   ctx.fillStyle = '#e0b26a';
   ctx.beginPath(); ctx.arc(x + w / 2 + 3, y + h - 7, 0.9, 0, Math.PI * 2); ctx.fill();
 
-  // windows
+  // windows — warm and glowing once the lamp is on inside
   const lit = b.light !== false;
+  const lamp = !!b.lamp;
   const nWin = Math.max(1, Math.min(2, (b.beds || 1)));
   for (let i = 0; i < nWin; i++) {
     const wx = x + w / 2 - 5 + (i === 0 ? -12 : 12) + (nWin === 1 ? 12 : 0);
-    ctx.fillStyle = lit ? '#f7dc9a' : '#8ea0a8';
+    if (lamp) {
+      const flick = 0.72 + Math.sin(time * 0.004 + wx) * 0.06;
+      const g = ctx.createRadialGradient(wx + 0.5, wallTop + 11, 1, wx + 0.5, wallTop + 11, 16);
+      g.addColorStop(0, 'rgba(255,214,120,' + flick + ')');
+      g.addColorStop(1, 'rgba(255,214,120,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(wx + 0.5, wallTop + 11, 16, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = lamp ? '#ffd873' : (lit ? '#f7dc9a' : '#8ea0a8');
     rr(ctx, wx - 3.5, wallTop + 7, 8, 8, 1.6); ctx.fill();
     ctx.strokeStyle = C.woodDark; ctx.lineWidth = 1.1;
     rr(ctx, wx - 3.5, wallTop + 7, 8, 8, 1.6); ctx.stroke();

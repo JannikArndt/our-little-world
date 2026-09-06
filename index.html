@@ -53,17 +53,8 @@
 <div id="game" class="screen hidden">
 
   <header id="topbar">
-    <button id="roleChip" class="chip role-chip" type="button" aria-label="Your role">
-      <span id="roleChipEmoji">🔨</span><span id="roleChipName">Builder</span>
-    </button>
-
-    <button id="sunbar" class="sunbar" type="button" aria-label="Time in this play block">
-      <div class="sky"></div>
-      <div id="sunArc" class="sun">☀️</div>
-      <span id="sunLabel" class="sun-label">morning</span>
-    </button>
-
-    <button id="finishBtn" class="chip" type="button">🌇 Finish</button>
+    <div id="roleBar" class="rolebar"></div>
+    <div id="dayBadge" class="day-badge" aria-live="polite"><span id="dayIcon">🌅</span><span id="dayNum">1</span></div>
   </header>
 
   <main id="stage">
@@ -75,12 +66,9 @@
 
   <footer id="bottombar">
     <div id="resbar" class="resbar"></div>
-    <div class="bottom-right">
-      <button id="historyChip" class="chip icon-chip" type="button" aria-label="Messages">📜</button>
-      <button id="partnerChip" class="chip partner" type="button">🌿 <span id="partnerState">waiting…</span></button>
-    </div>
   </footer>
 
+  <div id="menuLayer" class="menu-layer hidden"></div>
   <div id="overlay" class="overlay hidden"></div>
 </div>
 

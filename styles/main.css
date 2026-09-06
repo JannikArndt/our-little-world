@@ -11,6 +11,7 @@
   --builder:    #c8783c;
   --keeper:     #5d9150;
   --warm:       #f2c14e;
+  --warm-soft:  #fff3d6;
   --sky:        #bfe0ee;
   --danger:     #c05b4d;
   --tap:        56px;
@@ -118,20 +119,66 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
 }
 .chip:active { -webkit-transform: translateY(1px); transform: translateY(1px); }
 .chip span + span { margin-left: 6px; }
+
+/* the roles: who is playing, and what you can do with them */
+.rolebar {
+  -webkit-box-flex: 1; -ms-flex: 1 1 auto; flex: 1 1 auto; min-width: 0;
+  display: -webkit-box; display: -ms-flexbox; display: flex;
+  -ms-flex-wrap: nowrap; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.role-chip { -webkit-box-flex: 0; -ms-flex: none; flex: none; opacity: .62; }
+.role-chip .r-name { max-width: 30vw; overflow: hidden; text-overflow: ellipsis; }
+.role-chip .r-dot {
+  width: 9px; height: 9px; margin-left: 8px; border-radius: 50%;
+  background: #cfc3ad; -webkit-box-shadow: none; box-shadow: none;
+}
+.role-chip.here { opacity: 1; }
+.role-chip.here .r-dot { background: var(--keeper); }
+.role-chip.me { opacity: 1; background: var(--warm-soft); font-weight: 800; }
+.role-chip.me .r-dot { display: none; }
 .role-chip[data-role="A"] { border-color: var(--builder); }
 .role-chip[data-role="B"] { border-color: var(--keeper); }
-.partner { font-weight: 500; color: var(--ink-soft); max-width: 40vw; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 40px; }
 
-/* sun bar */
-.sunbar {
-  -webkit-box-flex: 1; -ms-flex: 1 1 auto; flex: 1 1 auto;
-  position: relative; height: 44px; margin: 0 4px; padding: 0;
-  border: 2px solid var(--line); border-radius: 999px; overflow: hidden;
-  background: linear-gradient(180deg, #dff0f7, #eef6f0);
+/* the day, as an icon and a number — never a countdown */
+.day-badge {
+  -webkit-box-flex: 0; -ms-flex: none; flex: none;
+  display: -webkit-box; display: -ms-flexbox; display: flex;
+  -webkit-box-align: center; -ms-flex-align: center; align-items: center;
+  min-height: 44px; padding: 0 12px; margin-left: 6px;
+  border: 2px solid var(--line); border-radius: 999px; background: #fffdf8;
+  font-weight: 700; font-size: 15px; box-shadow: var(--shadow);
 }
-.sunbar .sky { position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: .0; background: linear-gradient(90deg,#ffe6b8,#ffc98a); transition: opacity .8s linear; }
-.sun { position: absolute; top: 3px; left: 0; font-size: 22px; line-height: 1; -webkit-transform: translateX(4px); transform: translateX(4px); transition: -webkit-transform .5s linear; transition: transform .5s linear; }
-.sun-label { position: absolute; left: 0; right: 0; bottom: 3px; text-align: center; font-size: 12px; color: var(--ink-soft); font-weight: 600; }
+.day-badge span + span { margin-left: 6px; color: var(--ink-soft); }
+.day-badge[data-phase="evening"] { background: #ffeede; }
+.day-badge[data-phase="night"] { background: #e5e8f5; }
+
+/* drop-down menus, one under each role chip */
+.menu-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 45; }
+.menu-layer.hidden { display: none; }
+.menu {
+  position: absolute; min-width: 220px; max-width: min(90vw, 340px);
+  background: var(--paper); border: 2px solid var(--line); border-radius: 16px;
+  box-shadow: 0 14px 36px rgba(43,35,26,.32); padding: 6px;
+  -webkit-animation: menuIn .14s ease-out; animation: menuIn .14s ease-out;
+}
+@-webkit-keyframes menuIn { from { opacity: 0; -webkit-transform: translateY(-6px); } }
+@keyframes menuIn { from { opacity: 0; transform: translateY(-6px); } }
+.menu-title { font-size: 13px; font-weight: 800; color: var(--ink-soft); padding: 6px 10px 8px; }
+.menu-divider { height: 2px; background: var(--line); margin: 6px 4px; border-radius: 2px; }
+.menu-item {
+  display: -webkit-box; display: -ms-flexbox; display: flex;
+  -webkit-box-align: center; -ms-flex-align: center; align-items: center;
+  width: 100%; min-height: 46px; padding: 6px 10px; margin: 0;
+  background: transparent; border: 0; border-radius: 12px;
+  font-size: 16px; text-align: left; color: var(--ink);
+}
+.menu-item:active { background: var(--paper-deep); }
+.menu-item.off { opacity: .7; font-size: 14px; min-height: 38px; }
+.menu-item.on { background: var(--warm-soft); font-weight: 700; }
+.menu-item .mi-ico { -webkit-box-flex: 0; -ms-flex: none; flex: none; width: 26px; font-size: 18px; }
+.menu-item .mi-txt { display: block; min-width: 0; }
+.menu-item .mi-label { display: block; }
+.menu-item .mi-note { display: block; font-size: 12px; color: var(--ink-soft); }
 
 /* stage */
 #stage {
@@ -143,20 +190,14 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
 #world { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
 #bubbleLayer, #toastLayer, #noticeLayer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; }
 
-/* resources */
-.bottom-right {
-  -webkit-box-flex: 0; -ms-flex: none; flex: none; margin-left: 6px;
-  display: -webkit-box; display: -ms-flexbox; display: flex;
-  -webkit-box-align: center; -ms-flex-align: center; align-items: center;
-}
-.icon-chip { min-width: 46px; padding: 0 10px; font-size: 19px; }
+/* resources — the whole bottom row */
 .resbar {
   -webkit-box-flex: 1; -ms-flex: 1 1 auto; flex: 1 1 auto; min-width: 0;
   display: -webkit-box; display: -ms-flexbox; display: flex;
   -ms-flex-wrap: nowrap; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
 }
 .res {
-  -webkit-box-flex: 0; -ms-flex: none; flex: none;
+  -webkit-box-flex: 1; -ms-flex: 1 1 0px; flex: 1 1 0;
   display: block; min-width: 58px; height: 48px; margin-right: 6px; padding: 0 8px;
   border: 2px solid var(--line); border-radius: 12px; background: #fffdf8; text-align: center;
   box-shadow: var(--shadow);

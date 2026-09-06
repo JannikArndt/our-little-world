@@ -24,6 +24,10 @@ export const ROLE = {
   B: { id: 'B', emoji: '🌿', colour: '#5d9150' },
 };
 
+// The order the roles appear in the top bar. Everything that walks the roles
+// walks this list, so a third one (a cook, say) is a line here plus its caps.
+export const ROLES = ['A', 'B'];
+
 export const CAPS = {
   fell:   { icon: '🪓', owner: 'A' },
   saw:    { icon: '🪚', owner: 'A' },
@@ -252,6 +256,35 @@ export function homeless(w) { return w.villagers.filter(v => !v.homeId); }
 export function blockProgress(w) {
   if (!w.block.active) return w.block.endedAt !== null ? 1 : 0;
   return Math.min(1, (w.tick - w.block.startTick) / w.block.length);
+}
+
+/* --------------------------------------------------------------------- */
+/* the day                                                               */
+/* --------------------------------------------------------------------- */
+// One day is one play block. Nobody is told how much of it is left; the light
+// says it instead, and the people go to bed when it is over.
+
+export const PHASES = [
+  { at: 0.00, id: 'dawn' },
+  { at: 0.12, id: 'morning' },
+  { at: 0.40, id: 'midday' },
+  { at: 0.66, id: 'afternoon' },
+  { at: 0.84, id: 'evening' },
+];
+
+/** Where in the day we are: 'dawn' … 'evening', or 'night' once it is over. */
+export function dayPhase(w) {
+  if (!w.block.active) return w.block.endedAt !== null ? 'night' : 'dawn';
+  const p = blockProgress(w);
+  let id = PHASES[0].id;
+  for (const ph of PHASES) if (p >= ph.at) id = ph.id;
+  return id;
+}
+
+/** True once the people should be making their way home. */
+export function isDusk(w) {
+  const ph = dayPhase(w);
+  return ph === 'evening' || ph === 'night';
 }
 
 /* --------------------------------------------------------------------- */

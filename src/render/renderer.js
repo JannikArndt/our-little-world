@@ -3,7 +3,7 @@
 // one blit plus a few dozen small shapes — cheap enough for an old iPad.
 
 import { GW, GH, TILE, WORLD_W, WORLD_H, T, idx } from '../core/grid.js';
-import { blockProgress } from '../core/world.js';
+import { blockProgress, dayPhase } from '../core/world.js';
 import * as art from './art.js';
 
 const C = art.C;
@@ -288,7 +288,7 @@ export class Renderer {
     for (const l of w.logs) things.push({ y: l.y, kind: 'log', o: l });
     for (const p of w.plots) things.push({ y: p.y + 2, kind: 'plot', o: p });
     for (const sb of w.stones) things.push({ y: sb.y + 0.5, kind: 'stones', o: sb });
-    for (const v of w.villagers) things.push({ y: v.y, kind: 'villager', o: v });
+    for (const v of w.villagers) if (!v.inside) things.push({ y: v.y, kind: 'villager', o: v });
     for (const sh of w.sheep) things.push({ y: sh.y, kind: 'sheep', o: sh });
     if (w.visitors) for (const c of w.visitors) things.push({ y: c.y, kind: 'deer', o: c });
     things.push({ y: w.larder.y, kind: 'larder', o: w.larder });
@@ -328,7 +328,7 @@ export class Renderer {
     if (extra && extra.overlay) extra.overlay(ctx, s);
 
     ctx.restore();
-    this.drawDusk(ctx, w);
+    this.drawDayLight(ctx, w);
   }
 
   drawWaterShimmer(ctx, time) {
@@ -369,17 +369,38 @@ export class Renderer {
     }
   }
 
-  /** The light warms towards the end of a play block. Never a countdown. */
-  drawDusk(ctx, w) {
+  /**
+   * The day, told as light. Cool and pale at dawn, clear at midday, gold in
+   * the afternoon, deep blue once everybody has gone in. No clock anywhere:
+   * if you want to know how late it is, you look outside.
+   */
+  dayLight(w) {
     const p = blockProgress(w);
-    let a = 0;
-    if (!w.block.active && w.block.endedAt !== null) a = 0.30;
-    else if (p > 0.78) a = ((p - 0.78) / 0.22) * 0.30;
-    if (a <= 0.001) return;
+    const ph = dayPhase(w);
+    if (ph === 'night') return { top: [26, 38, 86], bottom: [16, 24, 60], a: 0.46 };
+    if (ph === 'dawn') {
+      const k = 1 - Math.min(1, p / 0.12);
+      return { top: [122, 110, 170], bottom: [255, 186, 150], a: 0.34 * k };
+    }
+    if (ph === 'evening') {
+      const k = Math.min(1, (p - 0.84) / 0.16);
+      return { top: [255, 158, 92], bottom: [150, 108, 130], a: 0.10 + 0.30 * k };
+    }
+    if (ph === 'afternoon') {
+      const k = (p - 0.66) / 0.18;
+      return { top: [255, 196, 120], bottom: [255, 172, 110], a: 0.06 + 0.10 * k };
+    }
+    if (ph === 'midday') return { top: [255, 246, 214], bottom: [255, 246, 224], a: 0.05 };
+    return { top: [214, 236, 255], bottom: [230, 244, 226], a: 0.07 };   // morning
+  }
+
+  drawDayLight(ctx, w) {
+    const l = this.dayLight(w);
+    if (l.a <= 0.004) return;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     const g = ctx.createLinearGradient(0, 0, 0, this.view.h);
-    g.addColorStop(0, 'rgba(255,186,110,' + a * 0.9 + ')');
-    g.addColorStop(1, 'rgba(255,150,90,' + a * 0.45 + ')');
+    g.addColorStop(0, 'rgba(' + l.top.join(',') + ',' + l.a + ')');
+    g.addColorStop(1, 'rgba(' + l.bottom.join(',') + ',' + (l.a * 0.72) + ')');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, this.view.w, this.view.h);
   }

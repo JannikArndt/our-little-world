@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createWorld, serialize, deserialize, BLOCK_TICKS, freeBed } from '../src/core/world.js';
+import { createWorld, serialize, deserialize, BLOCK_TICKS, freeBed, dayPhase, isDusk } from '../src/core/world.js';
 import { applyAction } from '../src/core/actions.js';
 import { tick } from '../src/core/sim.js';
 import { maybeEvent } from '../src/core/events.js';
@@ -236,4 +236,57 @@ test('the same thing does not happen twice in one morning', () => {
     w.tick++;
   }
   assert.equal(new Set(seen).size, seen.length, 'no event repeated: ' + seen.join(','));
+});
+
+/* --------------------------------------------------------------------- */
+/* the day                                                               */
+/* --------------------------------------------------------------------- */
+
+test('the day is told by its phases, not by a clock', () => {
+  const w = createWorld(51);
+  assert.equal(dayPhase(w), 'dawn', 'a world nobody has started is at dawn');
+  applyAction(w, { type: 'block.start' });
+  const at = (p) => { w.tick = w.block.startTick + Math.floor(BLOCK_TICKS * p); return dayPhase(w); };
+  assert.equal(at(0.02), 'dawn');
+  assert.equal(at(0.20), 'morning');
+  assert.equal(at(0.50), 'midday');
+  assert.equal(at(0.70), 'afternoon');
+  assert.equal(at(0.90), 'evening');
+  assert.equal(isDusk(w), true);
+  applyAction(w, { type: 'block.end' });
+  assert.equal(dayPhase(w), 'night');
+});
+
+test('in the evening the people go in, and a new day brings them out again', () => {
+  const w = createWorld(53);
+  applyAction(w, { type: 'block.start' });
+  run(w, Math.floor(BLOCK_TICKS * 0.7));
+  assert.equal(w.villagers.some(v => v.inside), false, 'still out while the day is on');
+
+  run(w, BLOCK_TICKS);          // through the evening and past the end of the day
+  const housed = w.villagers.filter(v => v.homeId);
+  assert.ok(housed.length > 0);
+  assert.equal(housed.every(v => v.inside), true, 'everybody with a bed is indoors');
+  assert.equal(w.villagers.filter(v => !v.homeId).every(v => !v.inside), true,
+    'the one without a bed is still outside, which is the point');
+
+  const home = w.buildings.find(b => b.id === housed[0].homeId);
+  assert.equal(home.lamp, 1, 'the window is lit once somebody is home');
+
+  applyAction(w, { type: 'block.start', newDay: true });
+  assert.equal(w.day, 2);
+  assert.equal(w.villagers.some(v => v.inside), false, 'the morning brings everybody out');
+  run(w, 200);
+  assert.equal(w.villagers.some(v => v.path && v.path.length), true, 'and they get on with the day');
+});
+
+test('a day only ever begins because somebody asked for one', () => {
+  const w = createWorld(57);
+  run(w, 400);
+  assert.equal(w.block.active, false, 'nothing starts a day by itself');
+  applyAction(w, { type: 'block.start' });
+  run(w, BLOCK_TICKS + 5);
+  assert.equal(w.block.active, false);
+  run(w, 600);
+  assert.equal(w.block.active, false, 'and nothing starts the next one by itself either');
 });

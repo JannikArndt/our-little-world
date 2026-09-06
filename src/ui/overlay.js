@@ -151,15 +151,10 @@ export function onPointer(canvas, logicalW, logicalH, handlers) {
 /* messages                                                           */
 /* ------------------------------------------------------------------ */
 // Nothing disappears on a timer: a message waits until somebody has read it
-// and tapped it away. Only three stand at once; older ones step back into
-// the history by themselves.
+// and tapped it away. Only a few stand at once; there is no archive, because
+// a message worth keeping is something you can still see in the world.
 
 const MAX_ON_SCREEN = 3;
-const history = [];
-let onHistoryChange = null;
-
-export function messages() { return history; }
-export function onMessages(fn) { onHistoryChange = fn; }
 
 function stack() {
   const layer = document.getElementById('toastLayer');
@@ -169,10 +164,6 @@ function stack() {
 }
 
 export function message(text) {
-  history.push({ text, at: Date.now() });
-  if (history.length > 40) history.shift();
-  if (onHistoryChange) onHistoryChange();
-
   const s = stack();
   const card = el('div', 'msg');
   card.appendChild(el('span', 'm-text', text));
@@ -184,10 +175,73 @@ export function message(text) {
   while (s.children.length > MAX_ON_SCREEN) s.removeChild(s.firstChild);
 }
 
-/** Clear the standing messages, e.g. when a new morning starts. */
+/** Clear the standing messages, e.g. when a new day starts. */
 export function clearMessages() {
   const s = stack();
   while (s.firstChild) s.removeChild(s.firstChild);
+}
+
+/* ------------------------------------------------------------------ */
+/* drop-down menus                                                    */
+/* ------------------------------------------------------------------ */
+// Each role in the top bar has one. Items are plain rows: an icon, a label,
+// and something that happens when you tap it.
+
+let menuClose = null;
+
+export function closeMenu() {
+  if (menuClose) menuClose();
+}
+
+/**
+ * openMenu(anchor, { title, items: [{ icon, label, note, disabled, fn }] })
+ * Opens under the chip that was tapped and closes on the next tap outside.
+ */
+export function openMenu(anchor, opts) {
+  closeMenu();
+  const layer = document.getElementById('menuLayer');
+  layer.innerHTML = '';
+  layer.classList.remove('hidden');
+
+  const menu = el('div', 'menu');
+  if (opts.title) menu.appendChild(el('div', 'menu-title', opts.title));
+  for (const it of opts.items || []) {
+    if (!it) continue;
+    if (it.divider) { menu.appendChild(el('div', 'menu-divider')); continue; }
+    const b = el('button', 'menu-item' + (it.disabled ? ' off' : '') + (it.on ? ' on' : ''));
+    b.appendChild(el('span', 'mi-ico', it.icon || ''));
+    const txt = el('span', 'mi-txt');
+    txt.appendChild(el('span', 'mi-label', it.label));
+    if (it.note) txt.appendChild(el('span', 'mi-note', it.note));
+    b.appendChild(txt);
+    if (it.disabled) b.disabled = true;
+    else b.addEventListener('click', (e) => { e.stopPropagation(); closeMenu(); it.fn(); });
+    menu.appendChild(b);
+  }
+  layer.appendChild(menu);
+
+  // sit under the chip, but never off the edge of the screen
+  const a = anchor.getBoundingClientRect();
+  const mw = menu.offsetWidth;
+  const left = Math.max(6, Math.min(window.innerWidth - mw - 6, a.left));
+  menu.style.left = left + 'px';
+  menu.style.top = (a.bottom + 6) + 'px';
+
+  const away = (e) => { if (!menu.contains(e.target)) closeMenu(); };
+  setTimeout(() => {
+    document.addEventListener('mousedown', away);
+    document.addEventListener('touchstart', away);
+  }, 0);
+
+  menuClose = () => {
+    document.removeEventListener('mousedown', away);
+    document.removeEventListener('touchstart', away);
+    layer.classList.add('hidden');
+    layer.innerHTML = '';
+    menuClose = null;
+    if (opts.onClose) opts.onClose();
+  };
+  return { close: closeMenu, menu };
 }
 
 /** A tiny animation loop that stops itself when the panel goes away. */

@@ -3,7 +3,7 @@
 
 import { T, COST, GW, GH, tileAt, walkable, inBounds } from './grid.js';
 import { findPath } from './pathfind.js';
-import { byId, freeBed, blockProgress } from './world.js';
+import { byId, freeBed, blockProgress, isDusk } from './world.js';
 import { rnd, rndInt } from './rng.js';
 import { fx, journal, note } from './actions.js';
 
@@ -184,10 +184,42 @@ function finishVillagerTask(w, v) {
   }
 }
 
+/**
+ * Evening. Everybody who has a bed walks to their own door and goes in; the
+ * one who has none stays out, which is the whole point of noticing them.
+ */
+function goToBed(w, v) {
+  if (v.inside) return true;
+  if (!v.homeId) return false;
+  const b = byId(w.buildings, v.homeId);
+  if (!b) return false;
+  if (v.path && v.path.length) return false;
+  if (Math.abs(v.x - (b.door.x + 0.5)) < 1.2 && Math.abs(v.y - (b.door.y + 0.5)) < 1.2) {
+    v.inside = true;
+    v.path = [];
+    v.task = null;
+    v.carrying = null;
+    v.said = null;
+    return true;
+  }
+  if (!goTo(w, v, b.door.x, b.door.y, 0)) { v.inside = true; return true; }
+  v.task = { kind: 'gohome' };
+  return false;
+}
+
 function tickVillager(w, v) {
+  if (v.inside) { v.hunger = Math.min(100, v.hunger + 0.004); return; }
+
   v.hunger = Math.min(100, v.hunger + 0.012);
   v.mood = villagerMood(w, v);
   if (v.saidUntil && w.tick > v.saidUntil) { v.said = null; v.saidUntil = 0; }
+
+  if (isDusk(w)) {
+    if (v.task && v.task.kind !== 'gohome') { v.task = null; v.path = []; }
+    if (goToBed(w, v)) return;
+    if (v.path && v.path.length) { if (advance(w, v, 1.15)) goToBed(w, v); return; }
+    return;
+  }
 
   if (v.path && v.path.length) {
     if (advance(w, v, 1)) finishVillagerTask(w, v);
@@ -218,6 +250,7 @@ function nearWater(w, s) {
 }
 
 function tickSheep(w, s) {
+  if (!w.block.active && w.block.endedAt !== null) { s.path = []; s.wait = 20; return; }
   const tile = tileAt(w, Math.floor(s.x), Math.floor(s.y));
   s.hunger = Math.min(100, s.hunger + 0.045);
   s.thirst = Math.min(100, s.thirst + 0.016);
@@ -329,6 +362,8 @@ function tickPlaces(w) {
     if (b.state !== 'built') continue;
     const lived = b.residents && b.residents.length;
     b.smoke = b.warm && lived ? 1 : 0;
+    // a window is only warm once somebody is home and the light has gone
+    b.lamp = lived && isDusk(w) ? 1 : 0;
   }
 }
 

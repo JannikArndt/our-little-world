@@ -61,7 +61,7 @@ function hit(w, wx, wy) {
     return dx * dx + dy * dy < r * r;
   };
   for (const s of w.sheep) if (near(s.x, s.y - 0.2, 18)) return { kind: 'sheep', o: s };
-  for (const v of w.villagers) if (near(v.x, v.y - 0.3, 16)) return { kind: 'villager', o: v };
+  for (const v of w.villagers) if (!v.inside && near(v.x, v.y - 0.3, 16)) return { kind: 'villager', o: v };
   if (w.visitors) for (const c of w.visitors) if (near(c.x, c.y - 0.3, 18)) return { kind: 'deer', o: c };
   for (const l of w.logs) if (near(l.x, l.y, 16)) return { kind: 'log', o: l };
   for (const b of w.stones) if (near(b.x + 0.5, b.y + 0.5, 16)) return { kind: 'stones', o: b };

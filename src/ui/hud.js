@@ -8,6 +8,7 @@ import { tr, trn } from '../core/i18n.js';
 import { nextTimeHint } from '../core/events.js';
 import { currentProblem } from '../core/guide.js';
 import { showChangelog as openChangelog, VERSION } from './whatsnew.js';
+import { newerBuild } from '../core/fresh.js';
 import { drawPortrait } from '../render/art.js';
 
 const PHASE = [
@@ -254,6 +255,12 @@ export class Hud {
     const out = el('button', 'whats-new', tr('ui.backToStart'));
     out.addEventListener('click', () => { p.close(); this.game.leave(); });
     p.panel.appendChild(out);
+    // on a Home Screen this is the only reload there is, so it is always here
+    const again = el('button', 'whats-new' + (newerBuild() ? ' fresh' : ''),
+      tr(newerBuild() ? 'ui.reloadNew' : 'ui.reload'));
+    again.addEventListener('click', () => { p.close(); this.game.refetch(); });
+    p.panel.appendChild(again);
+    p.panel.appendChild(el('p', 'lead small', tr('ui.reloadNote')));
   }
 
   /* ---------------- what each of us knows ---------------- */

@@ -51,6 +51,13 @@ cycle. If something must be stopped, name it exactly.
 - Only what ships is hashed — the page, `src`, `styles`, `server`. A change to
   the tests or the docs leaves the build id alone, which is right: nothing a
   player downloads changed, and `npm run deployed` will still say yes.
+- The same id is written into the page it serves (`<meta name="olw-build">`),
+  so a copy on somebody's screen knows whether it is still the one being served.
+  `src/core/fresh.js` asks whenever the app comes back to the front, and the
+  **↻ Fetch the game again** door changes what it says. Nothing pops up and
+  nothing reloads underneath a player. Test it against a stamped server: the
+  page is `content="dev"` on disk and on any host that does not stamp it, and
+  that is the signal to keep quiet, not a bug.
 
 ## Never reset somebody's world
 

@@ -57,6 +57,12 @@ npm run deployed -- https://mine/      # or anywhere else
 
 It compares the live hash with the working tree's and waits for them to match.
 
+The page carries the same hash: the server writes it into `<meta
+name="olw-build">` on the way out, so the copy on a screen always knows which
+build it came from and can ask `/version` whether that is still the one being
+served. Files go out as `no-cache` with an `ETag`, so coming back costs one small
+question per file and a stale copy can never quietly win.
+
 ## Playing when you are far apart
 
 The relay is a WebSocket on the same port as the page, so anything that runs
@@ -364,6 +370,21 @@ role rather than both — has the same way out.)
 Every version is listed newest first, in whichever language the screen is in. It
 lives in `src/core/changelog.js`, outside the language tables, so an entry can be
 written once and shipped without waiting for the other language.
+
+### Fetching the game again
+
+Added to an iPhone or iPad Home Screen, the game runs without an address bar and
+without a reload button, and iOS keeps it alive in the background for days — so
+it can be a fortnight old with no way of knowing and no way out. **↻ Fetch the
+game again** is that way out. It sits next to the version at the front door and
+under 📜 in the world, it is always there, and it saves the village before it
+goes.
+
+Whenever the app comes back to the front it quietly asks `/version` whether a
+newer build is live, and if one is, the same door says **✨ A newer version is
+ready — fetch it** instead. Nothing pops up and nothing reloads underneath you.
+On a plain static host there is no `/version` to ask, so it never claims anything
+is out of date — the door still works, it just never lights up.
 
 ## What is deliberately missing
 

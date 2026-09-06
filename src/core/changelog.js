@@ -11,9 +11,11 @@ export const CHANGELOG = [
     v: '1.3', date: '2026-09-06',
     en: [
       'The world says less. Notes that turned up on their own — arriving in the middle of a morning, being told to turn the phone sideways, the splash when a bridge gives way — are gone. What you are looking at already says it.',
+      'Added to a Home Screen, the game can now fetch itself again: “↻ Fetch the game again” sits at the front door and in the 📜 history, and says so more loudly once a newer version is actually waiting. The village is saved before it goes.',
     ],
     de: [
       'Die Welt sagt weniger. Zettel, die von allein kamen — mitten in einen Morgen kommen, das Handy quer drehen, der Platsch, wenn eine Brücke nachgibt — sind weg. Was man sieht, sagt es schon.',
+      'Auf dem Home-Bildschirm kann sich das Spiel jetzt selbst neu holen: „↻ Das Spiel neu holen“ steht an der Haustür und im 📜 Verlauf — und sagt deutlicher Bescheid, wenn wirklich eine neuere Fassung wartet. Vorher wird das Dorf gespeichert.',
     ],
   },
   {

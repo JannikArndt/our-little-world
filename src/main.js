@@ -10,6 +10,7 @@ import { ROLE, otherRole, byId, can } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
 import { rememberRole, recallRole } from './core/persist.js';
+import { newerBuild, watchForNewer, reloadNow } from './core/fresh.js';
 import { showChangelog, VERSION } from './ui/whatsnew.js';
 import { openChop } from './minigames/chop.js';
 import { openSawmill, openMill } from './minigames/sawmill.js';
@@ -24,11 +25,24 @@ const qs = new URLSearchParams(location.search);
 /* start screen                                                       */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The front door's reload button. It is always there — that is the whole point
+ * of it — and says so more loudly once we know there is something newer.
+ */
+function showReloadLabel() {
+  const b = document.getElementById('reloadBtn');
+  if (!b) return;
+  const news = newerBuild();
+  b.textContent = tr(news ? 'ui.reloadNew' : 'ui.reload');
+  b.className = 'link-btn' + (news ? ' fresh' : '');
+}
+
 /** Fill in the start screen in whichever language, and offer the other one. */
 function applyStartText() {
   document.title = tr('app.title');
   const version = document.getElementById('versionBtn');
   if (version) version.textContent = 'v' + VERSION + ' · ' + tr('hist.whatsNewShort');
+  showReloadLabel();
   const nodes = document.querySelectorAll('[data-t]');
   for (let i = 0; i < nodes.length; i++) nodes[i].textContent = tr(nodes[i].getAttribute('data-t'));
   const row = document.getElementById('langRow');
@@ -76,6 +90,12 @@ function boot() {
   roomInput.value = (qs.get('room') || 'home').slice(0, 24);
 
   document.getElementById('versionBtn').addEventListener('click', () => showChangelog());
+
+  // the way out of a Home Screen app, which has no address bar to reload from
+  document.getElementById('reloadBtn').addEventListener('click', () => reloadNow());
+  // coming back to the app is the one moment it can find out that it is old, so
+  // that is when we ask — quietly. Nothing pops up; the doors just say more.
+  watchForNewer(showReloadLabel);
 
   const remembered = recallRole();
   if (remembered) {
@@ -192,6 +212,16 @@ async function startGame(chosenRole, room) {
     leave() {
       session.checkpoint();
       location.href = location.pathname + '?room=' + encodeURIComponent(room);
+    },
+
+    /**
+     * The same door, but it fetches the game again on the way through. On a
+     * Home Screen there is nothing else that can: no address bar, no reload,
+     * and iOS keeps yesterday's copy running for as long as you let it.
+     */
+    refetch() {
+      session.checkpoint();
+      reloadNow(room);
     },
 
     swapRole() {

@@ -51,6 +51,21 @@ async function main() {
   await page.click('text=Close');
   await page.waitForTimeout(300);
 
+  // a Home Screen app has no address bar, so the page carries its own way back
+  // to the server: the build it was served, and a door that fetches it again
+  const build = await page.getAttribute('meta[name="olw-build"]', 'content');
+  const served = await (await fetch(BASE + '/version')).json();
+  console.log('the page knows which build it is:', build, '· the server serves:', served.build);
+  if (build !== served.build) throw new Error('the page was not stamped with the build it came from');
+  const reload = (await page.textContent('#reloadBtn')).trim();
+  console.log('the front door offers:', reload);
+  if (!reload || reload === '↻') throw new Error('no reload door on the start screen');
+
+  // and asking twice costs nothing: the second answer comes out of the cupboard
+  const again = await fetch(BASE + '/', { headers: { 'if-none-match': (await fetch(BASE + '/')).headers.get('etag') } });
+  console.log('asking for the page again:', again.status, '(304 means it only had to check)');
+  if (again.status !== 304) throw new Error('the page has no working tag to revalidate with');
+
   await page.click('[data-role="BOTH"]');
   await page.waitForSelector('#game:not(.hidden)');
   await page.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
@@ -630,6 +645,26 @@ async function main() {
   console.log('the village was still there when we walked back in:', kept, 'buildings');
   if (kept < 9) throw new Error('the world did not come back');
   await step(ph, '33-phone-back', 200);
+
+  // fetching the game again from inside the world: the only reload a Home
+  // Screen app has. It saves first, so the village must survive the trip.
+  await ph.click('#historyChip');
+  await ph.waitForTimeout(400);
+  await ph.click('#overlay .whats-new:has-text("Fetch the game again")');
+  await ph.waitForFunction(() => /fresh=/.test(location.search), null, { timeout: 8000 });
+  await ph.waitForTimeout(900);
+  const afterFetch = await ph.evaluate(() => ({
+    start: !document.getElementById('start').classList.contains('hidden'),
+    room: document.getElementById('roomInput').value,
+  }));
+  console.log('after fetching the game again:', JSON.stringify(afterFetch));
+  if (!afterFetch.start || afterFetch.room !== 'notch') throw new Error('the reload door lost the world');
+  await ph.click('[data-role="BOTH"]');
+  await ph.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+  await ph.waitForTimeout(600);
+  const keptAgain = await ph.evaluate(() => window.OLW.world.buildings.length);
+  console.log('the village survived the reload:', keptAgain, 'buildings');
+  if (keptAgain < 9) throw new Error('the world did not survive the reload');
   await phone.close();
 
   await browser.close();

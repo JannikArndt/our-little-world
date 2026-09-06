@@ -113,6 +113,9 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
   -webkit-appearance: none; appearance: none;
 }
 .link-btn:active { background: var(--paper-deep); color: var(--ink); }
+/* the reload door, once it knows there is something newer to fetch */
+.link-btn.fresh, .whats-new.fresh { color: var(--ink); background: #fff6e4; }
+.link-btn.fresh { border: 2px solid #e3c88b; }
 
 /* ---------------- game shell ---------------- */
 #game {
@@ -497,6 +500,7 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
 .sun-set { text-align: center; font-size: 46px; margin: 4px 0 0; }
 .panel h2.center { text-align: center; }
 .panel .lead.center { text-align: center; }
+.panel .lead.small { font-size: 13px; text-align: center; margin-top: 4px; }
 .next-time { background: #fff6e4; border: 2px dashed #e3c88b; border-radius: 14px; padding: 10px 12px; margin: 12px 4px 0; }
 .next-time b { display: block; font-size: 14px; color: var(--ink-soft); margin-bottom: 2px; text-transform: uppercase; letter-spacing: .04em; }
 

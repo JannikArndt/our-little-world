@@ -47,9 +47,15 @@ Useful query parameters: `?room=kitchen`, `?role=A|B|BOTH`,
 `?server=wss://your-relay/relay`.
 
 A running server answers `/version` with the version, the world schema, and a
-`build` hash of every file it serves — so "is the thing I just deployed actually
-live?" has an answer: `npm run deployed` compares that hash with the working
-tree's and waits for them to match.
+`build` hash of every file that ships — so "is the thing I just deployed actually
+live?" has an answer rather than an assumption:
+
+```
+npm run deployed                       # https://ourlittleworld.timpanini.com
+npm run deployed -- https://mine/      # or anywhere else
+```
+
+It compares the live hash with the working tree's and waits for them to match.
 
 ## Playing when you are far apart
 

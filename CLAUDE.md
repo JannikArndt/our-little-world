@@ -39,12 +39,18 @@ cycle. If something must be stopped, name it exactly.
 - **A green workflow only means CapRover accepted the deploy.** To know the new
   code is being served, ask the site: `GET /version` answers
   `{ version, schema, build, startedAt }`, where `build` is a hash of every file
-  the browser downloads (`server/buildid.mjs`, also `npm run build-id`).
-  `npm run deployed` compares the live `build` with the working tree's and waits
-  up to three minutes for them to match.
-- A sandboxed session may not be allowed to reach the live host at all. Then
-  check the workflow run instead, say plainly that the deployment itself was not
-  verified from here, and let somebody with a browser open `/version`.
+  that ships (`server/buildid.mjs`, also `npm run build-id`). `npm run deployed`
+  compares the live `build` with the working tree's and waits up to three
+  minutes for them to match. **The push is not finished until that says yes.**
+- The site is <https://ourlittleworld.timpanini.com>; `npm run deployed` knows
+  that address, and takes another as an argument or in `DEPLOY_URL`. If a
+  sandbox will not let a session reach it, check the workflow run instead and
+  say plainly that the deployment itself was not verified from here — do not
+  call it live. And check the host before assuming it: this one was guessed
+  wrong once, from a truncated address bar.
+- Only what ships is hashed — the page, `src`, `styles`, `server`. A change to
+  the tests or the docs leaves the build id alone, which is right: nothing a
+  player downloads changed, and `npm run deployed` will still say yes.
 
 ## Never reset somebody's world
 

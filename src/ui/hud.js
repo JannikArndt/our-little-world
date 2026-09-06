@@ -100,7 +100,7 @@ export class Hud {
       items.push({ divider: true });
       for (const c of teachable) {
         items.push({
-          icon: CAPS[c].icon, label: tr('teach.button', { icon: '', what: capName(c) }).trim(),
+          icon: CAPS[c].icon, label: tr('menu.teach', { what: capName(c) }),
           fn: () => {
             g.dispatch({ type: 'teach', from: g.role, to: id, cap: c });
             message(tr('teach.done', { what: capName(c) }));

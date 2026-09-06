@@ -5,6 +5,11 @@ const BASE = process.env.BASE || 'http://localhost:8099';
 const SHOTS = new URL('./shots/', import.meta.url).pathname;
 const errors = [];
 
+// QUICK=1 keeps every assertion and drops what only a person would look at:
+// the screenshots, the second browser, and the walk round three screen sizes.
+// For iterating. The full run is what a push waits for.
+const QUICK = process.env.QUICK === '1';
+
 const DEVICES = {
   'ipad-old':  { width: 1024, height: 768, dpr: 2, touch: true },
   'iphone':    { width: 390,  height: 844, dpr: 3, touch: true },
@@ -19,7 +24,7 @@ function watch(page, tag) {
 
 const step = async (page, name, ms = 400) => {
   await page.waitForTimeout(ms);
-  await page.screenshot({ path: SHOTS + name + '.png' });
+  if (!QUICK) await page.screenshot({ path: SHOTS + name + '.png' });
 };
 
 async function main() {
@@ -492,6 +497,7 @@ async function main() {
   await ipad.close();
 
   /* ---------- 2. two browsers, one world ---------- */
+  if (!QUICK) {
   const ctxA = await browser.newContext({ viewport: { width: 900, height: 700 } });
   const ctxB = await browser.newContext({ viewport: { width: 900, height: 700 } });
   const pa = await ctxA.newPage(), pb = await ctxB.newPage();
@@ -528,9 +534,10 @@ async function main() {
   await pa.screenshot({ path: SHOTS + '28-player-a.png' });
   await pb.screenshot({ path: SHOTS + '29-player-b.png' });
   await ctxA.close(); await ctxB.close();
+  }
 
   /* ---------- 3. other screens ---------- */
-  for (const [name, d] of Object.entries(DEVICES)) {
+  for (const [name, d] of (QUICK ? [] : Object.entries(DEVICES))) {
     const c = await browser.newContext({
       viewport: { width: d.width, height: d.height },
       deviceScaleFactor: d.dpr, hasTouch: d.touch, isMobile: d.touch,
@@ -627,7 +634,7 @@ async function main() {
 
   await browser.close();
   if (errors.length) { console.log('\nBROWSER ERRORS:\n' + errors.join('\n')); process.exit(1); }
-  console.log('\nsmoke test: all good');
+  console.log('\nsmoke test: all good' + (QUICK ? ' (quick: no screenshots, one browser, one screen)' : ''));
 }
 
 main().catch(e => { console.error('\nFAILED: ' + e.message); if (errors.length) console.error(errors.join('\n')); process.exit(1); });

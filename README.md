@@ -46,6 +46,11 @@ devices.
 Useful query parameters: `?room=kitchen`, `?role=A|B|BOTH`,
 `?server=wss://your-relay/relay`.
 
+A running server answers `/version` with the version, the world schema, and a
+`build` hash of every file it serves — so "is the thing I just deployed actually
+live?" has an answer: `npm run deployed` compares that hash with the working
+tree's and waits for them to match.
+
 ## Playing when you are far apart
 
 The relay is a WebSocket on the same port as the page, so anything that runs
@@ -268,13 +273,15 @@ shapes.
 ## Tests
 
 ```
-npm test              # simulation determinism, costs, pathing, relay framing
-node tools/smoke.mjs  # a headless browser plays a whole five minute block
-node tools/german.mjs # the same, in German, checking no untranslated key leaks
+npm run verify          # everything: unit tests, a browser play-through, German
+npm run verify -- quick # the same assertions, minus screenshots and extra screens
+npm test                # just the unit tests: simulation, schema, guide, i18n
 ```
 
-The smoke test needs the server running (`npm start` on port 8099, or set
-`BASE`). It picks a role, fells a tree, saws it, designs and tests a bridge,
+`npm run verify` starts its own server on a free port and stops it again, so
+there is nothing to set up and nothing left listening. The parts can still be
+run by hand against a server of your own (`npm start`, then `BASE=... node
+tools/smoke.mjs`). It picks a role, fells a tree, saws it, designs and tests a bridge,
 looks after a sheep, sows the field, lays a road, designs a house, watches
 somebody move in, plants a sapling, builds the boat and goes fishing, builds the
 playground, opens the changelog, asks the other player for help, runs the block

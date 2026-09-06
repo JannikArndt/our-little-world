@@ -11,3 +11,4 @@ docker-compose.yml
 .DS_Store
 .github
 captain-definition
+data

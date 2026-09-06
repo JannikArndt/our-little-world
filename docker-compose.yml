@@ -7,4 +7,10 @@ services:
       - "8080:8080"
     environment:
       PORT: "8080"
+    volumes:
+      # the world directory: which worlds exist and how each one was left
+      - worlds:/app/data
     restart: unless-stopped
+
+volumes:
+  worlds:

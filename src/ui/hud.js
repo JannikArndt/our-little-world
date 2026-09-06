@@ -3,6 +3,7 @@
 
 import { el, openPanel, message, messages, clearMessages } from './overlay.js';
 import { openGive } from './share.js';
+import { openInvite } from './invite.js';
 import { RESOURCES, ROLE, CAPS, capName, roleName, blockProgress } from '../core/world.js';
 import { tr, trn } from '../core/i18n.js';
 import { nextTimeHint } from '../core/events.js';
@@ -36,7 +37,10 @@ export class Hud {
       if (g.canSwap) g.swapRole();
       else this.showRoleCard();
     });
-    document.getElementById('partnerChip').addEventListener('click', () => openGive(g));
+    // nobody has taken the other spot yet? then this chip is the invitation
+    document.getElementById('partnerChip').addEventListener('click', () => {
+      if (g.spotFree) openInvite(g); else openGive(g);
+    });
     document.getElementById('historyChip').addEventListener('click', () => this.showHistory());
     document.getElementById('sunbar').addEventListener('click', () => {
       const w = g.world;
@@ -100,9 +104,9 @@ export class Hud {
     const partner = w.players[g.other];
     const online = g.partnerOnline;
     const ps = document.getElementById('partnerState');
-    ps.textContent = partner.busy ? partner.busy
-      : tr(online ? 'ui.partnerHere' : 'ui.partnerTap', { role: roleName(g.other) });
-    document.getElementById('partnerChip').firstChild.nodeValue = ROLE[g.other].emoji + ' ';
+    const key = g.spotFree ? 'ui.partnerInvite' : (online ? 'ui.partnerHere' : 'ui.partnerTap');
+    ps.textContent = partner.busy && !g.spotFree ? partner.busy : tr(key, { role: roleName(g.other) });
+    document.getElementById('partnerChip').firstChild.nodeValue = (g.spotFree ? '📨' : ROLE[g.other].emoji) + ' ';
 
     document.getElementById('finishBtn').textContent = tr(w.block.active ? 'ui.finish' : 'ui.newMorning');
 

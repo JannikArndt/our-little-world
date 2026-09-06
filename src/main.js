@@ -2,6 +2,7 @@
 
 import { Session } from './net/session.js';
 import { LocalTransport, WsTransport, SoloTransport } from './net/transport.js';
+import { Directory, apiBase } from './net/directory.js';
 import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
 import { installInput, renderModeBar, closeBubble } from './ui/interact.js';
@@ -9,7 +10,9 @@ import { openPanel, message, closePanel } from './ui/overlay.js';
 import { ROLE, otherRole, byId, roleName } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
-import { rememberRole, recallRole } from './core/persist.js';
+import { deviceId, rememberWorld } from './core/persist.js';
+import { startScreen } from './ui/start.js';
+import { openInvite } from './ui/invite.js';
 import { openChop } from './minigames/chop.js';
 import { openSawmill, openMill } from './minigames/sawmill.js';
 import { openBridge, openRepair } from './minigames/bridge.js';
@@ -17,6 +20,9 @@ import { openHouse } from './minigames/house.js';
 import { openCare } from './minigames/care.js';
 
 const qs = new URLSearchParams(location.search);
+const dir = new Directory(apiBase(qs));
+const device = deviceId();
+let screen = null;
 
 /* ------------------------------------------------------------------ */
 /* start screen                                                       */
@@ -37,99 +43,86 @@ function applyStartText() {
     b.addEventListener('click', () => { setLang(l.id); applyStartText(); });
     row.appendChild(b);
   }
+  if (screen) screen.render();
 }
 
-function boot() {
+async function boot() {
   detectLang();
   applyStartText();
-  const start = document.getElementById('start');
-  const roomInput = document.getElementById('roomInput');
-  roomInput.value = (qs.get('room') || 'home').slice(0, 24);
 
-  const remembered = recallRole();
-  if (remembered) {
-    const b = start.querySelector('[data-role="' + remembered + '"]');
-    if (b) b.style.borderColor = ROLE[remembered] ? ROLE[remembered].colour : '#d9c9ae';
-  }
+  // one question to the host: is there a world directory here? The answer is
+  // remembered, so a static host is asked once ever and costs one 404.
+  await dir.probe();
+  applyStartText();
 
-  start.addEventListener('click', (e) => {
-    const btn = e.target.closest ? e.target.closest('[data-role]') : null;
-    if (!btn) return;
-    const role = btn.getAttribute('data-role');
-    const room = (roomInput.value || 'home').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'home';
-    rememberRole(role);
-    start.classList.add('hidden');
-    document.getElementById('game').classList.remove('hidden');
-    startGame(role, room);
+  screen = startScreen({
+    dir: dir,
+    qs: qs,
+    onPlay: (choice) => {
+      document.getElementById('start').classList.add('hidden');
+      document.getElementById('game').classList.remove('hidden');
+      startGame(choice);
+    },
   });
-
-  const auto = qs.get('role');
-  if (auto === 'A' || auto === 'B' || auto === 'BOTH') {
-    const b = start.querySelector('[data-role="' + auto + '"]');
-    if (b) setTimeout(() => b.click(), 0);
-  }
 }
 
-/** Use the relay if one is answering; otherwise two windows on this device. */
-async function chooseTransport(room, solo) {
+/** Use the relay if the host has one; otherwise two windows on this device. */
+function chooseTransport(room, solo) {
   if (solo) return new SoloTransport();
-
-  // An explicit ?server= is a promise that a relay is there, so just use it.
   const given = qs.get('server');
   if (given) return new WsTransport(given, room);
-
-  // Otherwise ask over plain HTTP whether this host has one. A 404 is a
-  // perfectly normal answer (a static host has no relay) and costs nothing;
-  // opening a doomed WebSocket would fill the console with red instead.
   if (location.protocol.indexOf('http') !== 0) return new LocalTransport(room);
-  if (await hasRelay()) {
+  if (dir.reachable) {
     return new WsTransport((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/relay', room);
   }
   return new LocalTransport(room);
-}
-
-const RELAY_KEY = 'olw.relay.' + location.host;
-
-function hasRelay() {
-  if (typeof fetch !== 'function') return Promise.resolve(false);
-  // remembered from last time, so a static host is not asked twice
-  try {
-    const seen = localStorage.getItem(RELAY_KEY);
-    if (seen === 'yes') return Promise.resolve(true);
-    if (seen === 'no') return Promise.resolve(false);
-  } catch (e) { /* no storage, just ask */ }
-
-  const remember = (v) => {
-    try { localStorage.setItem(RELAY_KEY, v ? 'yes' : 'no'); } catch (e) { /* fine */ }
-    return v;
-  };
-  const ask = fetch('rooms', { method: 'GET' })
-    .then(r => remember(r.ok && (r.headers.get('content-type') || '').indexOf('json') >= 0))
-    .catch(() => remember(false));
-  const giveUp = new Promise(r => setTimeout(() => r(false), 1500));
-  return Promise.race([ask, giveUp]);
 }
 
 /* ------------------------------------------------------------------ */
 /* the game object everything else talks to                           */
 /* ------------------------------------------------------------------ */
 
-async function startGame(chosenRole, room) {
-  const solo = chosenRole === 'BOTH';
-  const transport = await chooseTransport(room, solo);
-  const session = new Session({ room, role: solo ? 'A' : chosenRole, transport, solo });
+async function startGame(choice) {
+  const room = choice.world;
+  const solo = !!choice.solo;
+  const chosenRole = choice.role === 'B' ? 'B' : 'A';
+  const transport = chooseTransport(room, solo);
+
+  // A world the directory knows about keeps its state on the server as well as
+  // on this device, so whoever opens the page first gets the real world back.
+  const registered = !solo && dir.reachable;
+  const remote = registered ? {
+    load: () => dir.snapshot(room),
+    save: (tick, text, beacon) => (beacon
+      ? dir.beaconSnapshot(room, device, tick, text)
+      : dir.putSnapshot(room, device, tick, text)),
+  } : null;
+
+  const session = new Session({ room, role: chosenRole, transport, solo, remote });
+
+  // this device remembers the world, and the address becomes the invitation
+  rememberWorld(room, solo ? null : chosenRole);
+  try {
+    history.replaceState(null, '', location.pathname + '?world=' + encodeURIComponent(room));
+  } catch (e) { /* a file:// page has no history to rewrite */ }
 
   const canvas = document.getElementById('world');
   const renderer = new Renderer(canvas);
 
   const game = {
     session, renderer,
-    role: solo ? 'A' : chosenRole,
-    other: solo ? 'B' : otherRole(chosenRole),
+    role: chosenRole,
+    other: otherRole(chosenRole),
     canSwap: solo,
     mode: null,
     partnerOnline: false,
+    worldName: room,
+    // true while the other spot in this world has never been taken: then the
+    // partner chip offers an invitation instead of a way to share planks
+    spotFree: registered && !!(choice.free && choice.free.length),
     get world() { return session.world; },
+
+    invite() { openInvite(game); },
 
     dispatch(a) { return session.dispatch(a); },
 
@@ -246,7 +239,7 @@ async function startGame(chosenRole, room) {
   window.addEventListener('resize', () => renderer.resize());
   window.addEventListener('orientationchange', () => setTimeout(() => renderer.resize(), 300));
   document.addEventListener('visibilitychange', () => { if (!document.hidden) session.checkpoint(); });
-  window.addEventListener('pagehide', () => session.checkpoint());
+  window.addEventListener('pagehide', () => session.checkpoint(true));
 
   function updatePartner() {
     const w = session.world;
@@ -264,7 +257,22 @@ async function startGame(chosenRole, room) {
     session.dispatch({ type: 'presence', role: game.role, busy: null });
     if (solo) session.dispatch({ type: 'presence', role: game.other, busy: null });
     updatePartner();
+    tellServer();
   }
+
+  // and a much slower one to the directory: it keeps the world from being
+  // forgotten, and tells us whether anybody has taken the other spot yet
+  let lastSeen = 0;
+  function tellServer() {
+    if (!registered) return;
+    const now = Date.now();
+    if (now - lastSeen < 60000) return;
+    lastSeen = now;
+    dir.seen(room, device, chosenRole).then((r) => {
+      if (r && r.world) game.spotFree = r.world.free.length > 0;
+    });
+  }
+  tellServer();
 
   /* ---------------- the frame loop ---------------- */
 
@@ -289,6 +297,12 @@ async function startGame(chosenRole, room) {
   // a phone held upright shows very little of the world
   if (window.innerHeight > window.innerWidth * 1.25) {
     setTimeout(() => message(tr('msg.sideways')), 2600);
+  }
+
+  // nobody has taken the other spot yet: say so once, quietly, rather than
+  // putting an invitation in front of a child who wants to play
+  if (game.spotFree) {
+    setTimeout(() => message(tr('invite.hint', { role: roleName(game.other) })), 1800);
   }
 
   // the shared ritual: agree to play for five minutes

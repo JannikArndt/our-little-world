@@ -8,9 +8,20 @@ import { extname, join, normalize, resolve } from 'node:path';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { attachRelay, roomSizes } from './relay.mjs';
+import { Worlds } from './worlds.mjs';
+import { createApi } from './api.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const PORT = Number(process.argv[2] || process.env.PORT || 8080);
+// Where the world directory lives. A world is ~9 KB, so a family's worth of
+// them is nothing; see README for what it costs at scale.
+const DATA_DIR = process.env.DATA_DIR || join(ROOT, 'data');
+const TTL_DAYS = Number(process.env.WORLD_TTL_DAYS || 14);
+
+const worlds = new Worlds({ dir: DATA_DIR, ttlMs: TTL_DAYS * 24 * 60 * 60 * 1000 });
+await worlds.load();
+worlds.startWriting();
+const api = createApi(worlds);
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -27,6 +38,7 @@ const TYPES = {
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
+    if (await api(req, res)) return;
     if (url.pathname === '/rooms') {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify(roomSizes()));
@@ -60,4 +72,14 @@ server.listen(PORT, () => {
   console.log('Our Little World');
   console.log('  http://localhost:' + PORT);
   for (const a of addrs) console.log('  http://' + a + ':' + PORT + '   <- open this on the iPad');
+  const s = worlds.stats();
+  console.log('  ' + s.worlds + ' world(s) remembered in ' + DATA_DIR + ', forgotten after ' + TTL_DAYS + ' days');
 });
+
+// Whatever happens, the worlds people were playing in get written down first.
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    worlds.close().then(() => process.exit(0), () => process.exit(0));
+    setTimeout(() => process.exit(0), 2000).unref();
+  });
+}

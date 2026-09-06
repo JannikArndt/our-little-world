@@ -23,6 +23,26 @@ await scan('start');
 await p.screenshot({ path: out + '60-de-start.png' });
 if (!/Unsere kleine Welt/.test(await p.textContent('.start-card'))) throw new Error('start screen is not German');
 
+// the whole way in — starting a world, being invited, looking for one — in German
+await p.click('text=Eine neue Welt');
+await p.waitForTimeout(300);
+await scan('new world');
+await p.click('[data-role="A"]');
+await p.waitForSelector('.world-card', { timeout: 8000 });
+await scan('invite card');
+const welt = await p.textContent('.w-name');
+console.log('neue Welt:', welt);
+await p.screenshot({ path: out + '60b-de-welt.png' });
+if (!/Wartet auf/.test(await p.textContent('.w-line'))) throw new Error('the invite card is not German');
+await p.click('text=Zurück');
+await p.waitForTimeout(200);
+await p.click('text=Bei einer Welt mitmachen');
+await p.waitForTimeout(900);
+await scan('join list');
+await p.screenshot({ path: out + '60c-de-liste.png' });
+await p.click('text=Zurück');
+await p.waitForTimeout(200);
+
 await p.click('[data-role="BOTH"]');
 await p.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
 await p.waitForTimeout(700);

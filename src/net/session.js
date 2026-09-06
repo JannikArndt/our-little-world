@@ -4,6 +4,11 @@
 // their own actions straight away so the game feels instant, send them on, and
 // get corrected by the host's snapshots. That is exactly the shape a real
 // server needs, so moving the host into Node later changes nothing above here.
+//
+// The host also posts the world to the server every so often. That is what
+// removed the old "the same person has to open the page first" rule: whoever
+// arrives first asks the server for the world, and only falls back to their
+// own device's save when there is no server or the server has nothing newer.
 
 import { applyAction } from '../core/actions.js';
 import { tick } from '../core/sim.js';
@@ -11,8 +16,9 @@ import { maybeEvent, resetEventBudget } from '../core/events.js';
 import { createWorld, deserialize, serialize, TICK_MS } from '../core/world.js';
 import { save, load } from '../core/persist.js';
 
-const SNAP_EVERY = 12;          // ticks between snapshots (1.2 s)
-const SAVE_EVERY = 50;          // ticks between saves (5 s)
+const SNAP_EVERY = 12;          // ticks between snapshots to the other player (1.2 s)
+const SAVE_EVERY = 50;          // ticks between saves to this device (5 s)
+const UPLOAD_EVERY = 300;       // ticks between saves to the server (30 s)
 const HOST_WAIT  = 900;         // ms to listen before claiming the host role
 
 export class Session {
@@ -21,6 +27,7 @@ export class Session {
     this.role = opts.role;               // 'A' | 'B' | 'BOTH'
     this.transport = opts.transport;
     this.solo = opts.solo === true;
+    this.remote = opts.remote || null;      // { load(), save(tick, text, beacon) }
     this.peer = 'p' + Math.random().toString(36).slice(2, 9);
     this.isHost = this.solo;
     this.world = null;
@@ -28,6 +35,7 @@ export class Session {
     this.acc = 0;
     this.lastSnap = 0;
     this.lastSave = 0;
+    this.lastUpload = 0;
     this.status = this.solo ? 'solo' : 'waiting';
   }
 
@@ -35,10 +43,12 @@ export class Session {
   emit(what, data) { for (const fn of this.listeners) fn(what, data); }
 
   async start() {
+    // ask the server for the world while we listen for the other player
+    const fromServer = this.remote ? this.remote.load() : Promise.resolve(null);
     await this.transport.connect((m) => this.receive(m));
 
     if (this.solo) {
-      this.world = load(this.room) || createWorld(hashSeed(this.room));
+      this.world = await this.firstWorld(fromServer);
       this.becomeHost();
       return;
     }
@@ -46,9 +56,24 @@ export class Session {
     this.transport.send({ t: 'hello', peer: this.peer });
     await new Promise(r => setTimeout(r, HOST_WAIT));
     if (!this.world) {
-      this.world = load(this.room) || createWorld(hashSeed(this.room));
+      this.world = await this.firstWorld(fromServer);
       this.becomeHost();
     }
+  }
+
+  /**
+   * The world we start from: whichever of the server's copy and this device's
+   * copy has seen more of the day, and a brand new world if there is neither.
+   */
+  async firstWorld(fromServer) {
+    const mine = load(this.room);
+    let theirs = null;
+    try {
+      const got = await fromServer;
+      if (got && got.world) theirs = deserialize(got.world);
+    } catch (e) { /* the server having nothing is not a problem */ }
+    if (theirs && (!mine || theirs.tick >= mine.tick)) return theirs;
+    return mine || createWorld(hashSeed(this.room));
   }
 
   becomeHost() {
@@ -57,6 +82,9 @@ export class Session {
     this.emit('status', this.status);
     this.emit('world', this.world);
     if (!this.solo) this.snapshot();
+    // put it on the server straight away, so somebody joining in the next
+    // minute gets this world rather than starting a second empty one
+    if (this.remote) this.upload();
   }
 
   /* ---------------- messages ---------------- */
@@ -150,10 +178,25 @@ export class Session {
       save(this.room, this.world);
       this.lastSave = this.world.tick;
     }
+    if (this.isHost && this.remote && this.world.tick - this.lastUpload >= UPLOAD_EVERY) this.upload();
   }
 
-  checkpoint() {
-    if (this.world) save(this.room, this.world);
+  /** Hand the world to the server, so the next person to arrive gets it. */
+  upload(beacon) {
+    if (!this.remote || !this.world) return;
+    this.lastUpload = this.world.tick;
+    const fx = this.world.fx;
+    this.world.fx = [];
+    const text = serialize(this.world);
+    this.world.fx = fx;
+    this.remote.save(this.world.tick, text, !!beacon);
+  }
+
+  /** A good place to leave it: this device, and the server too. */
+  checkpoint(beacon) {
+    if (!this.world) return;
+    save(this.room, this.world);
+    if (this.isHost) this.upload(beacon);
   }
 
   startBlock(newDay) {

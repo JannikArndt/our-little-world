@@ -22,29 +22,77 @@ npm start                 # http://localhost:8080
 ```
 
 The server prints a second address on your local network — open that one on the
-iPad. Both players type the same world name on the first screen and they are in
-the same world.
+iPad. Nobody types anything to find each other:
+
+1. One of you taps **A new world** and picks a role. The server gives the world
+   a name and a picture of its own — *Sunny Otter* 🦦 — and keeps the second
+   spot free.
+2. The other one taps **Join a world** and sees *Sunny Otter* sitting at the top
+   of the list, with the free spot named. One tap and they are in it.
+3. From then on the world is on the front page of both devices under **Your
+   worlds**, and going back into it is one tap for as long as you keep playing.
+
+There is also a **Share the link** button, for when you are not in the same
+room: it hands the address `…/?world=sunny-otter` to whatever the device uses
+for sharing, and falls back to the clipboard. Saying "Sunny Otter" out loud
+works just as well — the name is the invitation.
+
+Once both spots are taken the world stops being listed, so nobody wanders into
+a game that is already two people.
 
 Three ways to play:
 
-- **Two devices on the same Wi-Fi** — run `npm start` on a laptop, open the
-  printed `http://192.168.x.x:8080` address on both devices. They connect
-  through the small relay built into the same server.
-- **Two windows on one machine** — open the page twice with the same world
-  name. With no relay answering, they find each other through the browser
-  itself, so this works from GitHub Pages or a plain file server too.
+- **Two devices, anywhere** — both open the same address; one starts the world,
+  the other joins it from the list. They talk through the small relay built
+  into the same server.
+- **Two windows on one machine** — open the page twice and pick the same world.
+  With no relay answering, they find each other through the browser itself, so
+  this works from GitHub Pages or a plain file server too.
 - **Both roles on one screen** — pick "Both, on one screen" and tap the role
   chip in the top left to swap. Good for sitting next to each other, and for
   trying things out.
 
-There is no build step. The whole game is static files; any web server (or
-GitHub Pages) will do. On load the page asks the host over plain HTTP whether it
-has a relay and remembers the answer, so a static host costs one 404 on the
-first visit and nothing afterwards. The relay is only needed for two separate
-devices.
+There is no build step. The whole game is static files plus one small Node
+server. On a static host (GitHub Pages, a file server) there is no directory
+and no relay: the page asks once over plain HTTP, remembers the answer, and
+falls back to "start a world, then both of you type its name".
 
-Useful query parameters: `?room=kitchen`, `?role=A|B|BOTH`,
-`?server=wss://your-relay/relay`.
+Useful query parameters: `?world=sunny-otter` (`?room=` still works),
+`?role=A|B|BOTH`, `?server=wss://your-relay/relay`.
+
+## Finding each other
+
+The server keeps a small directory of worlds. It is a lobby, not an account
+system — there are no passwords, no logins, no email addresses and nothing
+anybody typed about themselves. A world is a random two-word name, a list of
+which spots are taken, and the world itself as its last host left it.
+
+```
+GET  /api/worlds                  the worlds with a free spot, newest first
+POST /api/worlds                  start one; the server names it
+POST /api/worlds/:name/join       take the free spot (or get your own back)
+POST /api/worlds/:name/seen       still here — keeps the world from expiring
+GET  /api/worlds/:name/snapshot   the world as it was last left
+POST /api/worlds/:name/snapshot   the world as it is now (from the host)
+```
+
+A browser makes up a random "device" string for itself and keeps it in
+`localStorage`. That is how an iPad gets *its own* spot back a fortnight later
+instead of a new one. It is not a login and is not treated as one: anybody who
+knows a world's name can ask for that world. There is nothing there to protect
+— no chat, no personal data, nothing but a world with some sheep in it — and a
+matchmaking list that needs a password is a matchmaking list a five year old
+cannot use.
+
+What the spots do buy is the thing that actually goes wrong: a stranger, or a
+third device, quietly ending up in somebody else's world. A full world is not
+listed and cannot be joined. A spot nobody has used for three days can be taken
+over, so a reinstalled iPad is not locked out of its own world for ever.
+
+Worlds are forgotten when nobody has opened them for **14 days**
+(`WORLD_TTL_DAYS`). Anything played in keeps itself alive: the game says "still
+here" once a minute while you are in it, so a world you visit every weekend
+lasts indefinitely.
 
 ## Playing when you are far apart
 
@@ -94,6 +142,12 @@ repository secrets: `CAPROVER_SERVER`, `CAPROVER_APP_TOKEN` and `CAPROVER_APP`.
 The CLI tars the checked-out branch and the server builds it; `captain-definition`
 points at the `Dockerfile`, so the image is the same one you get locally.
 
+Give the app a **persistent directory** mapped to `/app/data` (Apps → your app
+→ App Configs → Persistent Directories). Without one the game still works, but
+a redeploy forgets which worlds exist and what was in them; the players' own
+devices do not, so they can simply carry on and the world is re-registered on
+the next visit.
+
 Two settings on the app's **HTTP Settings** page have to match the image:
 
 - **Container HTTP Port: 8080** — CapRover assumes 80 when the field is empty,
@@ -104,20 +158,60 @@ Two settings on the app's **HTTP Settings** page have to match the image:
 
 Then add the domain, enable HTTPS, and force it.
 
+Two environment variables are worth knowing about:
+
+| | |
+|---|---|
+| `DATA_DIR` | where worlds are kept (`/app/data` in the image) |
+| `WORLD_TTL_DAYS` | how long a world nobody opens survives (14) |
+
+### How much data is this, and when does it fall over
+
+Measured, not guessed (`npm test` keeps the numbers honest):
+
+- **A world is about 9 KB** serialised, and it stays that size. The terrain
+  grid dominates it and the journal is capped at 40 entries, so a world played
+  every weekend for a year is the same size as a fresh one. Gzipped it is
+  1.7 KB.
+- **A world on disk is ~10 KB** including its directory entry. So 1,000 worlds
+  alive at once is 10 MB, and 100,000 is 1 GB. With a 14 day expiry, "alive"
+  means "played in the last fortnight". Storage is not going to be the problem.
+- **The relay is the problem, and it is bandwidth.** The host broadcasts a full
+  world snapshot every 1.2 seconds: about 58 kbit/s per playing pair, in and
+  out again. Measured on this code with real snapshots: 200 pairs is
+  11 Mbit/s, 1,000 pairs is 57 Mbit/s, and the relay's CPU cost is small enough
+  that a single Node process is nowhere near it (35% of one core at 1,000
+  pairs, and that number includes the 2,000 simulated browsers).
+
+So one small box gets uncomfortable somewhere around **1,000 concurrent
+pairs**, on egress. A play block is five minutes, so if daily play is spread
+over four evening hours, that is roughly 50,000 families playing every day. To
+get past it, in the order the effort is worth it:
+
+1. **Snapshot less often, or only what changed.** Guests already apply their own
+   actions immediately; the snapshot is a correction, not the game. Halving the
+   rate halves the bill.
+2. **Turn on `permessage-deflate`.** These snapshots gzip 5:1.
+3. **Run more than one.** Rooms never talk to each other, so any proxy that
+   hashes the room name to a backend scales the relay out sideways. The
+   directory is the only shared state, and it is small and mostly reads.
+
 ### Where the world lives
 
-The relay only passes messages along. The world itself lives in the browsers:
-whoever connects first runs the clock and reads their own `localStorage`; the
-other player receives that world and follows it.
+In both browsers, and on the server. Whoever connects first runs the clock and
+is the authority; the other player receives that world and follows it. The host
+also posts the world to the server every 30 seconds and whenever a play block
+ends, and whoever arrives first asks the server for it before falling back to
+their own device's save.
 
-So the same person should open the page first each time — otherwise a device
-with no save (or an old one) can become the authority and the world that
-appears is the one that device remembers. Nothing is lost while both are
-playing; the risk is only in who starts.
+That removed the old ordering rule — it no longer matters who opens the page
+first, or whether the child's iPad has been wiped since Saturday. The newer of
+the two worlds wins, and the server refuses a snapshot older than the one it is
+already holding.
 
-Keeping the world on the server instead would remove that ordering rule: the
-relay would hold the last snapshot per room and hand it to whoever arrives.
-`Session` is already shaped for it — see **Multiplayer** below.
+Nothing about this needs a database. A world is one JSON file of about 9 KB in
+`$DATA_DIR` (`/app/data` in the image), written at most every few seconds and
+deleted when the world expires.
 
 ## English and German
 
@@ -197,16 +291,20 @@ src/
     sim.js       villagers, sheep, crops, weather in the sky
     events.js    problems, but only when they make sense
     rng.js       seeded, so two browsers agree
-    persist.js   localStorage
+    persist.js   localStorage: the world, and which worlds are ours
+    names.js     sunny-otter 🦦 — shared by the browser and the server
   net/
     transport.js the seam: local windows, a relay, or nothing
     session.js   one peer hosts the clock; the rest follow snapshots
+    directory.js the world list, from the browser's side
   render/        art.js (sprites) and renderer.js (frames)
-  ui/            hud, world taps, sharing, panels
+  ui/            start screen, hud, world taps, sharing, invitations
   minigames/     one file each
 server/
-  serve.mjs      static files + the relay, no dependencies
+  serve.mjs      static files + the relay + the directory, no dependencies
   relay.mjs      a ~180 line WebSocket relay, no dependencies
+  worlds.mjs     which worlds exist, who is in them, how each was left
+  api.mjs        the JSON endpoints the start screen talks to
 tests/           deterministic simulation and relay tests
 tools/           browser smoke test that plays a whole block
 ```
@@ -246,9 +344,10 @@ shapes.
 ## Tests
 
 ```
-npm test              # simulation determinism, costs, pathing, relay framing
+npm test              # simulation, costs, pathing, relay framing, the directory
 node tools/smoke.mjs  # a headless browser plays a whole five minute block
 node tools/german.mjs # the same, in German, checking no untranslated key leaks
+node tools/lobby.mjs  # two browsers find each other without typing anything
 ```
 
 The smoke test needs the server running (`npm start` on port 8099, or set
@@ -257,6 +356,11 @@ looks after a sheep, sows the field, lays a road, designs a house, watches
 somebody move in, asks the other player for help, runs the block to its
 checkpoint, and then checks that two separate browsers see each other's work.
 It also checks that nothing overflows sideways on an iPad, an iPhone and a Mac.
+
+`tools/lobby.mjs` is the matchmaking half: one browser starts a world, a second
+one picks it out of the list, they share a world, the world stops being listed,
+and reloading the page puts the second player straight back in with the same
+role.
 
 ## What is deliberately missing
 

@@ -84,13 +84,55 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
 .role-name { display: block; font-weight: 700; font-size: 19px; margin-top: 4px; }
 .role-desc { display: block; color: var(--ink-soft); font-size: 14px; margin-top: 4px; }
 
-.room-row { margin: 22px 6px 0; text-align: left; }
-.room-row label { display: block; font-size: 14px; color: var(--ink-soft); margin-bottom: 6px; }
-.room-row input {
-  width: 100%; height: var(--tap); padding: 0 14px;
+.start-note { color: var(--ink-soft); font-size: 14px; margin: 12px 6px 0; }
+.start-note.warn { color: var(--danger); font-weight: 700; }
+
+/* ---------------- worlds on the start screen ---------------- */
+/* A world is a picture and a name, so that a child who cannot read yet still
+   knows which card is theirs. */
+.start-h { margin: 22px 6px 6px; font-size: 15px; font-weight: 700; text-align: left; color: var(--ink-soft); }
+#startBody.busy { opacity: .55; pointer-events: none; }
+#startBody .row {
+  display: -webkit-box; display: -ms-flexbox; display: flex;
+  -ms-flex-wrap: wrap; flex-wrap: wrap; margin: 10px 2px 0;
+  -webkit-box-align: center; -ms-flex-align: center; align-items: center;
+}
+#startBody .row > * { margin: 4px; }
+
+.world-card {
+  display: -webkit-box; display: -ms-flexbox; display: flex;
+  -webkit-box-align: center; -ms-flex-align: center; align-items: center;
+  width: calc(100% - 12px); margin: 6px; padding: 12px 14px; text-align: left;
+  background: #fffdf8; border: 2px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: -webkit-transform .12s ease; transition: transform .12s ease;
+}
+.world-card:active { -webkit-transform: translateY(2px); transform: translateY(2px); }
+.world-card.still { box-shadow: none; }              /* not a button: just the world */
+.w-emoji { -webkit-box-flex: 0; -ms-flex: none; flex: none; font-size: 38px; line-height: 1.1; margin-right: 12px; }
+.w-text { -webkit-box-flex: 1; -ms-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; }
+.w-name { display: block; font-size: 20px; font-weight: 800; }
+.w-line { display: block; font-size: 15px; color: var(--ink-soft); }
+.w-sub  { display: block; font-size: 13px; color: var(--ink-soft); opacity: .75; }
+
+.role-btn.go { border-color: var(--keeper); background: #eff6eb; }
+.role-btn.quiet { background: transparent; box-shadow: none; }
+
+.name-row { display: -webkit-box; display: -ms-flexbox; display: flex; margin: 6px; }
+.name-row input {
+  -webkit-box-flex: 1; -ms-flex: 1 1 auto; flex: 1 1 auto; min-width: 0;
+  height: var(--tap); padding: 0 14px;
   border: 2px solid var(--line); border-radius: 12px; background: #fffdf8;
 }
-.start-note { color: var(--ink-soft); font-size: 14px; margin: 12px 6px 0; }
+.name-row .btn { -webkit-box-flex: 0; -ms-flex: none; flex: none; margin-left: 8px; }
+
+/* The link, big enough to read out and easy to select by hand. */
+.link-line {
+  margin: 10px 6px 0; padding: 10px 12px; text-align: left;
+  background: #fffdf8; border: 2px dashed var(--line); border-radius: 12px;
+  color: var(--ink-soft); font-size: 13px; word-break: break-all;
+  -webkit-user-select: all; user-select: all;
+}
 
 /* ---------------- game shell ---------------- */
 #game {

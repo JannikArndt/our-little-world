@@ -4,6 +4,11 @@ FROM node:22-alpine
 
 ENV NODE_ENV=production
 ENV PORT=8080
+# Where the world directory is kept. Mount something here to keep worlds across
+# a redeploy; without a mount the game still works, it just forgets which
+# worlds exist (the players' own devices do not).
+ENV DATA_DIR=/app/data
+ENV WORLD_TTL_DAYS=14
 
 WORKDIR /app
 
@@ -13,6 +18,8 @@ COPY index.html ./
 COPY server/ ./server/
 COPY src/ ./src/
 COPY styles/ ./styles/
+
+RUN mkdir -p /app/data && chown node:node /app/data
 
 USER node
 EXPOSE 8080

@@ -8,6 +8,9 @@ import { extname, join, normalize, resolve } from 'node:path';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { attachRelay, roomSizes } from './relay.mjs';
+import { buildId } from './buildid.mjs';
+import { VERSION } from '../src/core/changelog.js';
+import { SCHEMA } from '../src/core/world.js';
 
 const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const PORT = Number(process.argv[2] || process.env.PORT || 8080);
@@ -24,9 +27,19 @@ const TYPES = {
   '.webmanifest': 'application/manifest+json',
 };
 
+// worked out once, at boot: what this server is actually serving
+const BUILD = buildId();
+const STARTED = new Date().toISOString();
+
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
+    // "is what I pushed live?" — compare `build` with `node server/buildid.mjs`
+    if (url.pathname === '/version') {
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ version: VERSION, schema: SCHEMA, build: BUILD, startedAt: STARTED }));
+      return;
+    }
     if (url.pathname === '/rooms') {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify(roomSizes()));
@@ -57,7 +70,7 @@ server.listen(PORT, () => {
   for (const name of Object.keys(nets))
     for (const n of nets[name] || [])
       if (n.family === 'IPv4' && !n.internal) addrs.push(n.address);
-  console.log('Our Little World');
+  console.log('Our Little World  v' + VERSION + '  build ' + BUILD);
   console.log('  http://localhost:' + PORT);
   for (const a of addrs) console.log('  http://' + a + ':' + PORT + '   <- open this on the iPad');
 });

@@ -9,7 +9,9 @@
 
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { readdirSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const quick = process.argv.slice(2).some(a => /quick/.test(a));
 
@@ -41,10 +43,16 @@ async function waitForServer(base, tries = 40) {
 
 const port = await freePort();
 const base = 'http://localhost:' + port;
+// its own world directory, thrown away afterwards: a run must not depend on
+// what an earlier run left lying about, or leave anything of its own behind
+const data = mkdtempSync(join(tmpdir(), 'olw-verify-'));
 const server = spawn('node', ['server/serve.mjs'], {
-  stdio: 'ignore', env: Object.assign({}, process.env, { PORT: String(port) }),
+  stdio: 'ignore', env: Object.assign({}, process.env, { PORT: String(port), DATA_DIR: data }),
 });
-const stop = () => { try { server.kill(); } catch (e) { /* already gone */ } };
+const stop = () => {
+  try { server.kill(); } catch (e) { /* already gone */ }
+  try { rmSync(data, { recursive: true, force: true }); } catch (e) { /* fine */ }
+};
 process.on('exit', stop);
 process.on('SIGINT', () => { stop(); process.exit(130); });
 

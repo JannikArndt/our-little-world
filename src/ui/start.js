@@ -57,7 +57,15 @@ export function startScreen(opts) {
       busy(false);
       if (!r) { play(name, wantedRole || guessRole(name), false); return; }   // server went quiet: play anyway
       if (r.status === 404) { say('join.gone'); return; }
-      if (r.full || !r.role) { say('join.full'); return; }
+      if (r.full || !r.role) {
+        // Both spots taken. If we already know which of the two we are — our
+        // own world, or a link that says so — we are not a third person and
+        // this is not a door to be kept shut: the spots are there to stop
+        // strangers wandering in, not to lock a family out of their village.
+        if (wantedRole) { play(name, wantedRole, false, null); return; }
+        say('join.full');
+        return;
+      }
       play(name, r.role, false, r.world ? r.world.free : null);
     });
   }

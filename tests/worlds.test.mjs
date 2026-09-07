@@ -263,6 +263,25 @@ test('a device asking for a world by name gets it whether or not it is listed', 
   assert.equal(one.body.world.emoji.length > 0, true);
 });
 
+test('a full world stays joinable to the two devices already in it', async (t) => {
+  const { server, base } = await listen();
+  t.after(() => server.close());
+  const made = await post(base, '/api/worlds', { device: 'kid', role: 'A' });
+  const name = made.body.world.name;
+  await post(base, '/api/worlds/' + name + '/join', { device: 'dad', role: 'B' });
+
+  // the child's own iPad, coming back: still theirs, however full the world is
+  const back = await post(base, '/api/worlds/' + name + '/join', { device: 'kid', role: 'A' });
+  assert.equal(back.body.role, 'A');
+  assert.equal(back.body.full, false);
+
+  // a stranger is told plainly that there is no room, and the browser only
+  // walks past that when the player has already said which of the two they are
+  const third = await post(base, '/api/worlds/' + name + '/join', { device: 'stranger' });
+  assert.equal(third.body.role, null);
+  assert.equal(third.body.full, true);
+});
+
 test('the api does not answer for anything it does not own', async (t) => {
   const { server, base } = await listen();
   t.after(() => server.close());

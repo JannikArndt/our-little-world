@@ -4,13 +4,14 @@ import { el, openPanel, message } from './overlay.js';
 import { RESOURCES, ROLE, roleName, resName } from '../core/world.js';
 import { tr } from '../core/i18n.js';
 
-export function openGive(game, focusKey) {
+export function openGive(game, focusKey, toRole) {
   const w = game.world;
+  const to = toRole || game.other;
   const mine = w.players[game.role].res;
 
   const p = openPanel({
     title: tr('give.title'),
-    lead: tr('give.lead', { role: roleName(game.other) }),
+    lead: tr('give.lead', { role: roleName(to) }),
   });
 
   const amounts = {};
@@ -68,13 +69,13 @@ export function openGive(game, focusKey) {
 
   const row = p.row();
   if (any) {
-    row.appendChild(p.button(tr('give.button', { role: roleName(game.other), emoji: ROLE[game.other].emoji }), 'go', () => {
+    row.appendChild(p.button(tr('give.button', { role: roleName(to), emoji: ROLE[to].emoji }), 'go', () => {
       let n = 0;
       for (const k in amounts) {
-        if (amounts[k] > 0 && game.dispatch({ type: 'give', from: game.role, to: game.other, res: k, n: amounts[k] })) n += amounts[k];
+        if (amounts[k] > 0 && game.dispatch({ type: 'give', from: game.role, to: to, res: k, n: amounts[k] })) n += amounts[k];
       }
       p.close();
-      if (n) message(tr('msg.gaveAcross', { n: n, role: roleName(game.other) }));
+      if (n) message(tr('msg.gaveAcross', { n: n, role: roleName(to) }));
     }));
   }
   if ((mine.food || 0) > 0) {

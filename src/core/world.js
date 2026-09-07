@@ -30,6 +30,11 @@ export { PROJECT, PROJECTS, SAPLING_TICKS, REPLANT_GOAL, SCENARIOS } from './con
 /** The roles in play, drawn from the catalogue. */
 export const ROLE = ROLES;
 
+// The order they stand in along the top bar. Everything that walks the roles
+// walks this, so a third one — a cook, say — is one more entry in the
+// catalogue and nothing here changes at all.
+export const ROLE_ORDER = Object.keys(ROLES);
+
 export const CAPS = {
   fell:   { icon: '🪓', owner: 'A' },
   saw:    { icon: '🪚', owner: 'A' },
@@ -418,6 +423,35 @@ export function saplings(w) { return w.trees.filter(t => t.state === 'sapling');
 export function blockProgress(w) {
   if (!w.block.active) return w.block.endedAt !== null ? 1 : 0;
   return Math.min(1, (w.tick - w.block.startTick) / w.block.length);
+}
+
+/* --------------------------------------------------------------------- */
+/* the day                                                               */
+/* --------------------------------------------------------------------- */
+// One day is one play block. Nobody is told how much of it is left; the light
+// says it instead, and the people go to bed when it is over.
+
+export const PHASES = [
+  { at: 0.00, id: 'dawn' },
+  { at: 0.12, id: 'morning' },
+  { at: 0.40, id: 'midday' },
+  { at: 0.66, id: 'afternoon' },
+  { at: 0.84, id: 'evening' },
+];
+
+/** Where in the day we are: 'dawn' … 'evening', or 'night' once it is over. */
+export function dayPhase(w) {
+  if (!w.block.active) return w.block.endedAt !== null ? 'night' : 'dawn';
+  const p = blockProgress(w);
+  let id = PHASES[0].id;
+  for (const ph of PHASES) if (p >= ph.at) id = ph.id;
+  return id;
+}
+
+/** True once the people should be making their way home. */
+export function isDusk(w) {
+  const ph = dayPhase(w);
+  return ph === 'evening' || ph === 'night';
 }
 
 /* --------------------------------------------------------------------- */

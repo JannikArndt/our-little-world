@@ -69,14 +69,19 @@ async function main() {
   await page.click('[data-role="BOTH"]');
   await page.waitForSelector('#game:not(.hidden)');
   await page.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
-  await step(page, '02-offer-block', 900);
+  // the day now starts on its own, with no offer panel to click through
+  await page.waitForFunction(() => window.OLW.world.block.active, null, { timeout: 8000 });
+  await step(page, '02-world', 900);
 
-  await page.click('text=Five minutes together');
-  await step(page, '02b-guide', 900);
+  // the task guide lives behind your own role chip now
+  await page.click('#roleBar button.me');
+  await step(page, '02b-menu', 400);
+  await page.click('text=What needs doing');
+  await step(page, '02c-guide', 900);
   const guide = await page.textContent('.panel');
   console.log('opening card says:', guide.replace(/\s+/g, ' ').trim().slice(0, 150));
-  if (!/Build a house for|Build a bridge|Mend the bridge/.test(guide)) throw new Error('the opening card does not say what to do');
-  if ((await page.$$eval('.step', ns => ns.length)) < 2) throw new Error('the opening card has no steps');
+  if (!/Build a house for|Build a bridge|Mend the bridge/.test(guide)) throw new Error('the card does not say what to do');
+  if ((await page.$$eval('.step', ns => ns.length)) < 2) throw new Error('the card has no steps');
   // a named person is drawn on the card and ringed out in the world
   const named = await page.evaluate(() => {
     const g = window.OLW;
@@ -88,7 +93,7 @@ async function main() {
   const counts = await page.$$eval('.step .s-count', ns => ns.map(n => n.textContent.trim()));
   console.log('counted steps:', counts.join(', '));
   if (!counts.length || !counts.every(c => /^\d+\/\d+/.test(c))) throw new Error('steps carry no counts');
-  await page.click('text=Off we go');
+  await page.click('text=Right, got it');
   await step(page, '03-world', 1200);
 
   const api = async (fn, arg) => page.evaluate(fn, arg);
@@ -228,17 +233,37 @@ async function main() {
   if (!built) throw new Error('the bridge was not built');
 
   // swap to the Keeper and look after a sheep
-  await page.click('#roleChip');
+  await page.click('#roleBar button.me');
+  await step(page, '15b-menu', 300);
+  await page.click('text=Play as the Keeper');
   await step(page, '16-keeper', 500);
-  const sheepPt = await api(() => {
-    const g = window.OLW, s = g.world.sheep[0];
-    g.look(s.x, s.y, 2);
-    const p = g.renderer.toScreen(s.x * 24, s.y * 24);
-    const r = document.getElementById('world').getBoundingClientRect();
-    return { x: r.left + p.x, y: r.top + p.y };
+  // She is a moving target, she stands near the top of a short world, and the
+  // world's notices sit over that same strip — so put the read ones away first,
+  // then frame her, check the tap really lands on the canvas, and try again.
+  await api(() => {
+    const g = window.OLW;
+    for (const n of g.world.notices.slice()) g.dispatch({ type: 'notice.dismiss', id: n.id });
   });
-  await page.waitForTimeout(300);
-  await page.mouse.click(sheepPt.x, sheepPt.y);
+  await page.waitForTimeout(200);
+  for (let attempt = 0; attempt < 5 && !(await page.$('.bubble')); attempt++) {
+    const pt = await api((dys) => {
+      const g = window.OLW, s = g.world.sheep[0];
+      const canvas = document.getElementById('world');
+      for (const dy of dys) {
+        g.look(s.x, s.y + dy, 2);
+        const p = g.renderer.toScreen(s.x * 24, s.y * 24);
+        const r = canvas.getBoundingClientRect();
+        const x = r.left + p.x, y = r.top + p.y;
+        if (x < r.left + 20 || x > r.right - 20 || y < r.top + 20 || y > r.bottom - 20) continue;
+        if (document.elementFromPoint(x, y) !== canvas) continue;
+        return { x, y };
+      }
+      return null;
+    }, [-2, 0, -4, 2, -6]);
+    if (!pt) { await page.waitForTimeout(400); continue; }
+    await page.mouse.click(pt.x, pt.y);     // straight away: a notice can arrive
+    await page.waitForTimeout(400);
+  }
   await step(page, '17-sheep-bubble', 400);
   await page.click('text=Look after her');
   await step(page, '18-care', 700);
@@ -341,24 +366,20 @@ async function main() {
   if (!/asks/.test(noticeText)) throw new Error('the ask did not reach the other player');
   await step(page, '25a-ask', 300);
 
-  // teaching: having done it a few times, you can show the other player how
-  await api(() => {
-    const g = window.OLW;
-    g.canSwap = false;                       // make the role chip open the card
-    g.world.players.A.done.fell = 3;
-  });
-  await page.click('#roleChip');
+  // teaching: having done it a few times, you can show the other player how.
+  // This lives behind the OTHER role's chip now (yours is your own tools).
+  await api(() => { window.OLW.world.players.A.done.fell = 3; });
+  await page.click('#roleBar button[data-role="B"]');
   await step(page, '25b-role-card', 500);
-  const teach = await page.$('text=teach felling trees');
+  const teach = await page.$('text=Teach them felling trees');
   if (!teach) throw new Error('no way to teach a capability across');
   await teach.click();
   await page.waitForTimeout(400);
   const learned = await api(() => !!window.OLW.world.players.B.caps.fell);
   console.log('taught the other player to fell trees:', learned);
   if (!learned) throw new Error('teaching did not stick');
-  await api(() => { window.OLW.canSwap = true; });
 
-  // messages wait to be read and then go into the history
+  // messages wait to be read; there is no history sheet any more
   const standing = await page.$$eval('.msg', ns => ns.length);
   console.log('messages standing on screen:', standing, '(never more than 3)');
   if (standing > 3) throw new Error('messages piled up');
@@ -367,15 +388,9 @@ async function main() {
     const after = await page.$$eval('.msg', ns => ns.length);
     if (after !== standing - 1) throw new Error('the x did not put a message away');
   }
-  await page.click('#historyChip');
-  await step(page, '25c-history', 400);
-  const hist = await page.$$eval('.hist-line', ns => ns.length);
-  console.log('messages kept in the history:', hist);
-  if (hist < 3) throw new Error('the history is not keeping messages');
-  await page.click('text=Close');
 
-  // sharing
-  await page.click('#partnerChip');
+  // sharing, from the bottom resource bar
+  await page.click('.res');
   await step(page, '25-share', 500);
   await page.click('text=Close');
 
@@ -477,16 +492,15 @@ async function main() {
   });
   console.log('poorly villagers once the well is dug:', noPoorly);
 
-  // the changelog, tucked under the history
-  await page.click('#historyChip');
+  // the changelog, tucked in your own menu
+  await page.click('#roleBar button.me');
   await page.waitForTimeout(300);
-  await page.click('.whats-new');
+  await page.click('.menu-item:has-text("What is new")');
   await step(page, '25l-changelog', 500);
   const log = await page.textContent('.panel');
-  if (!/What is new/.test(log)) throw new Error('the changelog is not reachable from the history');
+  if (!/What is new/.test(log)) throw new Error('the changelog is not reachable from your own menu');
   await page.click('text=Close');
   await page.waitForTimeout(200);
-  await page.click('text=Close');
 
   // run the block to its end quickly and check the checkpoint
   await api(() => {
@@ -497,7 +511,7 @@ async function main() {
   await step(page, '26-summary', 1200);
   const summaryText = await page.textContent('.panel');
   console.log('summary contains:', summaryText.replace(/\s+/g, ' ').slice(0, 260));
-  if (!/morning is finished/i.test(summaryText)) throw new Error('no checkpoint summary');
+  if (!/day \d+ is over/i.test(summaryText)) throw new Error('no day-end summary');
 
   // the world must still be there, and saved
   const saved = await api(() => {
@@ -507,7 +521,7 @@ async function main() {
   console.log('saved buildings:', saved);
   if (saved < 4) throw new Error('the world was not saved');
 
-  await page.click('text=Another five minutes');
+  await page.click('text=Play another day');
   await step(page, '27-new-morning', 1000);
   await ipad.close();
 
@@ -519,7 +533,7 @@ async function main() {
   watch(pa, 'A'); watch(pb, 'B');
   await pa.goto(BASE + '/?room=duo&role=A');
   await pa.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
-  await pa.click('text=Five minutes together').catch(() => {});
+  // the day starts on its own now, nothing to click through
   await pb.goto(BASE + '/?room=duo&role=B');
   await pb.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
   await pb.waitForTimeout(2500);
@@ -561,7 +575,6 @@ async function main() {
     watch(pg, name);
     await pg.goto(BASE + '/?room=look&role=BOTH');
     await pg.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
-    await pg.click('text=Five minutes together').catch(() => {});
     await pg.waitForTimeout(1200);
     await pg.screenshot({ path: SHOTS + '30-' + name + '.png' });
     const overflow = await pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -586,7 +599,10 @@ async function main() {
   await ph.addStyleTag(notch);
   await ph.waitForTimeout(700);
 
-  await ph.click('text=Five minutes together');
+  await ph.waitForFunction(() => window.OLW.world.block.active, null, { timeout: 8000 });
+  await ph.click('#roleBar button.me');
+  await ph.waitForTimeout(300);
+  await ph.click('text=What needs doing');
   await ph.waitForTimeout(900);
   await ph.addStyleTag(notch);
   await step(ph, '31-phone-guide', 300);
@@ -624,11 +640,11 @@ async function main() {
   if (startTop.top < SAFE_T) throw new Error('the start screen runs under the notch');
 
   // and there is a way back out of the world, with the village kept
-  await ph.click('text=Off we go');
+  await ph.click('text=Right, got it');
   await ph.waitForTimeout(400);
-  await ph.click('#historyChip');
+  await ph.click('#roleBar button.me');
   await ph.waitForTimeout(400);
-  await ph.click('text=Back to the start screen');
+  await ph.click('.menu-item:has-text("Back to the start screen")');
   await ph.waitForTimeout(1200);
   const outAgain = await ph.evaluate(() => ({
     start: !document.getElementById('start').classList.contains('hidden'),
@@ -648,9 +664,9 @@ async function main() {
 
   // fetching the game again from inside the world: the only reload a Home
   // Screen app has. It saves first, so the village must survive the trip.
-  await ph.click('#historyChip');
+  await ph.click('#roleBar button.me');
   await ph.waitForTimeout(400);
-  await ph.click('#overlay .whats-new:has-text("Fetch the game again")');
+  await ph.click('.menu-item:has-text("Fetch the game again")');
   await ph.waitForFunction(() => /fresh=/.test(location.search), null, { timeout: 8000 });
   await ph.waitForTimeout(900);
   const afterFetch = await ph.evaluate(() => ({

@@ -58,12 +58,12 @@ function copy(url) {
 }
 
 /**
- * The invitation, from inside the game: shown when the other spot is still
- * free, so the answer to "where is my dad" is one tap away.
+ * The invitation, from inside the game: behind the chip of whoever is not
+ * here yet, so the answer to "where is my dad" is one tap away.
  */
-export function openInvite(game) {
+export function openInvite(game, role) {
   const name = game.worldName;
-  const other = game.other;
+  const other = role || game.other;
   const p = openPanel({
     title: tr('invite.title'),
     lead: tr('invite.lead', { role: roleName(other), emoji: ROLE[other].emoji }),

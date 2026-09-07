@@ -6,11 +6,11 @@ import { Directory, apiBase } from './net/directory.js';
 import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
 import { installInput, renderModeBar, closeBubble, buildProject } from './ui/interact.js';
-import { openPanel, message, closePanel } from './ui/overlay.js';
-import { ROLE, otherRole, byId, can, roleName } from './core/world.js';
+import { message, closePanel, closeMenu, clearMessages } from './ui/overlay.js';
+import { ROLE, otherRole, byId, can } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
-import { deviceId, rememberWorld } from './core/persist.js';
+import { deviceId, rememberWorld, forget } from './core/persist.js';
 import { newerBuild, watchForNewer, reloadNow } from './core/fresh.js';
 import { startScreen } from './ui/start.js';
 import { openInvite } from './ui/invite.js';
@@ -168,14 +168,23 @@ async function startGame(choice) {
     mode: null,
     partnerOnline: false,
     worldName: room,
-    // true while the other spot in this world has never been taken: then the
-    // partner chip offers an invitation instead of a way to share planks
-    spotFree: registered && !!(choice.free && choice.free.length),
+    // the roles in this world nobody has taken yet: their chip in the top row
+    // offers an invitation rather than a way to share planks
+    freeRoles: (registered && choice.free) || [],
     get world() { return session.world; },
 
-    invite() { openInvite(game); },
+    invite(id) { openInvite(game, id); },
 
     dispatch(a) { return session.dispatch(a); },
+
+    /** Is that role at the screen right now? Yours always is. */
+    isOnline(id) {
+      if (id === game.role) return true;
+      if (solo) return true;
+      const w = session.world;
+      if (!w || !w.players[id]) return false;
+      return (w.tick - (w.players[id].seen || -9999)) < 120;
+    },
 
     setMode(m) {
       game.mode = m;
@@ -221,7 +230,21 @@ async function startGame(choice) {
       game.role = game.role === 'A' ? 'B' : 'A';
       game.other = otherRole(game.role);
       game.setMode(null);
-      hud.last = {};
+      hud.relabel();
+    },
+
+    /** The language changed: everything holding words draws itself again. */
+    relabel() {
+      document.title = tr('app.title');
+      applyStartText();
+      hud.relabel();
+      renderModeBar(game);
+    },
+
+    /** Forget this world and begin it again from the first morning. */
+    startOver() {
+      forget(room);
+      location.href = location.pathname + '?room=' + encodeURIComponent(room);
     },
 
     /**
@@ -332,15 +355,12 @@ async function startGame(choice) {
       if (open) open();
     },
 
-    startBlock(newDay) {
-      session.startBlock(newDay);
+    /** A day begins. Nothing else starts one; somebody has to want it. */
+    startDay(newDay) {
       closePanel();
-      setTimeout(() => hud.showGuide({ first: true }), 120);
-    },
-    endBlock() {
-      session.dispatch({ type: 'block.end' });
-      session.checkpoint();
-      hud.showSummary();
+      closeMenu();
+      clearMessages();
+      session.startBlock(newDay);
     },
   };
 
@@ -348,12 +368,12 @@ async function startGame(choice) {
   game.hud = hud;
 
   session.on((what, data) => {
-    if (what === 'block-ended') { session.checkpoint(); hud.showSummary(); }
+    if (what === 'block-ended') { session.checkpoint(); hud.showDayEnd(); }
     if (what === 'status') updatePartner();
-    // if the other player starts the morning, put our invitation away and let
-    // them get on with it — the card going is answer enough
-    if (what === 'acted' && data && data.type === 'block.start' && game._offer) {
-      game._offer.close(); game._offer = null;
+    // the other player started the next day: come along with them
+    if (what === 'acted' && data && data.type === 'block.start') {
+      closePanel();
+      clearMessages();
     }
   });
 
@@ -367,9 +387,7 @@ async function startGame(choice) {
   window.addEventListener('pagehide', () => session.checkpoint(true));
 
   function updatePartner() {
-    const w = session.world;
-    if (!w) return;
-    game.partnerOnline = solo ? true : (w.tick - (w.players[game.other].seen || -9999)) < 120;
+    game.partnerOnline = game.isOnline(game.other);
   }
 
   // presence heartbeat
@@ -394,7 +412,7 @@ async function startGame(choice) {
     if (now - lastSeen < 60000) return;
     lastSeen = now;
     dir.seen(room, device, chosenRole).then((r) => {
-      if (r && r.world) game.spotFree = r.world.free.length > 0;
+      if (r && r.world) game.freeRoles = r.world.free || [];
     });
   }
   tellServer();
@@ -420,37 +438,11 @@ async function startGame(choice) {
   }
   requestAnimationFrame(step);
 
-  // nobody has taken the other spot yet: say so once, quietly, rather than
-  // putting an invitation in front of a child who wants to play
-  if (game.spotFree) {
-    setTimeout(() => message(tr('invite.hint', { role: roleName(game.other) })), 1800);
-  }
-
-  // the shared ritual: agree to play for five minutes. Somebody arriving in the
-  // middle of one is simply in it: the clock is already running where they can
-  // see it, so nothing needs to be said.
-  if (!session.world.block.active) offerBlock(game);
+  // The day starts with the game. If the world is already in the middle of
+  // one — the other player got here first — we simply join it.
+  if (!session.world.block.active) game.startDay(session.world.block.endedAt !== null);
 
   window.OLW = game;      // handy when poking at it from a console
-}
-
-function offerBlock(game) {
-  const w = game.world;
-  const returning = w.tick > 0;
-  const p = openPanel({
-    title: tr(returning ? 'block.titleBack' : 'block.titleNew'),
-    lead: tr(returning ? 'block.leadBack' : 'block.leadNew'),
-    center: true,
-  });
-  game._offer = p;
-  const r = p.row();
-  r.appendChild(p.button(tr('block.start'), 'go', () => { game._offer = null; p.close(); game.startBlock(returning); }));
-  r.appendChild(p.button(tr('block.look'), 'soft', () => { game._offer = null; p.close(); game.hud.showGuide(); }));
-  const note = document.createElement('p');
-  note.className = 'lead center';
-  note.style.marginTop = '10px';
-  note.textContent = tr('block.note');
-  p.body.appendChild(note);
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

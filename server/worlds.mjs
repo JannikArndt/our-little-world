@@ -13,8 +13,12 @@
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomName, worldEmoji } from '../src/core/names.js';
+import { ROLE_ORDER } from '../src/core/world.js';
 
-export const DEFAULT_ROLES = ['A', 'B'];
+// However many roles the game has. A world keeps the list it was made with, so
+// a third role tomorrow gives new worlds a third spot without touching the
+// worlds people are already playing in.
+export const DEFAULT_ROLES = ROLE_ORDER.slice();
 
 const DAY = 24 * 60 * 60 * 1000;
 const MAX_SNAPSHOT = 512 * 1024;        // a whole world is ~9 KB; this is a wall, not a target

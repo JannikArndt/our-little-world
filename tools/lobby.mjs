@@ -41,6 +41,20 @@ const kidRole = await kid.evaluate(() => window.OLW.role);
 console.log('the child plays:', kidRole);
 if (kidRole !== 'A') throw new Error('the child did not get the role they picked');
 
+/* ---------- the empty spot in the top row is an invitation ---------- */
+await kid.click('#roleBar .role-chip[data-role="B"]');
+await kid.waitForSelector('#menuLayer .menu-item', { timeout: 5000 });
+const menuText = await kid.textContent('#menuLayer .menu');
+if (!/📨/.test(menuText)) throw new Error('the empty spot offers no way to invite anybody');
+await kid.click('#menuLayer .menu-item:has-text("📨")');
+await kid.waitForSelector('.panel .link-line', { timeout: 5000 });
+const invited = await kid.textContent('.panel .link-line');
+console.log('the invitation offers:', invited);
+if (invited.indexOf(worldName.toLowerCase().replace(/ /g, '-')) < 0)
+  throw new Error('the invitation does not point at this world');
+await shot(kid, '71b-lobby-invite');
+await kid.click('.panel .btn.soft');
+
 /* ---------- the parent finds it in the list ---------- */
 const dadCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 const dad = await dadCtx.newPage();
@@ -71,7 +85,7 @@ if (open.worlds.some((w) => w.name === slug))
 /* ---------- one of them builds something, the other sees it ---------- */
 await kid.evaluate(() => {
   const g = window.OLW;
-  g.startBlock(false);
+  g.startDay(false);
   g.world.players.A.res.wood = 9;
   g.dispatch({ type: 'presence', role: 'A', busy: null });
 });

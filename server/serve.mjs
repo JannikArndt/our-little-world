@@ -16,7 +16,7 @@ import { SCHEMA } from '../src/core/world.js';
 
 const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const PORT = Number(process.argv[2] || process.env.PORT || 8080);
-// Where the world directory lives. A world is ~9 KB, so a family's worth of
+// Where the world directory lives. A world is ~10 KB, so a family's worth of
 // them is nothing; see README for what it costs at scale.
 const DATA_DIR = process.env.DATA_DIR || join(ROOT, 'data');
 const TTL_DAYS = Number(process.env.WORLD_TTL_DAYS || 14);

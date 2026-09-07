@@ -245,9 +245,13 @@ async function main() {
     for (const n of g.world.notices.slice()) g.dispatch({ type: 'notice.dismiss', id: n.id });
   });
   await page.waitForTimeout(200);
-  for (let attempt = 0; attempt < 5 && !(await page.$('.bubble')); attempt++) {
+  // Any old bubble is not good enough: a villager wandering past her opens
+  // their own, and then "Look after her" is nowhere. Keep going until it is
+  // hers, putting the wrong one away each time.
+  for (let attempt = 0; attempt < 8 && !(await page.$('text=Look after her')); attempt++) {
     const pt = await api((dys) => {
       const g = window.OLW, s = g.world.sheep[0];
+      g.setMode(null);                      // whatever came up last time, away
       const canvas = document.getElementById('world');
       for (const dy of dys) {
         g.look(s.x, s.y + dy, 2);
@@ -256,6 +260,8 @@ async function main() {
         const x = r.left + p.x, y = r.top + p.y;
         if (x < r.left + 20 || x > r.right - 20 || y < r.top + 20 || y > r.bottom - 20) continue;
         if (document.elementFromPoint(x, y) !== canvas) continue;
+        // somebody standing on her would answer first; wait for them to move on
+        if (g.world.villagers.some(v => Math.abs(v.x - s.x) < 1.1 && Math.abs(v.y - s.y) < 1.1)) continue;
         return { x, y };
       }
       return null;
@@ -524,6 +530,63 @@ async function main() {
   await page.click('text=Play another day');
   await step(page, '27-new-morning', 1000);
   await ipad.close();
+
+  /* ---------- 1b. starting a world over really does ---------- */
+  // Three things remember a world: this device, the relay, and the directory.
+  // Clearing only the first hands the village straight back on the way in.
+  {
+    const over = await browser.newContext({ viewport: { width: 900, height: 700 } });
+    const po = await over.newPage();
+    watch(po, 'start-over');
+    const room = 'over' + Math.floor(Math.random() * 1e6);
+    await po.goto(BASE + '/?world=' + room + '&role=A', { waitUntil: 'load' });
+    await po.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 15000 });
+
+    // build up a village worth losing, and let the server hear about it
+    await po.evaluate(() => {
+      const g = window.OLW;
+      g.world.players.A.res.wood = 42;
+      for (let i = 0; i < 900; i++) g.session.update(100);
+      g.session.checkpoint();
+    });
+    await po.waitForTimeout(1200);
+    const kept = await (await fetch(BASE + '/api/worlds/' + room + '/snapshot')).json();
+    console.log('the server is holding a world at tick:', kept.tick);
+    if (!kept.tick) throw new Error('the server never heard about the world');
+
+    await po.click('#roleBar button.me');
+    await po.waitForTimeout(300);
+    await po.click('.menu-item:has-text("Start this world over")');
+    await po.waitForTimeout(300);
+    await po.click('text=Yes, start over');
+    await po.waitForFunction(() => window.OLW.world.players.A.res.wood !== 42, null, { timeout: 15000 })
+      .catch(() => { throw new Error('starting over left the old world on screen'); });
+    await po.waitForTimeout(800);
+    const after = await po.evaluate(() => ({
+      wood: window.OLW.world.players.A.res.wood,
+      day: window.OLW.world.day,
+      buildings: window.OLW.world.buildings.length,
+    }));
+    console.log('the first morning again:', JSON.stringify(after));
+    if (after.day !== 1) throw new Error('starting over did not go back to the first day');
+
+    // and the server has it too, so walking back in does not undo it
+    const fresh = await (await fetch(BASE + '/api/worlds/' + room + '/snapshot')).json();
+    console.log('the server now holds a world at tick:', fresh.tick);
+    if (fresh.tick > 400) throw new Error('the server is still holding the old village');
+
+    // walking back in, on the same device: still the fresh world
+    await po.close();
+    const po2 = await over.newPage();
+    watch(po2, 'start-over');
+    await po2.goto(BASE + '/?world=' + room + '&role=A', { waitUntil: 'load' });
+    await po2.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 15000 });
+    await po2.waitForTimeout(600);
+    const back = await po2.evaluate(() => window.OLW.world.players.A.res.wood);
+    console.log('and on the way back in:', back);
+    if (back === 42) throw new Error('the old world came back after starting over');
+    await over.close();
+  }
 
   /* ---------- 2. two browsers, one world ---------- */
   if (!QUICK) {

@@ -59,8 +59,9 @@ export class Directory {
   leave(name, device) { return this.post('/worlds/' + encodeURIComponent(name) + '/leave', { device }); }
 
   snapshot(name) { return this.get('/worlds/' + encodeURIComponent(name) + '/snapshot'); }
-  putSnapshot(name, device, tick, world) {
-    return this.post('/worlds/' + encodeURIComponent(name) + '/snapshot', { device, tick, world });
+  /** `reset` is somebody starting their world over: the fresh world wins. */
+  putSnapshot(name, device, tick, world, reset) {
+    return this.post('/worlds/' + encodeURIComponent(name) + '/snapshot', { device, tick, world, reset: !!reset });
   }
 
   /**

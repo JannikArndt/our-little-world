@@ -8,7 +8,7 @@ list of rules for changing it.
 
 ```
 npm run verify -- quick     # while working: unit tests + a shortened play-through
-npm run verify              # before pushing: everything, including German
+npm run verify              # before pushing: everything, incl. German and the lobby
 git add -A && git commit    # then push to main (see below)
 npm run deployed            # after pushing: is that code actually live?
 ```
@@ -19,14 +19,16 @@ a wide `pkill` has killed a running test's browser mid-run and cost a whole
 cycle. If something must be stopped, name it exactly.
 
 - **`npm run verify`** is the gate before every push of anything a player can
-  see. It runs the unit tests, the browser play-through (`tools/smoke.mjs`) and
-  the German pass (`tools/german.mjs`), and exits non-zero on the first failure.
-  It takes about five minutes; run it in the background and wait for it rather
-  than polling — one `while pgrep -f 'tools/(smoke|german).mjs'; do sleep 15;
-  done` beats ten `sleep`s.
-- **`npm run verify -- quick`** keeps every assertion but drops the
-  screenshots, the second browser and the walk round three screen sizes. About
-  a minute. For iterating, never as the gate.
+  see. It runs the unit tests, the browser play-through (`tools/smoke.mjs`), the
+  German pass (`tools/german.mjs`) and the matchmaking pass (`tools/lobby.mjs`),
+  and exits non-zero on the first failure. It takes about five minutes; run it
+  in the background and wait for it rather than polling — one
+  `while pgrep -f 'tools/(smoke|german|lobby).mjs'; do sleep 15; done` beats
+  ten `sleep`s.
+- **`npm run verify -- quick`** keeps the unit tests and every assertion in the
+  play-through, and drops the screenshots, the second browser, the walk round
+  three screen sizes, German and the lobby. About a minute. For iterating,
+  never as the gate.
 
 ## Branch and deploy
 
@@ -76,6 +78,11 @@ A saved world is brought up to date on load; it is never thrown away.
   map costs nobody their village either.
 - Only a world saved by a *newer* build is refused, and `persist.js` keeps it
   under `olw.world.<room>.kept` rather than overwriting it.
+- **Three things remember a world**: this device (`persist.js`), the relay's
+  in-memory copy, and the directory's file on disk. Clearing one of them clears
+  nothing — the other two hand the world straight back on the next visit. That
+  is what `Session.startOver()` is for, and why the directory takes a tick 0
+  world only when it is told this is a reset.
 
 ## Adding a project
 
@@ -98,15 +105,21 @@ step a `count` so a tick explains itself.
 
 - **People answer a tap before the ground does.** A villager standing on the
   workshop door or the landing will open their own bubble instead. Use the
-  `tapTile` helper in `tools/smoke.mjs`: it picks a tile nobody is standing on
-  *and* checks `document.elementFromPoint` really lands on the canvas, so a
-  toast or a panel cannot swallow the tap.
+  `tapTile` helper in `tools/smoke.mjs`, or `tapWorld` in `tools/german.mjs`:
+  they pick a spot nobody is standing on *and* check `document.elementFromPoint`
+  really lands on the canvas, so a toast or a panel cannot swallow the tap.
+- **Wait for what the tap should open, not for something to open.** A bubble
+  appearing is not proof it is the right bubble; say which words you expect and
+  try again until they are there. That is the difference between a test that
+  fails once a fortnight and one that means something.
 - Prefer waiting for a condition (`waitForFunction`) over a fixed sleep, and
   poll for arrival rather than assuming a walk takes n ticks — sheep wander off
   again once they get there.
-- The relay remembers the last world per room for half a day, and one server
-  process outlives several runs, so use a fresh room name (`'room=' +
-  Math.random()`) whenever a test needs an untouched world.
+- The relay remembers the last world per room for half a day, the directory
+  keeps one on disk, and one server process outlives several runs, so use a
+  fresh world name (`'world=' + Math.random()`) whenever a test needs an
+  untouched world. `npm run verify` also gives its server a throwaway
+  `DATA_DIR`, so a run never inherits what an earlier one left.
 
 ## House style
 

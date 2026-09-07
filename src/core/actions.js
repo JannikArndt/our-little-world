@@ -3,7 +3,7 @@
 // same action it always produces the same result. That is what lets two
 // browsers share one world, and what lets the tests be meaningful.
 
-import { T, inBounds, setTile, tileAt, rebuildBlocked } from './grid.js';
+import { GW, GH, T, inBounds, setTile, tileAt, rebuildBlocked } from './grid.js';
 import { addBuilding, byId, newId, CAPS, capName, BLOCK_TICKS, cacheRegions } from './world.js';
 import { PROJECTS } from './content.js';
 
@@ -104,7 +104,7 @@ export function applyAction(w, a) {
       if (a.logs > 0) {
         const dx = a.dir === 'W' ? -2 : a.dir === 'E' ? 2 : 0;
         const dy = a.dir === 'N' ? -2 : a.dir === 'S' ? 2 : 0;
-        let lx = Math.max(0, Math.min(39, tree.x + dx)), ly = Math.max(0, Math.min(23, tree.y + dy));
+        let lx = Math.max(0, Math.min(GW - 1, tree.x + dx)), ly = Math.max(0, Math.min(GH - 1, tree.y + dy));
         if (tileAt(w, lx, ly) === T.WATER) { lx = tree.x; ly = tree.y; }
         w.logs.push({ id: newId('log'), x: lx + 0.5, y: ly + 0.5, owner: a.role, claimed: null, wood: a.logs });
       }

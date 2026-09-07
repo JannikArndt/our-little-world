@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { gzipSync } from 'node:zlib';
 
 import {
-  createWorld, serialize, deserialize, ensureWorld, SCHEMA, freeBed, project, otherRoles,
+  createWorld, serialize, deserialize, ensureWorld, SCHEMA, BLOCK_TICKS,
+  freeBed, project, otherRoles,
 } from '../src/core/world.js';
 import { findPath } from '../src/core/pathfind.js';
 import { walkable } from '../src/core/grid.js';
@@ -165,4 +167,31 @@ test('a role that joins the table later gets a seat', () => {
     delete ROLES.C;
     SCENARIOS.valley.roles = SCENARIOS.valley.roles.filter(r => r !== 'C');
   }
+});
+
+/* ---------------- what a world costs ---------------- */
+
+// The README quotes these numbers and says npm test keeps them honest, so it
+// has to. The point is not the exact byte count but the shape of it: a world
+// played every weekend for a year is the same size as a fresh one, because the
+// terrain grid dominates it and the journal is capped. If a change makes a
+// world grow with play, this is where it shows up.
+test('a world stays the same size however long it is played', () => {
+  const play = (w, blocks) => {
+    for (let b = 0; b < blocks; b++) {
+      applyAction(w, { type: 'block.start', newDay: b > 0 });
+      run(w, BLOCK_TICKS + 5);
+    }
+    return w;
+  };
+  const fresh = serialize(createWorld(7)).length;
+  const ten = serialize(play(createWorld(7), 10)).length;
+  const thirty = serialize(play(createWorld(7), 30)).length;
+
+  assert.ok(fresh < 12000, 'a fresh world is about 10 KB, not ' + fresh);
+  assert.ok(ten < 12000, 'ten play blocks in, a world is still about 10 KB, not ' + ten);
+  // twenty more blocks may add a journal entry or two, never a proportion
+  assert.ok(thirty - ten < 500, 'a world grew by ' + (thirty - ten) + ' bytes over twenty more blocks');
+  // and it gzips well, which is what the relay's bandwidth rests on
+  assert.ok(gzipSync(serialize(play(createWorld(7), 10))).length * 4 < ten, 'a world should gzip better than 4:1');
 });

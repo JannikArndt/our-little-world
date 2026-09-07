@@ -4,9 +4,18 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '1.4';
+export const VERSION = '1.5';
 
 export const CHANGELOG = [
+  {
+    v: '1.5', date: '2026-09-07',
+    en: [
+      '“Start this world over” really does start it over, and puts you straight into the first morning. The server had been keeping its own copy of the village and handing it back, so the world you had just cleared turned up again a moment later.',
+    ],
+    de: [
+      '„Diese Welt neu anfangen“ fängt sie jetzt wirklich neu an — und ihr steht gleich im ersten Morgen. Der Server hatte noch eine eigene Kopie des Dorfes und gab sie zurück: die eben geräumte Welt war kurz darauf wieder da.',
+    ],
+  },
   {
     v: '1.4', date: '2026-09-07',
     en: [

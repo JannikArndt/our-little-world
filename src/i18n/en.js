@@ -70,9 +70,7 @@ export const en = {
   'menu.share': 'Give them something',
   'menu.invite': '📨 Invite the {role}',
   'menu.teach': 'Teach them {what}',
-  'menu.reload': 'Load the game again',
   'menu.startOver': 'Start this world over',
-  'menu.home': 'Back to the start screen',
   'over.title': '🧹 Start this world over?',
   'over.lead': 'Everything built here goes away, and the first morning begins again. There is no way back.',
   'over.yes': 'Yes, start over',
@@ -101,11 +99,6 @@ export const en = {
   'ui.need': 'need',
   'ui.stillMissing_one': 'still missing',
   'ui.stillMissing_other': 'still missing',
-  'ui.cost': 'have {have}, need {need}',
-
-  /* ---- time of day ---- */
-
-  /* ---- the play block ---- */
 
   /* ---- resources ---- */
   'res.wood': 'wood',
@@ -152,7 +145,6 @@ export const en = {
   'teach.done': '👐 You showed them how. Now you both know {what}.',
   'teach.notice': 'Now you both know {what}.',
   'teach.cannot': 'You do not know how to do that yet — ask them to show you.',
-  'teach.saved': 'Everything is saved. You can step out and come back to exactly this.',
 
   /* ---- world bubbles ---- */
   'w.tree': 'A tree',
@@ -390,7 +382,6 @@ export const en = {
 
   /* ---- animal care ---- */
   'care.lead': 'Tap what she needs. Dragging works too.',
-  'care.hay': 'hay', 'care.water': 'water', 'care.shear': 'shears', 'care.pet': 'a scratch',
   'care.wrongHay': 'She sniffs the hay, then looks away.',
   'care.wrongWater': 'She dips her nose in, sneezes, and steps back.',
   'care.wrongShear': 'She shuffles off. Not today, thank you.',

@@ -10,7 +10,7 @@ import { message, closePanel, closeMenu, clearMessages } from './ui/overlay.js';
 import { ROLE, otherRole, byId, can } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
-import { deviceId, rememberWorld, forget } from './core/persist.js';
+import { deviceId, rememberWorld } from './core/persist.js';
 import { newerBuild, watchForNewer, reloadNow } from './core/fresh.js';
 import { startScreen } from './ui/start.js';
 import { openInvite } from './ui/invite.js';
@@ -144,9 +144,9 @@ async function startGame(choice) {
   const registered = !solo && dir.reachable;
   const remote = registered ? {
     load: () => dir.snapshot(room),
-    save: (tick, text, beacon) => (beacon
+    save: (tick, text, beacon, reset) => (beacon
       ? dir.beaconSnapshot(room, device, tick, text)
-      : dir.putSnapshot(room, device, tick, text)),
+      : dir.putSnapshot(room, device, tick, text, reset)),
   } : null;
 
   const session = new Session({ room, role: chosenRole, transport, solo, remote });
@@ -241,10 +241,21 @@ async function startGame(choice) {
       renderModeBar(game);
     },
 
-    /** Forget this world and begin it again from the first morning. */
+    /**
+     * Everything here goes away and the first morning begins again — right
+     * here, without a trip through the front door, because that is what the
+     * card says will happen.
+     *
+     * The relay and the directory remember this world too, so forgetting it on
+     * this device would only mean being handed the old village back on the way
+     * in. `Session.startOver()` pushes a fresh world to all three instead.
+     */
     startOver() {
-      forget(room);
-      location.href = location.pathname + '?room=' + encodeURIComponent(room);
+      session.startOver();
+      game.spotlight = null;
+      game.setMode(null);
+      hud.relabel();
+      game.startDay(false);
     },
 
     /**

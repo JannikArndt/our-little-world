@@ -162,7 +162,11 @@ export class Hud {
     }
   }
 
-  /** Language changed under us: redraw everything that holds words. */
+  /**
+   * Something big changed under us — the language, or the whole world after
+   * starting over: redraw everything that holds words, and drop the notices,
+   * which belong to the world that was here a moment ago.
+   */
   relabel() {
     this.buildRoleBar();
     this.last = {};

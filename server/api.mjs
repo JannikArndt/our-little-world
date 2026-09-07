@@ -13,6 +13,9 @@
 //   GET  /api/worlds/:name/snapshot      the world as the last host left it
 //                                        ({ world: null } if nobody has played it)
 //   POST /api/worlds/:name/snapshot      here is the world as it is now
+//                                        ({ reset: true } when somebody chose
+//                                        to start their world over, which is
+//                                        the one time a tick 0 world wins)
 //
 // A "device" is a random string a browser made up for itself and kept in
 // localStorage. It is how an iPad recognises its own spot a week later. It is
@@ -118,7 +121,7 @@ export function createApi(store, opts) {
       }
 
       if (what === 'snapshot') {
-        const r = store.putSnapshot(name, { device: device(body), tick: body.tick, world: body.world });
+        const r = store.putSnapshot(name, { device: device(body), tick: body.tick, world: body.world, reset: !!body.reset });
         if (r.ok) return send(res, 200, { ok: true });
         if (r.reason === 'no-world') return send(res, 404, { error: 'no-such-world' });
         if (r.reason === 'older') return send(res, 409, { error: 'older', snapshot: r.snapshot });

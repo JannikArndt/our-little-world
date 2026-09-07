@@ -2,7 +2,7 @@
 // be done with them. If you cannot do it yourself, you can ask the other
 // player — which is usually the more interesting option.
 
-import { TILE, T, tileAt } from '../core/grid.js';
+import { TILE, T, tileAt, toTileX, toTileY } from '../core/grid.js';
 import { ROLE, can, roleName, PROJECT, project, kids, hasWell } from '../core/world.js';
 import { PROJECTS } from '../core/content.js';
 import { canPay } from '../core/actions.js';
@@ -62,7 +62,7 @@ function showBubble(sx, sy, opts) {
 /* ------------------------------------------------------------------ */
 
 function hit(w, wx, wy) {
-  const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
+  const tx = toTileX(wx), ty = toTileY(wy);
   const near = (ex, ey, r) => {
     const dx = ex * TILE - wx, dy = ey * TILE - wy;
     return dx * dx + dy * dy < r * r;
@@ -378,7 +378,7 @@ export function installInput(game, renderer, canvas) {
     lastX = x; lastY = y;
     if (game.mode && game.mode.down) {
       const p = worldFrom(x, y);
-      game.mode.down(Math.floor(p.x / TILE), Math.floor(p.y / TILE));
+      game.mode.down(toTileX(p.x), toTileY(p.y));
       renderModeBar(game);
     }
   };
@@ -389,7 +389,7 @@ export function installInput(game, renderer, canvas) {
     moved += Math.abs(dx) + Math.abs(dy);
     if (game.mode && game.mode.drag) {
       const p = worldFrom(x, y);
-      game.mode.drag(Math.floor(p.x / TILE), Math.floor(p.y / TILE));
+      game.mode.drag(toTileX(p.x), toTileY(p.y));
       renderModeBar(game);
     } else {
       const s = renderer.scale();

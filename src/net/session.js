@@ -29,7 +29,7 @@ export class Session {
     this.role = opts.role;               // 'A' | 'B' | 'BOTH'
     this.transport = opts.transport;
     this.solo = opts.solo === true;
-    this.remote = opts.remote || null;      // { load(), save(tick, text, beacon) }
+    this.remote = opts.remote || null;      // { load(), save(tick, text, beacon, reset) }
     this.peer = 'p' + Math.random().toString(36).slice(2, 9);
     this.isHost = this.solo;
     this.world = null;
@@ -193,14 +193,34 @@ export class Session {
   }
 
   /** Hand the world to the server, so the next person to arrive gets it. */
-  upload(beacon) {
-    if (!this.remote || !this.world) return;
+  upload(beacon, reset) {
+    if (!this.remote || !this.world) return null;
     this.lastUpload = this.world.tick;
     const fx = this.world.fx;
     this.world.fx = [];
     const text = serialize(this.world);
     this.world.fx = fx;
-    this.remote.save(this.world.tick, text, !!beacon);
+    return this.remote.save(this.world.tick, text, !!beacon, !!reset);
+  }
+
+  /**
+   * Everything built here goes away and the first morning begins again.
+   *
+   * Three things remember a world now, and forgetting it on this device is no
+   * longer enough: the relay is holding the last snapshot it saw, and the
+   * directory is holding one on disk. Both would hand the old village straight
+   * back. So starting over is not a forgetting at all — it is a fresh world,
+   * pushed everywhere the old one reached.
+   */
+  startOver() {
+    this.world = createWorld(hashSeed(this.room));
+    this.kept = null;
+    this.isHost = true;
+    this.lastSnap = 0; this.lastSave = 0; this.lastUpload = 0;
+    save(this.room, this.world);
+    if (!this.solo) this.snapshot();          // the relay's memory, and the other player
+    this.emit('world', this.world);
+    return Promise.resolve(this.upload(false, true));
   }
 
   /** A good place to leave it: this device, and the server too. */

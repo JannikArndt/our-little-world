@@ -136,6 +136,16 @@ test('the server keeps the last world a host sent, and refuses an older one', ()
   assert.equal(s.getSnapshot(world.name).tick, 220);
 });
 
+test('starting a world over is the one time a fresh world beats the kept one', () => {
+  const s = new Worlds({});
+  const { world } = s.create({ device: 'kid', role: 'A' });
+  s.putSnapshot(world.name, { tick: 900, world: '{"tick":900}' });
+  // without saying so, the village that was just cleared is handed back
+  assert.equal(s.putSnapshot(world.name, { tick: 0, world: '{"tick":0}' }).ok, false);
+  assert.equal(s.putSnapshot(world.name, { tick: 0, world: '{"tick":0}', reset: true }).ok, true);
+  assert.equal(s.getSnapshot(world.name).tick, 0);
+});
+
 test('a snapshot that is not a world is refused', () => {
   const s = new Worlds({});
   const { world } = s.create({ device: 'kid' });
@@ -280,6 +290,22 @@ test('a full world stays joinable to the two devices already in it', async (t) =
   const third = await post(base, '/api/worlds/' + name + '/join', { device: 'stranger' });
   assert.equal(third.body.role, null);
   assert.equal(third.body.full, true);
+});
+
+test('starting over, over HTTP: the old village does not come back', async (t) => {
+  const { server, base } = await listen();
+  t.after(() => server.close());
+  const made = await post(base, '/api/worlds', { device: 'kid', role: 'A' });
+  const name = made.body.world.name;
+  await post(base, '/api/worlds/' + name + '/snapshot', { device: 'kid', tick: 900, world: '{"tick":900}' });
+
+  const stale = await post(base, '/api/worlds/' + name + '/snapshot', { device: 'kid', tick: 0, world: '{"tick":0}' });
+  assert.equal(stale.status, 409, 'a device with an old save is still put right');
+
+  const over = await post(base, '/api/worlds/' + name + '/snapshot', { device: 'kid', tick: 0, world: '{"tick":0}', reset: true });
+  assert.equal(over.status, 200);
+  const back = await get(base, '/api/worlds/' + name + '/snapshot');
+  assert.equal(back.body.tick, 0, 'whoever opens the page next gets the fresh world');
 });
 
 test('the api does not answer for anything it does not own', async (t) => {

@@ -21,7 +21,7 @@ import { ROLE_ORDER } from '../src/core/world.js';
 export const DEFAULT_ROLES = ROLE_ORDER.slice();
 
 const DAY = 24 * 60 * 60 * 1000;
-const MAX_SNAPSHOT = 512 * 1024;        // a whole world is ~9 KB; this is a wall, not a target
+const MAX_SNAPSHOT = 512 * 1024;        // a whole world is ~10 KB; this is a wall, not a target
 
 export class Worlds {
   /**
@@ -224,6 +224,10 @@ export class Worlds {
    * the real world back instead of whatever their own device remembers.
    * An older tick than the one we hold is refused — that is a device coming
    * back with a stale save, and it gets ours in the answer.
+   *
+   * `reset` is the one time an earlier world is meant to win: somebody chose
+   * to start their world over, and the fresh one is at tick 0. Without it the
+   * village they just cleared would be handed straight back to them.
    */
   putSnapshot(name, opts) {
     const o = opts || {};
@@ -232,7 +236,7 @@ export class Worlds {
     const text = String(o.world || '');
     if (!text || text.length > MAX_SNAPSHOT) return { ok: false, reason: 'size' };
     const tick = Number(o.tick) || 0;
-    if (w.snapshot && tick < w.snapshot.tick) return { ok: false, reason: 'older', snapshot: w.snapshot };
+    if (w.snapshot && tick < w.snapshot.tick && !o.reset) return { ok: false, reason: 'older', snapshot: w.snapshot };
     w.snapshot = { tick, at: this.now(), world: text };
     w.seen = this.now();
     this.dirty.add(name);

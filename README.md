@@ -68,13 +68,20 @@ anybody typed about themselves. A world is a random two-word name, a list of
 which spots are taken, and the world itself as its last host left it.
 
 ```
+GET  /api/health                  is there a directory on this host at all
 GET  /api/worlds                  the worlds with a free spot, newest first
 POST /api/worlds                  start one; the server names it
+GET  /api/worlds/:name            one world, or 404
 POST /api/worlds/:name/join       take the free spot (or get your own back)
 POST /api/worlds/:name/seen       still here — keeps the world from expiring
+POST /api/worlds/:name/leave      give the spot back
 GET  /api/worlds/:name/snapshot   the world as it was last left
 POST /api/worlds/:name/snapshot   the world as it is now (from the host)
 ```
+
+The page asks `/api/health` once per host and remembers the answer, which is how
+it knows whether there is a directory and a relay here or whether it is being
+served from a plain static host.
 
 A browser makes up a random "device" string for itself and keeps it in
 `localStorage`. That is how an iPad gets *its own* spot back a fortnight later
@@ -184,18 +191,21 @@ Two environment variables are worth knowing about:
 
 ### How much data is this, and when does it fall over
 
-Measured, not guessed (`npm test` keeps the numbers honest):
+Measured, not guessed. `npm test` keeps the shape of it honest — not the exact
+byte counts, which would go stale on every content change, but the claim that
+matters: that a world is about this size and that playing it does not make it
+grow.
 
-- **A world is about 11 KB** serialised, and it stays that size. The terrain
+- **A world is about 10 KB** serialised, and it stays that size. The terrain
   grid dominates it and the journal is capped at 40 entries, so a world played
-  every weekend for a year is the same size as a fresh one: 10,831 bytes after
-  ten play blocks, 10,840 after thirty. Gzipped it is 2.1 KB.
-- **A world on disk is ~11 KB** including its directory entry. So 1,000 worlds
-  alive at once is 11 MB, and 100,000 is a bit over 1 GB. With a 14 day expiry,
+  every weekend for a year is the same size as a fresh one: 9,630 bytes fresh,
+  10,372 after ten play blocks, 10,380 after thirty. Gzipped it is 1.9 KB.
+- **A world on disk is ~10 KB** including its directory entry. So 1,000 worlds
+  alive at once is 10 MB, and 100,000 is about 1 GB. With a 14 day expiry,
   "alive" means "played in the last fortnight". Storage is not going to be the
   problem.
 - **The relay is the problem, and it is bandwidth.** The host broadcasts a full
-  world snapshot every 1.2 seconds: about 72 kbit/s per playing pair, in and
+  world snapshot every 1.2 seconds: about 70 kbit/s per playing pair, in and
   out again. Measured on this code with real snapshots: 200 pairs is
   14 Mbit/s, 1,000 pairs is 70 Mbit/s, and the relay's CPU cost is small enough
   that a single Node process is nowhere near it (22% of one core at 1,000
@@ -230,6 +240,14 @@ has been wiped since Saturday. When nobody is running the clock, a browser takes
 whichever world has got furthest — the relay's, the directory's, or its own
 save — and carries on from there. The directory refuses a snapshot older than
 the one it already holds.
+
+**Start this world over** is the one time an earlier world is meant to win, and
+it is why it is not a forgetting: clearing this device would leave the relay and
+the directory both holding the old village, ready to hand it back a moment
+later. So it makes a fresh world instead and pushes it everywhere the old one
+reached — the browser, the other player, the relay's memory, and the directory,
+which takes a tick 0 world when it is told this is a reset. Then the first
+morning begins where you are standing, with no trip through the front door.
 
 Nothing about this needs a database: a world is one JSON file in `$DATA_DIR`
 (`/app/data` in the image), rewritten every few seconds while it is being played
@@ -351,23 +369,27 @@ src/
     content.js   what a world is made of, as data: scenarios and projects
     migrate.js   bringing an older saved world up to date
     changelog.js what has changed, per language
+    i18n.js      one string table per language, and the lookup
     rng.js       seeded, so two browsers agree
     persist.js   localStorage: the world, and which worlds are ours
     names.js     sunny-otter 🦦 — shared by the browser and the server
+    fresh.js     is the page on the screen still the one being served?
   net/
     transport.js the seam: local windows, a relay, or nothing
     session.js   one peer hosts the clock; the rest follow snapshots
     directory.js the world list, from the browser's side
   render/        art.js (sprites) and renderer.js (frames)
-  ui/            start screen, hud, world taps, sharing, invitations
+  ui/            start.js (the front door), hud.js, interact.js (world taps),
+                 overlay.js (panels), share.js, invite.js, whatsnew.js
   minigames/     one file each (chop, sawmill, bridge, house, care, fish)
 server/
   serve.mjs      static files + the relay + the directory, no dependencies
   relay.mjs      a ~180 line WebSocket relay, no dependencies
   worlds.mjs     which worlds exist, who is in them, how each was left
   api.mjs        the JSON endpoints the start screen talks to
-tests/           deterministic simulation and relay tests
-tools/           browser smoke test that plays a whole day
+  buildid.mjs    a hash of everything that ships, for /version
+tests/           simulation, schema, guide, i18n, relay and directory tests
+tools/           verify.mjs and what it runs: smoke, german, lobby; deployed
 ```
 
 Two rules keep it honest:
@@ -405,29 +427,38 @@ shapes.
 ## Tests
 
 ```
-npm run verify          # everything: unit tests, a browser play-through, German
-npm run verify -- quick # the same assertions, minus screenshots and extra screens
-npm test                # just the unit tests: simulation, schema, guide, i18n, worlds
+npm run verify          # everything: unit tests, a play-through, German, the lobby
+npm run verify -- quick # just the unit tests and a shortened play-through
+npm test                # the unit tests: simulation, schema, guide, i18n, relay, worlds
 node tools/lobby.mjs    # two browsers find each other without typing anything
 ```
 
 `npm run verify` starts its own server on a free port and stops it again, so
-there is nothing to set up and nothing left listening. The parts can still be
-run by hand against a server of your own (`npm start`, then `BASE=... node
-tools/smoke.mjs`). It picks a role, fells a tree, saws it, designs and tests a bridge,
+there is nothing to set up and nothing left listening. It runs four things in
+order and stops at the first failure: the unit tests, `tools/smoke.mjs`,
+`tools/german.mjs` and `tools/lobby.mjs`. The parts can still be run by hand
+against a server of your own (`npm start`, then `BASE=... node tools/smoke.mjs`).
+
+The play-through picks a role, fells a tree, saws it, designs and tests a bridge,
 looks after a sheep, sows the field, lays a road, designs a house, watches
 somebody move in, plants a sapling, builds the boat and goes fishing, builds the
-playground, opens the changelog, asks the other player for help, runs the day to
-its checkpoint, and then checks that two separate browsers see each other's
-work. It also checks the task card: that it says what to do, that whoever it
-names is drawn on it and ringed in the world, and that every counted step reads
-`have/need`.
+playground, the well, the little house and the fence, opens the changelog, asks
+the other player for help, runs the day to its checkpoint, starts a world over
+and checks the old one does not come back, and then checks that two separate
+browsers see each other's work. It also checks the task card: that it says what
+to do, that whoever it names is drawn on it and ringed in the world, and that
+every counted step reads `have/need`.
 It also checks that nothing overflows sideways on an iPad, an iPhone and a Mac.
 
 `tools/lobby.mjs` is the matchmaking half: one browser starts a world, a second
 one picks it out of the list, they share a world, the world stops being listed,
 and reloading the page puts the second player straight back in with the same
 role.
+
+`npm run verify -- quick` keeps the unit tests and the play-through and drops
+the rest — the screenshots, the second browser, the walk round three screen
+sizes, German and the lobby. About a minute, for iterating. The full run is what
+a push waits for.
 
 ## Adding to the world
 
@@ -486,7 +517,7 @@ Two things the layout will not do, and there are tests that keep it that way:
 
 ## What is new
 
-The start screen says which version this is — **v1.2 · ✨ What is new** at the
+The start screen says which version this is — **v1.5 · ✨ What is new** at the
 bottom — and tapping it opens the changelog. The same list is under 📜 (what has
 happened) once you are in the world, next to **🏡 Back to the start screen**,
 which saves the village and puts you back at the front door with its name

@@ -23,13 +23,19 @@ import { tr } from './i18n.js';
 const A = 'A', B = 'B', EITHER = 'either';
 const who = (k) => tr('guide.who.' + k);
 
-/** Both sides of the table together: sharing is the point, not hoarding. */
-function both(w, res) {
-  return (w.players.A.res[res] || 0) + (w.players.B.res[res] || 0);
+/**
+ * Everybody at the table together: sharing is the point, not hoarding. It
+ * counts whoever is playing rather than A and B by name, so a third role — a
+ * Cook, say — is counted in without a line changing here.
+ */
+function between(w, res) {
+  let n = 0;
+  for (const id in w.players) n += w.players[id].res[res] || 0;
+  return n;
 }
-const stonesBetween = (w) => both(w, 'stone');
-const planksBetween = (w) => both(w, 'plank');
-const woodBetween = (w) => both(w, 'wood');
+const stonesBetween = (w) => between(w, 'stone');
+const planksBetween = (w) => between(w, 'plank');
+const woodBetween = (w) => between(w, 'wood');
 
 /** A step you can count: "2/3 🪨" is why it is ticked. */
 function counted(icon, text, whoKey, countIcon, have, need) {

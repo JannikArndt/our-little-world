@@ -17,7 +17,7 @@ const rooms = new Map();
 // the last world seen in a room, kept for a while after everybody has gone
 const kept = new Map();
 const KEEP_MS = 12 * 60 * 60 * 1000;      // half a day
-const KEEP_MAX = 3 * 1024 * 1024;         // a world is ~100 KB; this is generous
+const KEEP_MAX = 3 * 1024 * 1024;         // a world is ~10 KB; this is a wall, not a target
 const KEEP_ROOMS = 200;
 
 function remember(room, text) {

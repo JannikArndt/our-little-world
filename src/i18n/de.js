@@ -70,9 +70,7 @@ export const de = {
   'menu.share': 'Etwas abgeben',
   'menu.invite': '📨 {role} einladen',
   'menu.teach': 'Ihnen {what} zeigen',
-  'menu.reload': 'Spiel neu laden',
   'menu.startOver': 'Diese Welt neu anfangen',
-  'menu.home': 'Zurück zum Startbildschirm',
   'over.title': '🧹 Diese Welt neu anfangen?',
   'over.lead': 'Alles, was hier gebaut wurde, ist dann weg, und der erste Morgen beginnt von vorn. Zurück geht es nicht.',
   'over.yes': 'Ja, neu anfangen',
@@ -101,11 +99,6 @@ export const de = {
   'ui.need': 'brauchst',
   'ui.stillMissing_one': 'fehlt noch',
   'ui.stillMissing_other': 'fehlen noch',
-  'ui.cost': 'hast {have}, brauchst {need}',
-
-  /* ---- Tageszeit ---- */
-
-  /* ---- Spielblock ---- */
 
   /* ---- Rohstoffe ---- */
   'res.wood': 'Holz',
@@ -152,7 +145,6 @@ export const de = {
   'teach.done': '👐 Du hast es gezeigt. Jetzt könnt ihr beide {what}.',
   'teach.notice': 'Jetzt könnt ihr beide {what}.',
   'teach.cannot': 'Das kannst du noch nicht — lass es dir zeigen.',
-  'teach.saved': 'Alles ist gespeichert. Du kannst rausgehen und genau hierher zurückkommen.',
 
   /* ---- Blasen in der Welt ---- */
   'w.tree': 'Ein Baum',
@@ -390,7 +382,6 @@ export const de = {
 
   /* ---- Tiere ---- */
   'care.lead': 'Tippe an, was sie braucht. Ziehen geht auch.',
-  'care.hay': 'Heu', 'care.water': 'Wasser', 'care.shear': 'Schere', 'care.pet': 'Kraulen',
   'care.wrongHay': 'Sie schnuppert am Heu und schaut dann weg.',
   'care.wrongWater': 'Sie taucht die Nase rein, niest und tritt zurück.',
   'care.wrongShear': 'Sie trottet weg. Heute lieber nicht, danke.',

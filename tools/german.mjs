@@ -64,23 +64,59 @@ await p.click('text=Verstanden');
 await p.waitForTimeout(800);
 
 const api = (fn, a) => p.evaluate(fn, a);
-const tapWorld = async (fn) => {
-  const pt = await api(fn);
-  await p.waitForTimeout(250);
-  await p.mouse.click(pt.x, pt.y);
-  await p.waitForTimeout(400);
+
+/**
+ * Tap something in the world and wait for what it should open.
+ *
+ * People answer a tap before the ground does — a villager standing on the
+ * workshop door opens their own bubble instead — so this is the same rule the
+ * smoke test's `tapTile` follows: shuffle about the spot until we find one
+ * nobody is standing on that the canvas really receives, and try again if the
+ * wrong thing came up. `wants` is the German text the tap should bring on.
+ */
+const tapWorld = async (fn, wants) => {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    if (wants && await p.$('text=' + wants)) return;
+    await api(() => { if (window.OLW.setMode) window.OLW.setMode(null); });   // put a wrong bubble away
+    const pt = await api(fn);
+    await p.waitForTimeout(250);
+    if (pt) await p.mouse.click(pt.x, pt.y);
+    await p.waitForTimeout(400);
+    if (!wants) return;
+  }
+  if (!(await p.$('text=' + wants))) throw new Error('tapping never brought up: ' + wants);
 };
+
+/** The tile a getter names, as a place on screen nothing else is answering for. */
 const pointAt = (getter) => new Function('return (' + `() => {
   const g = window.OLW, w = g.world;
   const o = (${getter})(w);
+  const canvas = document.getElementById('world');
   g.look(o[0], o[1], 2);
-  const s = g.renderer.toScreen(o[0] * 24, o[1] * 24);
-  const r = document.getElementById('world').getBoundingClientRect();
-  return { x: r.left + s.x, y: r.top + s.y };
+  const r = canvas.getBoundingClientRect();
+  // whoever is standing here answers the tap instead — except at the spot we
+  // are aiming at, which is the sheep herself when the sheep is the point
+  const at = (o2, x, y) => Math.abs(o2.x - x) < 1.1 && Math.abs(o2.y - y) < 1.1;
+  const aim = (x, y) => Math.abs(x - o[0]) < 0.5 && Math.abs(y - o[1]) < 0.5;
+  const busy = (x, y) => w.villagers.some(v => at(v, x, y)) ||
+                         (!aim(x, y) && w.sheep.some(sh => at(sh, x, y)));
+  const near = [[0, 0], [0.6, 0], [-0.6, 0], [0, 0.6], [0, -0.6], [0.6, 0.6], [-0.6, -0.6]];
+  let fallback = null;
+  for (const d of near) {
+    const x = o[0] + d[0], y = o[1] + d[1];
+    const s = g.renderer.toScreen(x * 24, y * 24);
+    const px = r.left + s.x, py = r.top + s.y;
+    if (px < r.left + 4 || px > r.right - 4 || py < r.top + 4 || py > r.bottom - 4) continue;
+    if (!fallback) fallback = { x: px, y: py };
+    if (busy(x, y)) continue;
+    if (document.elementFromPoint(px, py) !== canvas) continue;
+    return { x: px, y: py };
+  }
+  return fallback;
 }` + ')')();
 
 // a tree, and the whole felling panel
-await tapWorld(pointAt('(w) => { const t = w.trees.find(t => t.state === "standing"); return [t.x + 0.5, t.y + 0.5]; }'));
+await tapWorld(pointAt('(w) => { const t = w.trees.find(t => t.state === "standing"); return [t.x + 0.5, t.y + 0.5]; }'), 'Diesen Baum fällen');
 await scan('tree bubble');
 await p.screenshot({ path: out + '62-de-bubble.png' });
 await p.click('text=Diesen Baum fällen');
@@ -95,7 +131,7 @@ await scan('after chop');
 
 // the workshop, both machines
 await api(() => { window.OLW.world.players.A.res.wood = 6; window.OLW.world.players.A.res.wheat = 4; });
-await tapWorld(pointAt('(w) => { const b = w.buildings.find(b => b.type === "workshop"); return [b.x + b.w / 2, b.y + b.h - 0.4]; }'));
+await tapWorld(pointAt('(w) => { const b = w.buildings.find(b => b.type === "workshop"); return [b.x + b.w / 2, b.y + b.h - 0.4]; }'), 'Holz zu Brettern sägen');
 await p.click('text=Holz zu Brettern sägen');
 await p.waitForTimeout(500);
 await scan('sawmill');
@@ -104,7 +140,7 @@ await p.click('text=Jetzt nicht');
 
 // the bridge
 await api(() => { const w = window.OLW.world; w.players.A.res.plank = 9; w.players.A.res.stone = 9; });
-await tapWorld(pointAt('(w) => [(w.bridge.site.x0 + w.bridge.site.x1) / 2 + 0.5, w.bridge.site.row + 1]'));
+await tapWorld(pointAt('(w) => [(w.bridge.site.x0 + w.bridge.site.x1) / 2 + 0.5, w.bridge.site.row + 1]'), 'Hier eine Brücke bauen');
 await p.click('text=Hier eine Brücke bauen');
 await p.waitForTimeout(500);
 await scan('bridge');
@@ -112,7 +148,7 @@ await p.screenshot({ path: out + '65-de-bridge.png' });
 await p.click('text=Später');
 
 // the house
-await tapWorld(pointAt('(w) => { const b = w.buildings.find(b => b.state === "site"); return [b.x + 1.5, b.y + 1]; }'));
+await tapWorld(pointAt('(w) => { const b = w.buildings.find(b => b.state === "site"); return [b.x + 1.5, b.y + 1]; }'), 'Hier ein Haus bauen');
 await p.click('text=Hier ein Haus bauen');
 await p.waitForTimeout(500);
 await scan('house');
@@ -121,7 +157,7 @@ await p.click('text=Später');
 
 // an animal
 await api(() => { window.OLW.role = 'B'; window.OLW.other = 'A'; });
-await tapWorld(pointAt('(w) => [w.sheep[0].x, w.sheep[0].y]'));
+await tapWorld(pointAt('(w) => [w.sheep[0].x, w.sheep[0].y]'), 'Um sie kümmern');
 await scan('sheep bubble');
 await p.click('text=Um sie kümmern');
 await p.waitForTimeout(500);

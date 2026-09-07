@@ -14,6 +14,7 @@ import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/pro
 import { join } from 'node:path';
 import { randomName, worldEmoji } from '../src/core/names.js';
 import { ROLE_ORDER } from '../src/core/world.js';
+import { Stats } from './stats.mjs';
 
 // However many roles the game has. A world keeps the list it was made with, so
 // a third role tomorrow gives new worlds a third spot without touching the
@@ -29,6 +30,7 @@ export class Worlds {
    * ttlMs        forget a world nobody has opened for this long
    * staleSlotMs  a spot whose device has not been seen for this long can be
    *              taken over — a reinstalled iPad gets its role back
+   * counts       where the counting goes; one of its own by default
    * now          injectable clock, for the tests
    */
   constructor(opts) {
@@ -37,6 +39,7 @@ export class Worlds {
     this.ttlMs = o.ttlMs || 14 * DAY;
     this.staleSlotMs = o.staleSlotMs || 3 * DAY;
     this.now = o.now || (() => Date.now());
+    this.counts = o.counts || new Stats({ dir: this.dir, now: this.now });
     this.worlds = new Map();
     this.dirty = new Set();
     this.timer = null;
@@ -55,12 +58,14 @@ export class Worlds {
         if (w && w.name) this.worlds.set(w.name, normalise(w));
       } catch (e) { /* a half-written file is not worth a crash */ }
     }
+    await this.counts.load();
     await this.sweep();
     return this;
   }
 
   /** Write out everything that changed since the last time. */
   async flush() {
+    await this.counts.flush();
     if (!this.dir || !this.dirty.size) return;
     const names = [...this.dirty];
     this.dirty.clear();
@@ -104,7 +109,10 @@ export class Worlds {
     const cutoff = this.now() - this.ttlMs;
     let gone = 0;
     for (const [name, w] of this.worlds) {
-      if (w.seen < cutoff) { this.worlds.delete(name); this.dirty.add(name); gone++; }
+      if (w.seen < cutoff) {
+        this.counts.fold(w);                  // the numbers stay; the name does not
+        this.worlds.delete(name); this.dirty.add(name); gone++;
+      }
     }
     if (gone) await this.flush();
     return gone;
@@ -125,10 +133,14 @@ export class Worlds {
       roles,
       slots: {},
       snapshot: null,
+      active: {},
+      far: null,
     };
     this.worlds.set(name, w);
     this.dirty.add(name);
     const role = this.claim(w, o.device, o.role);
+    this.counts.started();
+    this.counts.mark(w, role);
     return { world: w, role };
   }
 
@@ -144,6 +156,7 @@ export class Worlds {
     w.seen = this.now();
     this.dirty.add(name);
     const role = this.claim(w, o.device, o.role);
+    this.counts.mark(w, role);
     return { world: w, role, full: role === null };
   }
 
@@ -180,6 +193,7 @@ export class Worlds {
     w.seen = t;
     const s = o.role ? w.slots[o.role] : null;
     if (s && (!o.device || s.device === o.device)) s.seen = t;
+    this.counts.mark(w, s ? o.role : null);
     this.dirty.add(name);
     return w;
   }
@@ -239,6 +253,11 @@ export class Worlds {
     if (w.snapshot && tick < w.snapshot.tick && !o.reset) return { ok: false, reason: 'older', snapshot: w.snapshot };
     w.snapshot = { tick, at: this.now(), world: text };
     w.seen = this.now();
+    // the one place that knows how far this world has got. Reading it here
+    // costs a parse every half minute per world being played, and means the
+    // stats never have to open a snapshot again.
+    this.counts.mark(w, o.role || null);
+    try { this.counts.learn(w, JSON.parse(text)); } catch (e) { /* not our business */ }
     this.dirty.add(name);
     return { ok: true };
   }
@@ -246,6 +265,11 @@ export class Worlds {
   getSnapshot(name) {
     const w = this.worlds.get(name);
     return w && w.snapshot ? w.snapshot : null;
+  }
+
+  /** How much this gets played, and how far people get. Counts only. */
+  report(live) {
+    return this.counts.report(this.worlds.values(), live);
   }
 
   stats() {
@@ -282,5 +306,7 @@ function normalise(w) {
     roles: Array.isArray(w.roles) && w.roles.length ? w.roles.map(String) : DEFAULT_ROLES.slice(),
     slots: w.slots && typeof w.slots === 'object' ? w.slots : {},
     snapshot: w.snapshot && w.snapshot.world ? w.snapshot : null,
+    active: w.active && typeof w.active === 'object' ? w.active : {},
+    far: w.far && typeof w.far === 'object' ? w.far : null,
   };
 }

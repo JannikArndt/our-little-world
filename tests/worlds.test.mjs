@@ -165,7 +165,8 @@ test('a real world snapshot survives a restart of the server', async (t) => {
   await first.close();
 
   const files = await readdir(dir);
-  assert.deepEqual(files, [world.name + '.json']);
+  // one file per world, and the counting ledger beside them
+  assert.deepEqual(files.sort(), [world.name + '.json', 'stats.json'].sort());
 
   const second = await new Worlds({ dir }).load();
   const kept = second.getSnapshot(world.name);

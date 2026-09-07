@@ -24,7 +24,16 @@ const TTL_DAYS = Number(process.env.WORLD_TTL_DAYS || 14);
 const worlds = new Worlds({ dir: DATA_DIR, ttlMs: TTL_DAYS * 24 * 60 * 60 * 1000 });
 await worlds.load();
 worlds.startWriting();
-const api = createApi(worlds);
+// how many rooms have somebody in them right now, which is the only number
+// here that cannot be worked out after the fact
+const api = createApi(worlds, {
+  live: () => {
+    const sizes = roomSizes();
+    let n = 0;
+    for (const room in sizes) if (sizes[room] > 0) n++;
+    return n;
+  },
+});
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -58,6 +67,9 @@ function stamp(html) {
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
+    // /stats is the front door to /api/stats, because it is the one endpoint
+    // here meant to be typed into an address bar
+    if (url.pathname === '/stats') req.url = '/api/stats';
     if (await api(req, res)) return;
     // "is what I pushed live?" — compare `build` with `node server/buildid.mjs`
     if (url.pathname === '/version') {

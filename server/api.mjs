@@ -2,6 +2,8 @@
 // nothing that needs a session cookie:
 //
 //   GET  /api/health                     is there a directory here at all
+//   GET  /api/stats                      how much this gets played, in numbers
+//                                        that are nobody's — see stats.mjs
 //   GET  /api/worlds                     the worlds with a free spot
 //   POST /api/worlds                     start one; the server picks the name
 //   GET  /api/worlds/:name               one world, or 404
@@ -26,11 +28,14 @@ import { publicView } from './worlds.mjs';
 
 const MAX_BODY = 1024 * 1024;
 const CREATE_PER_HOUR = 30;             // per address; a family needs a handful
+const STATS_FOR = 30000;                // the same answer for half a minute
 
 export function createApi(store, opts) {
   const o = opts || {};
   const now = o.now || (() => Date.now());
+  const live = o.live || (() => null);
   const buckets = new Map();
+  let cached = null;
 
   function allowedToCreate(req) {
     const ip = (req.socket && req.socket.remoteAddress) || 'local';
@@ -58,6 +63,18 @@ export function createApi(store, opts) {
     try {
       if (parts[1] === 'health' && parts.length === 2) {
         return send(res, 200, Object.assign({ ok: true, relay: true }, store.stats()));
+      }
+
+      // Public on purpose: it is counts of worlds, and a world is a name the
+      // server made up with some sheep in it. Cached, because it is public and
+      // anybody may ask as often as they like.
+      if (parts[1] === 'stats' && parts.length === 2) {
+        if (req.method !== 'GET') return send(res, 405, { error: 'method' });
+        const t = now();
+        if (!cached || t - cached.at > STATS_FOR) {
+          cached = { at: t, body: store.report(live()) };
+        }
+        return send(res, 200, cached.body, 'public, max-age=30');
       }
 
       if (parts[1] !== 'worlds') return send(res, 404, { error: 'no-such-endpoint' });
@@ -138,9 +155,9 @@ export function createApi(store, opts) {
 function device(body) { return String(body.device || '').slice(0, 64) || null; }
 function role(body) { return body.role ? String(body.role).slice(0, 8) : null; }
 
-function send(res, code, obj) {
+function send(res, code, obj, cache) {
   const text = JSON.stringify(obj);
-  res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+  res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': cache || 'no-store' });
   res.end(text);
   return true;
 }

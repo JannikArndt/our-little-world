@@ -77,6 +77,7 @@ POST /api/worlds/:name/seen       still here — keeps the world from expiring
 POST /api/worlds/:name/leave      give the spot back
 GET  /api/worlds/:name/snapshot   the world as it was last left
 POST /api/worlds/:name/snapshot   the world as it is now (from the host)
+GET  /api/stats                   how much this gets played (also at /stats)
 ```
 
 The page asks `/api/health` once per host and remembers the answer, which is how
@@ -117,6 +118,43 @@ name="olw-build">` on the way out, so the copy on a screen always knows which
 build it came from and can ask `/version` whether that is still the one being
 served. Files go out as `no-cache` with an `ETag`, so coming back costs one small
 question per file and a stale copy can never quietly win.
+
+## Who plays, and how far they get
+
+<https://ourlittleworld.timpanini.com/stats> is public, and it can be, because
+there is nothing in it that belongs to anybody. It answers two questions —
+*does anybody play this* and *how far do they get before they stop* — out of
+numbers that were never attached to a person in the first place.
+
+```
+GET /stats        (the same as /api/stats; cached for half a minute)
+```
+
+| | |
+|---|---|
+| `now` | worlds the directory is holding, spots still free, rooms with somebody in them this second |
+| `week` | worlds started, worlds played in, spots taken, minutes played |
+| `days` | one row per calendar day, up to 90 of them |
+| `howFar` | how far worlds got, as a histogram of days and of minutes, with the middle of each |
+| `milestones` | how many worlds ever got a bridge, a house somebody lives in, a well, a boat… |
+| `deeds` | how many trees have been felled, logs sawn, roads laid, sheep looked after |
+
+A **spot** is one role in one world on one day, and it is as close to "a person"
+as this gets: two spots is a parent and a child, or one person playing twice.
+Nothing distinguishes those two, on purpose.
+
+What it does not contain, and cannot be made to: no addresses, no device ids, no
+world names, and no times of day — a calendar day is the finest grain kept
+anywhere. There is a test that reads the whole report back and fails if a world
+name or a device id has found its way into it.
+
+The counting rides along with what the directory already writes down. Each world
+remembers which days it has been counted on (so a world is not counted twice for
+one day) and the furthest it ever got; when a world is forgotten after its
+fortnight, that last part is folded into `data/stats.json` — a few integers per
+day, kept for as long as you like — and the world's name goes with the world. A
+project added to `PROJECTS` becomes a milestone by itself, with nothing to
+change in the counting.
 
 ## Playing when you are far apart
 
@@ -387,8 +425,9 @@ server/
   relay.mjs      a ~180 line WebSocket relay, no dependencies
   worlds.mjs     which worlds exist, who is in them, how each was left
   api.mjs        the JSON endpoints the start screen talks to
+  stats.mjs      how much this gets played, in numbers that are nobody's
   buildid.mjs    a hash of everything that ships, for /version
-tests/           simulation, schema, guide, i18n, relay and directory tests
+tests/           simulation, schema, guide, i18n, relay, directory and stats
 tools/           verify.mjs and what it runs: smoke, german, lobby; deployed
 ```
 
@@ -429,7 +468,7 @@ shapes.
 ```
 npm run verify          # everything: unit tests, a play-through, German, the lobby
 npm run verify -- quick # just the unit tests and a shortened play-through
-npm test                # the unit tests: simulation, schema, guide, i18n, relay, worlds
+npm test                # the unit tests: simulation, schema, guide, i18n, relay, worlds, stats
 node tools/lobby.mjs    # two browsers find each other without typing anything
 ```
 

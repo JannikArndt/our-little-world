@@ -94,6 +94,18 @@ strings in **both** language tables, a `CONCERNS` entry if the guide should
 mention it, and a step in the smoke test's project loop. `project.build` is the
 only action needed — there is no per-project action any more.
 
+## Counting how much this gets played
+
+`/stats` is public, so the rule is simple: **nothing that belongs to anybody
+goes into `server/stats.mjs`.** No addresses, no device ids, no world names, no
+times of day — a calendar day is the finest grain, and `tests/stats.test.mjs`
+reads the whole report back to make sure none of those has crept in.
+
+Counting rides along with what the directory already writes: each world carries
+which days it has been counted on and the furthest it got, and a world folds
+that last part into the ledger on its way out. A new entry in `PROJECTS` becomes
+a milestone on its own — there is nothing to add here for it.
+
 ## Adding a task to the guide
 
 One entry in `CONCERNS` in `src/core/guide.js`, in the order it matters, plus a

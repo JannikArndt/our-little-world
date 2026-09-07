@@ -6,7 +6,12 @@
   "type": "module",
   "scripts": {
     "start": "node server/serve.mjs",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "verify": "node tools/verify.mjs",
+    "deployed": "node tools/deployed.mjs",
+    "build-id": "node server/buildid.mjs"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  }
 }

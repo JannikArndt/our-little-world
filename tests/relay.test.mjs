@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { attachRelay } from '../server/relay.mjs';
+import { attachRelay, forgetRooms } from '../server/relay.mjs';
 
 function listen() {
   const server = createServer((req, res) => { res.writeHead(200); res.end('ok'); });
@@ -72,4 +72,38 @@ test('the probe handshake used to detect a relay works', async (t) => {
     setTimeout(() => resolve(false), 2000);
   });
   assert.equal(opened, true);
+});
+
+test('the relay hands the last world it saw to whoever joins next', async (t) => {
+  const { server, port } = await listen();
+  t.after(() => { forgetRooms(); server.close(); });
+
+  const host = await open(port, 'kept');
+  host.send(JSON.stringify({ t: 'snap', peer: 'p1', world: '{"schema":7,"tick":42}' }));
+  await new Promise(r => setTimeout(r, 50));
+
+  // somebody arrives later — even after the first player has gone home
+  host.close();
+  await new Promise(r => setTimeout(r, 50));
+  const late = await open(port, 'kept');
+  const first = JSON.parse(await next(late));
+  assert.equal(first.t, 'kept');
+  assert.equal(JSON.parse(first.world).tick, 42, 'and it is the world the room was in');
+  late.close();
+});
+
+test('what one room is holding never reaches another', async (t) => {
+  const { server, port } = await listen();
+  t.after(() => { forgetRooms(); server.close(); });
+
+  const a = await open(port, 'ourroom');
+  a.send(JSON.stringify({ t: 'snap', peer: 'p1', world: '{"schema":7,"tick":9}' }));
+  await new Promise(r => setTimeout(r, 50));
+
+  const b = await open(port, 'someone-elses');
+  let heard = null;
+  b.onmessage = (e) => { heard = e.data; };
+  await new Promise(r => setTimeout(r, 120));
+  assert.equal(heard, null, 'a different room starts empty');
+  a.close(); b.close();
 });

@@ -1,6 +1,10 @@
 // A very small WebSocket relay: whatever one player sends, the other players
-// in the same room receive. It keeps no game state of its own — the host
-// browser is still the authority — so it stays tiny and boring on purpose.
+// in the same room receive.
+//
+// It keeps one thing: the last world snapshot it saw in each room, handed to
+// whoever joins next. The host browser is still the authority — this is only a
+// memory, so that a world is no longer lost by opening the page second, and it
+// is the first half of holding worlds on the server properly.
 //
 // No dependencies; RFC 6455 is short enough to read.
 
@@ -9,6 +13,29 @@ import { createServer } from 'node:http';
 
 const GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const rooms = new Map();
+
+// the last world seen in a room, kept for a while after everybody has gone
+const kept = new Map();
+const KEEP_MS = 12 * 60 * 60 * 1000;      // half a day
+const KEEP_MAX = 3 * 1024 * 1024;         // a world is ~100 KB; this is generous
+const KEEP_ROOMS = 200;
+
+function remember(room, text) {
+  if (text.length > KEEP_MAX) return;
+  kept.set(room, { text, at: Date.now() });
+  if (kept.size > KEEP_ROOMS) {           // oldest out first
+    let oldest = null, when = Infinity;
+    for (const [r, v] of kept) if (v.at < when) { when = v.at; oldest = r; }
+    if (oldest) kept.delete(oldest);
+  }
+}
+
+function recall(room) {
+  const v = kept.get(room);
+  if (!v) return null;
+  if (Date.now() - v.at > KEEP_MS) { kept.delete(room); return null; }
+  return v.text;
+}
 
 function accept(key) {
   return createHash('sha1').update(key + GUID).digest('base64');
@@ -128,9 +155,16 @@ export function attachRelay(server, path = '/relay') {
     if (!rooms.has(room)) rooms.set(room, new Set());
     rooms.get(room).add(peer);
 
+    // whatever the room was last doing, so a joiner never starts from nothing
+    const memory = recall(room);
+    if (memory) peer.send(JSON.stringify({ t: 'kept', world: JSON.parse(memory).world }));
+
     socket.on('data', (chunk) => {
       peer.buf = Buffer.concat([peer.buf, chunk]);
       readFrames(peer, (text) => {
+        if (text.length > 40 && text.indexOf('"snap"') > 0) {
+          try { if (JSON.parse(text).t === 'snap') remember(room, text); } catch (e) { /* not ours */ }
+        }
         for (const other of rooms.get(room) || []) if (other !== peer) other.send(text);
       });
     });
@@ -149,8 +183,12 @@ export function attachRelay(server, path = '/relay') {
 export function roomSizes() {
   const out = {};
   for (const [room, set] of rooms) out[room] = set.size;
+  for (const room of kept.keys()) if (!(room in out)) out[room] = 0;
   return out;
 }
+
+/** For tests: forget what the relay is holding. */
+export function forgetRooms() { kept.clear(); }
 
 // Standalone: node server/relay.mjs [port]
 if (import.meta.url === 'file://' + process.argv[1]) {

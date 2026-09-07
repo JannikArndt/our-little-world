@@ -21,7 +21,12 @@ export function load(room) {
   if (!OK) return null;
   try {
     const text = localStorage.getItem(KEY(room));
-    return text ? deserialize(text) : null;
+    if (!text) return null;
+    const w = deserialize(text);
+    // A world we cannot read is a world somebody else's newer browser saved.
+    // Put it aside rather than letting the next checkpoint write over it.
+    if (!w) { try { localStorage.setItem(KEY(room) + '.kept', text); } catch (e) { /* full, never mind */ } }
+    return w;
   } catch (e) { return null; }
 }
 

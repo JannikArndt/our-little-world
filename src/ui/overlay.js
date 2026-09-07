@@ -12,21 +12,36 @@ export function el(tag, cls, text) {
 
 const overlay = () => document.getElementById('overlay');
 
+/**
+ * A panel in three parts: a scrolling middle for whatever you are reading or
+ * playing, and a foot that never moves. Buttons, the cost and the readout live
+ * in the foot, so a long card, a small phone or a browser toolbar at the bottom
+ * of the screen can never hide the thing you are meant to press.
+ */
 export function openPanel(opts) {
   const ov = overlay();
   ov.innerHTML = '';
   ov.classList.remove('hidden');
 
-  const panel = el('div', 'panel');
-  if (opts.title) panel.appendChild(el('h2', opts.center ? 'center' : '', opts.title));
-  if (opts.lead) panel.appendChild(el('p', opts.center ? 'lead center' : 'lead', opts.lead));
+  const frame = el('div', 'panel');
+  const scroll = el('div', 'panel-scroll');
+  const foot = el('div', 'panel-foot');
+  if (opts.title) scroll.appendChild(el('h2', opts.center ? 'center' : '', opts.title));
+  if (opts.lead) scroll.appendChild(el('p', opts.center ? 'lead center' : 'lead', opts.lead));
   const body = el('div', 'panel-body');
-  panel.appendChild(body);
-  ov.appendChild(panel);
+  scroll.appendChild(body);
+  // fixed slots, so it never matters in which order a mini-game fills them
+  const costSlot = el('div', 'p-cost'), roSlot = el('div', 'p-readout'), rowSlot = el('div', 'p-rows');
+  foot.appendChild(costSlot); foot.appendChild(roSlot); foot.appendChild(rowSlot);
+  frame.appendChild(scroll);
+  frame.appendChild(foot);
+  ov.appendChild(frame);
 
   let closed = false;
   const api = {
-    panel, body,
+    // `panel` is the scrolling part: anything appended to it belongs with the
+    // content, not with the buttons. `frame` is the whole card.
+    panel: scroll, frame, foot, body,
     close() {
       if (closed) return;
       closed = true;
@@ -34,24 +49,20 @@ export function openPanel(opts) {
       ov.innerHTML = '';
       if (opts.onClose) opts.onClose();
     },
-    row() { const r = el('div', 'row'); panel.appendChild(r); return r; },
+    row() { const r = el('div', 'row'); rowSlot.appendChild(r); return r; },
     button(label, cls, fn) {
       const b = el('button', 'btn ' + (cls || ''), label);
       b.addEventListener('click', fn);
       return b;
     },
     readout(text) {
-      if (!api._ro) { api._ro = el('div', 'readout'); panel.appendChild(api._ro); }
+      if (!api._ro) { api._ro = el('div', 'readout'); roSlot.appendChild(api._ro); }
       api._ro.innerHTML = text;
       return api._ro;
     },
     /** What this costs, drawn as the things themselves. */
     cost(items) {
-      if (!api._cost) {
-        api._cost = el('div', 'cost');
-        if (api._ro) panel.insertBefore(api._cost, api._ro);
-        else panel.appendChild(api._cost);
-      }
+      if (!api._cost) { api._cost = el('div', 'cost'); costSlot.appendChild(api._cost); }
       renderCost(api._cost, items);
       return api._cost;
     },

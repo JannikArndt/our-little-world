@@ -4,6 +4,11 @@
 // their own actions straight away so the game feels instant, send them on, and
 // get corrected by the host's snapshots. That is exactly the shape a real
 // server needs, so moving the host into Node later changes nothing above here.
+//
+// The relay remembers the last world it saw in a room and hands it to whoever
+// joins. That is not a host — somebody still has to run the clock — but it does
+// mean the newest world wins instead of whoever happened to open the page
+// first, which used to be the one way to lose a village.
 
 import { applyAction } from '../core/actions.js';
 import { tick } from '../core/sim.js';
@@ -24,6 +29,7 @@ export class Session {
     this.peer = 'p' + Math.random().toString(36).slice(2, 9);
     this.isHost = this.solo;
     this.world = null;
+    this.kept = null;                    // what the relay says the room was doing
     this.listeners = [];
     this.acc = 0;
     this.lastSnap = 0;
@@ -46,9 +52,21 @@ export class Session {
     this.transport.send({ t: 'hello', peer: this.peer });
     await new Promise(r => setTimeout(r, HOST_WAIT));
     if (!this.world) {
-      this.world = load(this.room) || createWorld(hashSeed(this.room));
+      this.world = this.bestWorld();
       this.becomeHost();
     }
+  }
+
+  /**
+   * Nobody else is running the clock, so we will. Take whichever world has got
+   * furthest: what the relay was holding, what this browser saved, or a new
+   * one. Two worlds for one room are always the same world at different times.
+   */
+  bestWorld() {
+    const mine = load(this.room);
+    const theirs = this.kept;
+    if (theirs && (!mine || theirs.tick >= mine.tick)) return theirs;
+    return mine || createWorld(hashSeed(this.room));
   }
 
   becomeHost() {
@@ -67,6 +85,12 @@ export class Session {
       case 'hello':
         if (this.isHost) this.snapshot();
         break;
+      case 'kept': {
+        // the relay's memory of this room. Not a live host: just a world.
+        const w = deserialize(m.world);
+        if (w && (!this.kept || w.tick > this.kept.tick)) this.kept = w;
+        break;
+      }
       case 'snap': {
         const incoming = deserialize(m.world);
         if (!incoming) return;

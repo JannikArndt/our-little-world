@@ -5,19 +5,22 @@ import { LocalTransport, WsTransport, SoloTransport } from './net/transport.js';
 import { Directory, apiBase } from './net/directory.js';
 import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
-import { installInput, renderModeBar, closeBubble } from './ui/interact.js';
+import { installInput, renderModeBar, closeBubble, buildProject } from './ui/interact.js';
 import { openPanel, message, closePanel } from './ui/overlay.js';
-import { ROLE, otherRole, byId, roleName } from './core/world.js';
+import { ROLE, otherRole, byId, can, roleName } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
 import { deviceId, rememberWorld } from './core/persist.js';
+import { newerBuild, watchForNewer, reloadNow } from './core/fresh.js';
 import { startScreen } from './ui/start.js';
 import { openInvite } from './ui/invite.js';
+import { showChangelog, VERSION } from './ui/whatsnew.js';
 import { openChop } from './minigames/chop.js';
 import { openSawmill, openMill } from './minigames/sawmill.js';
 import { openBridge, openRepair } from './minigames/bridge.js';
 import { openHouse } from './minigames/house.js';
 import { openCare } from './minigames/care.js';
+import { openFish } from './minigames/fish.js';
 
 const qs = new URLSearchParams(location.search);
 const dir = new Directory(apiBase(qs));
@@ -28,9 +31,24 @@ let screen = null;
 /* start screen                                                       */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The front door's reload button. It is always there — that is the whole point
+ * of it — and says so more loudly once we know there is something newer.
+ */
+function showReloadLabel() {
+  const b = document.getElementById('reloadBtn');
+  if (!b) return;
+  const news = newerBuild();
+  b.textContent = tr(news ? 'ui.reloadNew' : 'ui.reload');
+  b.className = 'link-btn' + (news ? ' fresh' : '');
+}
+
 /** Fill in the start screen in whichever language, and offer the other one. */
 function applyStartText() {
   document.title = tr('app.title');
+  const version = document.getElementById('versionBtn');
+  if (version) version.textContent = 'v' + VERSION + ' · ' + tr('hist.whatsNewShort');
+  showReloadLabel();
   const nodes = document.querySelectorAll('[data-t]');
   for (let i = 0; i < nodes.length; i++) nodes[i].textContent = tr(nodes[i].getAttribute('data-t'));
   const row = document.getElementById('langRow');
@@ -46,9 +64,42 @@ function applyStartText() {
   if (screen) screen.render();
 }
 
+/**
+ * How tall the browser is actually showing us. On a phone the toolbars sit on
+ * top of the page, so 100% of the body reaches under them and the last thing on
+ * screen ends up behind the address bar. The visual viewport knows better.
+ */
+function trackViewportHeight() {
+  const vv = window.visualViewport;
+  const apply = () => {
+    // while the keyboard is up the viewport is tiny; leave the layout alone
+    const el = document.activeElement;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
+    const h = Math.round((vv && vv.height) || window.innerHeight || 0);
+    if (h > 0) document.documentElement.style.setProperty('--app-h', h + 'px');
+  };
+  apply();
+  window.addEventListener('resize', apply);
+  window.addEventListener('orientationchange', () => setTimeout(apply, 300));
+  if (vv) {
+    vv.addEventListener('resize', apply);
+    vv.addEventListener('scroll', apply);
+  }
+  document.addEventListener('focusout', () => setTimeout(apply, 60));
+}
+
 async function boot() {
+  trackViewportHeight();
   detectLang();
   applyStartText();
+
+  document.getElementById('versionBtn').addEventListener('click', () => showChangelog());
+
+  // the way out of a Home Screen app, which has no address bar to reload from
+  document.getElementById('reloadBtn').addEventListener('click', () => reloadNow());
+  // coming back to the app is the one moment it can find out that it is old, so
+  // that is when we ask — quietly. Nothing pops up; the doors just say more.
+  watchForNewer(showReloadLabel);
 
   // one question to the host: is there a world directory here? The answer is
   // remembered, so a static host is asked once ever and costs one 404.
@@ -132,14 +183,39 @@ async function startGame(choice) {
       renderModeBar(game);
     },
 
-    look(tx, ty, zoom) {
+    spotlight: null,
+
+    look(tx, ty, zoom, exact) {
       renderer.cam.x = tx * TILE;
       renderer.cam.y = ty * TILE;
-      if (zoom) { renderer.cam.zoom = Math.max(zoom, renderer.cam.zoom); renderer.userZoom = true; }
+      if (zoom) {
+        renderer.cam.zoom = exact ? zoom : Math.max(zoom, renderer.cam.zoom);
+        renderer.userZoom = true;
+      }
       renderer.clampCamera();
     },
 
     hint(text) { message(text); },
+
+    /**
+     * Out of the world and back to the front door. Everything is saved first,
+     * and the world's name goes in the address, so coming back is one tap and
+     * the village is exactly as it was.
+     */
+    leave() {
+      session.checkpoint();
+      location.href = location.pathname + '?world=' + encodeURIComponent(room);
+    },
+
+    /**
+     * The same door, but it fetches the game again on the way through. On a
+     * Home Screen there is nothing else that can: no address bar, no reload,
+     * and iOS keeps yesterday's copy running for as long as you let it.
+     */
+    refetch() {
+      session.checkpoint();
+      reloadNow(room);
+    },
 
     swapRole() {
       game.role = game.role === 'A' ? 'B' : 'A';
@@ -148,21 +224,47 @@ async function startGame(choice) {
       hud.last = {};
     },
 
-    /** Take us to whatever the guide is talking about. */
-    showMe(id) {
+    /**
+     * Take us to whatever the guide is talking about — all of it at once, and
+     * with a ring around whoever was named, so a name is never just a name.
+     */
+    showMe(problem, maxZoom) {
+      const pts = (problem && problem.points) || [];
+      game.spotlight = null;
+      if (!pts.length) { renderer.userZoom = false; renderer.resize(); return; }
+
+      let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+      for (const p of pts) {
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[1] < minY) minY = p[1];
+        if (p[1] > maxY) maxY = p[1];
+      }
+      // everything named, plus room to see what is around it
+      const spanX = (maxX - minX) + 8, spanY = (maxY - minY) + 6;
+      const vw = renderer.view.w || 640, vh = renderer.view.h || 480;
+      const fits = Math.min(vw / (spanX * TILE), vh / (spanY * TILE)) / (renderer.fit || 1);
+      game.look((minX + maxX) / 2, (minY + maxY) / 2,
+                Math.max(1, Math.min(maxZoom || 2.2, fits)), true);
+
+      if (problem.subject) {
+        game.spotlight = {
+          kind: problem.subject.kind, id: problem.subject.id,
+          r: problem.subject.kind === 'sheep' ? 20 : 17,
+          until: Date.now() + 25000,
+        };
+      }
+    },
+
+    /** Where the ring is right now — people walk about while you read. */
+    spotlightAt() {
+      const sp = game.spotlight;
+      if (!sp) return null;
+      if (Date.now() > sp.until) { game.spotlight = null; return null; }
       const w = game.world;
-      const s = w.bridge.site;
-      const at = {
-        bridge_broken: () => [(s.x0 + s.x1) / 2 + 0.5, s.row + 1],
-        no_bridge: () => [(s.x0 + s.x1) / 2 + 0.5, s.row + 1],
-        homeless: () => { const b = w.buildings.find(b => b.state === 'site'); return b ? [b.x + 1.5, b.y + 1] : null; },
-        hungry: () => { const p = w.plots[0]; return p ? [p.x + 1, p.y + 1] : [w.larder.x, w.larder.y]; },
-        wheat_ready: () => { const p = w.plots.find(p => p.state === 'ripe'); return p ? [p.x + 1, p.y + 1] : null; },
-        sheep: () => { const sh = w.sheep.find(x => x.mood !== 'ok') || w.sheep[0]; return [sh.x, sh.y]; },
-      }[id];
-      const at2 = at ? at() : null;
-      if (at2) game.look(at2[0], at2[1], 2);
-      else { renderer.userZoom = false; renderer.resize(); }
+      const o = sp.kind === 'sheep' ? byId(w.sheep, sp.id) : byId(w.villagers, sp.id);
+      if (!o) { game.spotlight = null; return null; }
+      return { x: o.x, y: o.y, r: sp.r };
     },
 
     pointAtSite() {
@@ -174,6 +276,7 @@ async function startGame(choice) {
       const w = game.world;
       const at = {
         hungry: () => [w.larder.x, w.larder.y],
+        poorly: () => { const v = w.villagers.find(x => x.poorly > 0); return v ? [v.x, v.y] : null; },
         homeless: () => { const s = w.buildings.find(b => b.state === 'site'); return s ? [s.x + 1.5, s.y + 1] : null; },
         sheep_far: () => [w.sheep[0].x, w.sheep[0].y],
         sheep_in_field: () => { const s = w.sheep.find(s => s.x > 24); return s ? [s.x, s.y] : null; },
@@ -189,6 +292,28 @@ async function startGame(choice) {
 
     goToAsk(a) {
       const w = game.world;
+      // some asks are about one particular thing rather than a whole trade
+      const target = a.targetId ? byId(w.buildings, a.targetId) : null;
+      if (target && target.type === 'boat') {
+        game.look(target.x + target.w, target.y + 0.5, 2);
+        if (target.state === 'plan') { if (can(w, game.role, 'bridge')) buildProject(game, 'boat'); else message(tr('teach.cannot')); }
+        else if (can(w, game.role, 'farm')) openFish(game, target);
+        else message(tr('teach.cannot'));
+        return;
+      }
+      if (target && target.type === 'play') {
+        game.look(target.x + target.w / 2, target.y + target.h / 2, 2);
+        if (can(w, game.role, 'house')) buildProject(game, 'play');
+        else message(tr('teach.cannot'));
+        return;
+      }
+      if (a.cap === 'farm' && a.targetId && byId(w.trees, a.targetId)) {
+        const t = byId(w.trees, a.targetId);
+        game.look(t.x + 0.5, t.y + 0.5, 2);
+        if (!can(w, game.role, 'farm')) { message(tr('teach.cannot')); return; }
+        if (game.dispatch({ type: 'tree.plant', role: game.role, treeId: t.id })) message(tr('msg.planted'));
+        return;
+      }
       const open = {
         fell: () => { const t = byId(w.trees, a.targetId); if (t && t.state === 'standing') { game.look(t.x, t.y, 2); openChop(game, t); } },
         saw: () => openSawmill(game),
@@ -225,10 +350,10 @@ async function startGame(choice) {
   session.on((what, data) => {
     if (what === 'block-ended') { session.checkpoint(); hud.showSummary(); }
     if (what === 'status') updatePartner();
-    // if the other player starts the morning, put our invitation away
+    // if the other player starts the morning, put our invitation away and let
+    // them get on with it — the card going is answer enough
     if (what === 'acted' && data && data.type === 'block.start' && game._offer) {
       game._offer.close(); game._offer = null;
-      message(tr('block.otherStarted', { role: roleName(game.other) }));
     }
   });
 
@@ -286,6 +411,7 @@ async function startGame(choice) {
       renderer.render(w, t, {
         overlay: game.mode && game.mode.overlay ? (ctx) => game.mode.overlay(ctx) : null,
         highlight: game.mode && game.mode.highlight ? game.mode.highlight() : null,
+        spotlight: game.spotlightAt(),
       });
       if ((frame++ % 5) === 0) { hud.update(); beat(); }
       if (game.mode && (frame % 5) === 0) renderModeBar(game);
@@ -294,20 +420,16 @@ async function startGame(choice) {
   }
   requestAnimationFrame(step);
 
-  // a phone held upright shows very little of the world
-  if (window.innerHeight > window.innerWidth * 1.25) {
-    setTimeout(() => message(tr('msg.sideways')), 2600);
-  }
-
   // nobody has taken the other spot yet: say so once, quietly, rather than
   // putting an invitation in front of a child who wants to play
   if (game.spotFree) {
     setTimeout(() => message(tr('invite.hint', { role: roleName(game.other) })), 1800);
   }
 
-  // the shared ritual: agree to play for five minutes
+  // the shared ritual: agree to play for five minutes. Somebody arriving in the
+  // middle of one is simply in it: the clock is already running where they can
+  // see it, so nothing needs to be said.
   if (!session.world.block.active) offerBlock(game);
-  else message(tr('block.joined'));
 
   window.OLW = game;      // handy when poking at it from a console
 }

@@ -5,10 +5,12 @@
 // get corrected by the host's snapshots. That is exactly the shape a real
 // server needs, so moving the host into Node later changes nothing above here.
 //
-// The host also posts the world to the server every so often. That is what
-// removed the old "the same person has to open the page first" rule: whoever
-// arrives first asks the server for the world, and only falls back to their
-// own device's save when there is no server or the server has nothing newer.
+// Two things now remember the world besides the two browsers: the relay hands
+// whoever joins the last world it saw in that room, and the host posts the
+// world to the directory every half minute. The relay's memory is instant and
+// the directory's copy survives a restart; both say the same thing, which is
+// that the newest world wins instead of whoever happened to open the page
+// first — that used to be the one way to lose a village.
 
 import { applyAction } from '../core/actions.js';
 import { tick } from '../core/sim.js';
@@ -31,6 +33,7 @@ export class Session {
     this.peer = 'p' + Math.random().toString(36).slice(2, 9);
     this.isHost = this.solo;
     this.world = null;
+    this.kept = null;                    // what the relay says the room was doing
     this.listeners = [];
     this.acc = 0;
     this.lastSnap = 0;
@@ -48,7 +51,7 @@ export class Session {
     await this.transport.connect((m) => this.receive(m));
 
     if (this.solo) {
-      this.world = await this.firstWorld(fromServer);
+      this.world = await this.bestWorld(fromServer);
       this.becomeHost();
       return;
     }
@@ -56,24 +59,26 @@ export class Session {
     this.transport.send({ t: 'hello', peer: this.peer });
     await new Promise(r => setTimeout(r, HOST_WAIT));
     if (!this.world) {
-      this.world = await this.firstWorld(fromServer);
+      this.world = await this.bestWorld(fromServer);
       this.becomeHost();
     }
   }
 
   /**
-   * The world we start from: whichever of the server's copy and this device's
-   * copy has seen more of the day, and a brand new world if there is neither.
+   * Nobody else is running the clock, so we will. Take whichever world has got
+   * furthest: what the relay was holding, what the directory kept, what this
+   * browser saved, or a new one. Two worlds for one room are always the same
+   * world at different times, so the later tick is simply the truer one.
    */
-  async firstWorld(fromServer) {
-    const mine = load(this.room);
-    let theirs = null;
+  async bestWorld(fromServer) {
+    const candidates = [load(this.room), this.kept];
     try {
-      const got = await fromServer;
-      if (got && got.world) theirs = deserialize(got.world);
-    } catch (e) { /* the server having nothing is not a problem */ }
-    if (theirs && (!mine || theirs.tick >= mine.tick)) return theirs;
-    return mine || createWorld(hashSeed(this.room));
+      const got = fromServer ? await fromServer : null;
+      if (got && got.world) candidates.push(deserialize(got.world));
+    } catch (e) { /* the directory having nothing is not a problem */ }
+    let best = null;
+    for (const w of candidates) if (w && (!best || w.tick >= best.tick)) best = w;
+    return best || createWorld(hashSeed(this.room));
   }
 
   becomeHost() {
@@ -95,6 +100,12 @@ export class Session {
       case 'hello':
         if (this.isHost) this.snapshot();
         break;
+      case 'kept': {
+        // the relay's memory of this room. Not a live host: just a world.
+        const w = deserialize(m.world);
+        if (w && (!this.kept || w.tick > this.kept.tick)) this.kept = w;
+        break;
+      }
       case 'snap': {
         const incoming = deserialize(m.world);
         if (!incoming) return;

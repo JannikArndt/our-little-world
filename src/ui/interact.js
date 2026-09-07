@@ -3,7 +3,9 @@
 // player — which is usually the more interesting option.
 
 import { TILE, T, tileAt } from '../core/grid.js';
-import { ROLE, can, roleName } from '../core/world.js';
+import { ROLE, can, roleName, PROJECT, project, kids, hasWell } from '../core/world.js';
+import { PROJECTS } from '../core/content.js';
+import { canPay } from '../core/actions.js';
 import { tr, trn } from '../core/i18n.js';
 import { el, message, renderCost } from './overlay.js';
 import { openChop } from '../minigames/chop.js';
@@ -11,6 +13,7 @@ import { openSawmill, openMill } from '../minigames/sawmill.js';
 import { openBridge, openRepair } from '../minigames/bridge.js';
 import { openHouse } from '../minigames/house.js';
 import { openCare } from '../minigames/care.js';
+import { openFish } from '../minigames/fish.js';
 import { roadMode, sheepMode } from '../minigames/modes.js';
 import { openGive } from './share.js';
 
@@ -32,7 +35,11 @@ function showBubble(sx, sy, opts) {
   if (opts.title) b.appendChild(el('h4', '', opts.title));
   if (opts.hint) b.appendChild(el('p', 'hint', opts.hint));
   for (const a of opts.actions || []) {
-    const btn = el('button', a.cls || '', a.label);
+    const btn = el('button', a.cls || '');
+    btn.appendChild(el('span', 'b-label', a.label));
+    // what it costs goes on its own line, never in brackets at the end of a
+    // sentence where it breaks across lines
+    if (a.cost) btn.appendChild(el('span', 'b-cost', a.cost));
     btn.addEventListener('click', (e) => { e.stopPropagation(); closeBubble(); a.fn(); });
     b.appendChild(btn);
   }
@@ -69,7 +76,10 @@ function hit(w, wx, wy) {
   for (const t of w.trees) if (t.x === tx && t.y === ty) return { kind: 'tree', o: t };
   for (const t of w.trees) if (t.state === 'standing' && near(t.x + 0.5, t.y - 0.1, 16)) return { kind: 'tree', o: t };
   for (const p of w.plots) if (tx >= p.x && tx < p.x + 2 && ty >= p.y && ty < p.y + 2) return { kind: 'plot', o: p };
-  for (const b of w.buildings) if (tx >= b.x && tx < b.x + b.w && ty >= b.y - 1 && ty < b.y + b.h) return { kind: 'building', o: b };
+  for (const b of w.buildings) {
+    const bw = b.type === 'boat' ? b.w + 2 : b.w;      // the boat lies off the end of the landing
+    if (tx >= b.x && tx < b.x + bw && ty >= b.y - 1 && ty < b.y + b.h) return { kind: 'building', o: b };
+  }
   const s = w.bridge.site;
   if (ty >= s.row - 1 && ty <= s.row + s.rows && tx >= s.x0 - 1 && tx <= s.x1 + 1) return { kind: 'crossing', o: s };
   if (tileAt(w, tx, ty) === T.WATER) return { kind: 'water', o: { x: tx, y: ty } };
@@ -80,15 +90,67 @@ function hit(w, wx, wy) {
 /* actions                                                            */
 /* ------------------------------------------------------------------ */
 
-function askAction(game, cap, targetId) {
+function askAction(game, cap, targetId, verb) {
   return {
-    label: tr('ask.label', { role: roleName(game.other), what: tr('verb.' + cap) }),
+    label: tr('ask.label', { role: roleName(game.other), what: tr('verb.' + (verb || cap)) }),
     cls: 'soft',
     fn() {
       game.dispatch({ type: 'ask', from: game.role, to: game.other, cap, targetId: targetId || null });
       message(tr('ask.sent', { role: roleName(game.other) }));
     },
   };
+}
+
+/**
+ * The two things the village builds for itself. No plan to draw and no test to
+ * run: it is planks, stone and somebody deciding to do it.
+ */
+export function buildProject(game, type) {
+  const w = game.world, r = game.role;
+  const cost = PROJECT[type];
+  const plan = project(w, type);
+  if (!plan || plan.state !== 'plan') return false;
+  if (!canPay(w, r, cost)) {
+    const me = w.players[r].res;
+    message(tr('w.projectNeeds', {
+      plank: cost.plank, stone: cost.stone, hp: me.plank || 0, hs: me.stone || 0,
+    }));
+    return false;
+  }
+  const ok = game.dispatch({ type: 'project.build', role: r, what: type });
+  if (ok) message(tr(PROJECTS[type].built));
+  return ok;
+}
+
+/** The one button that builds any of them, in whoever's hands it belongs. */
+function projectActions(game, type, label) {
+  const w = game.world, r = game.role;
+  const def = PROJECTS[type];
+  const plan = project(w, type);
+  if (!can(w, r, def.cap)) return [askAction(game, def.cap, plan ? plan.id : null, def.verb)];
+  const cost = def.cost;
+  const me = w.players[r].res;
+  const bits = [];
+  if (cost.plank) bits.push(cost.plank + ' 🪚');
+  if (cost.stone) bits.push(cost.stone + ' 🪨');
+  return [{
+    label: label,
+    cost: bits.join(' · '),
+    cls: (me.plank >= (cost.plank || 0) && me.stone >= (cost.stone || 0)) ? '' : 'soft',
+    fn: () => buildProject(game, type),
+  }];
+}
+
+/** A project's own bubble: what it is, and the one thing to do with it. */
+function projectBubble(game, b) {
+  const t = (PROJECTS[b.type] || {}).text || {};
+  if (b.state === 'plan') {
+    return {
+      title: tr(t.plan), hint: tr(t.planHint),
+      actions: projectActions(game, b.type, tr(t.build)),
+    };
+  }
+  return { title: tr(t.done), hint: tr(t.doneHint), actions: [] };
 }
 
 function actionsFor(game, h) {
@@ -98,7 +160,14 @@ function actionsFor(game, h) {
 
     case 'tree': {
       const tree = h.o;
-      if (tree.state !== 'standing') return { title: tr('w.stump'), hint: tr('w.stumpHint'), actions: [] };
+      if (tree.state === 'sapling') return { title: tr('w.sapling'), hint: tr('w.saplingHint'), actions: [] };
+      if (tree.state !== 'standing') {
+        if (can(w, r, 'farm')) A.push({ label: tr('w.plantHere'), fn: () => {
+          if (game.dispatch({ type: 'tree.plant', role: r, treeId: tree.id })) message(tr('msg.planted'));
+        } });
+        else A.push(askAction(game, 'farm', tree.id, 'plant'));
+        return { title: tr('w.stump'), hint: tr('w.stumpHint'), actions: A };
+      }
       if (can(w, r, 'fell')) A.push({ label: tr('w.fell'), fn: () => openChop(game, tree) });
       else A.push(askAction(game, 'fell', tree.id));
       return { title: tr('w.tree'), hint: tr('w.treeHint'), actions: A };
@@ -141,7 +210,8 @@ function actionsFor(game, h) {
 
     case 'villager': {
       const v = h.o;
-      const hint = v.hunger > 72 ? tr('w.villagerHungry')
+      const hint = v.poorly > 0 ? tr('w.villagerPoorly', { name: v.name })
+        : v.hunger > 72 ? tr('w.villagerHungry')
         : !v.homeId ? tr('w.villagerHomeless', { name: v.name })
         : v.carrying ? tr('w.villagerCarrying')
         : tr('w.villagerFine');
@@ -176,6 +246,19 @@ function actionsFor(game, h) {
 
     case 'building': {
       const b = h.o;
+      if (b.type === 'boat') {
+        if (b.state === 'plan') return projectBubble(game, b);
+        const resting = (w.tick - (b.fishedTick || -9999)) < 600;
+        if (!can(w, r, 'farm')) A.push(askAction(game, 'farm', b.id, 'fish'));
+        else if (!resting) A.push({ label: tr('w.goFishing'), fn: () => openFish(game, b) });
+        return { title: tr('w.boat'), hint: resting ? tr('w.boatResting') : tr('w.boatHint'), actions: A };
+      }
+      if (b.type === 'play') {
+        if (b.state === 'plan') return projectBubble(game, b);
+        const names = kids(w).map(k => k.name).join(tr('w.and'));
+        return { title: tr('w.playground'), hint: tr('w.playgroundHint', { names: names }), actions: [] };
+      }
+      if (b.type === 'well' || b.type === 'privy' || b.type === 'fence') return projectBubble(game, b);
       if (b.state === 'site') {
         if (can(w, r, 'house')) A.push({ label: tr('w.buildHouse'), fn: () => openHouse(game, b) });
         else A.push(askAction(game, 'house', b.id));

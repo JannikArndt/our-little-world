@@ -300,12 +300,30 @@ export class Renderer {
       const o = th.o;
       switch (th.kind) {
         case 'building':
-          if (o.state === 'site') art.drawSite(ctx, o, time);
+          if (o.type === 'boat') art.drawLanding(ctx, o, time, w.tick);
+          else if (o.type === 'play') {
+            if (o.state === 'built') art.drawPlayground(ctx, o, time, w.tick);
+            else art.drawPlan(ctx, o, time, '🛝');
+          }
+          else if (o.type === 'well') {
+            if (o.state === 'built') art.drawWell(ctx, o, time, w.tick);
+            else art.drawPlan(ctx, o, time, '🪣');
+          }
+          else if (o.type === 'privy') {
+            if (o.state === 'built') art.drawPrivy(ctx, o, time, w.tick);
+            else art.drawPlan(ctx, o, time, '🚪');
+          }
+          else if (o.type === 'fence') {
+            if (o.state === 'built') art.drawFence(ctx, o, time);
+            else art.drawPlan(ctx, o, time, '🚧');
+          }
+          else if (o.state === 'site') art.drawSite(ctx, o, time);
           else if (o.type === 'workshop') art.drawWorkshop(ctx, o, time, w.tick);
           else art.drawHouse(ctx, o, time, w.tick);
           break;
         case 'tree': {
           if (o.state === 'standing') art.drawTree(ctx, o, time);
+          else if (o.state === 'sapling') art.drawSapling(ctx, o, time);
           else {
             const age = w.tick - (o.fellTick != null ? o.fellTick : -999);
             if (age < 18) { art.drawStump(ctx, o); art.drawFallingTree(ctx, o, age / 18); }
@@ -324,6 +342,7 @@ export class Renderer {
       }
     }
 
+    if (w.regionBoxes && w.regionBoxes.length) this.drawMist(ctx, w, time);
     if (w.fx) for (const f of w.fx) art.drawFx(ctx, f, w.tick - f.born);
     if (extra && extra.overlay) extra.overlay(ctx, s);
 
@@ -347,6 +366,24 @@ export class Renderer {
     ctx.globalAlpha = 1;
   }
 
+  /** Somewhere the world has not got to yet: soft weather, not a wall. */
+  drawMist(ctx, w, time) {
+    for (const box of w.regionBoxes) {
+      const x = box[0] * TILE, y = box[1] * TILE;
+      const bw = (box[2] - box[0] + 1) * TILE, bh = (box[3] - box[1] + 1) * TILE;
+      ctx.save();
+      ctx.fillStyle = 'rgba(236,240,238,.88)';
+      ctx.fillRect(x, y, bw, bh);
+      ctx.fillStyle = 'rgba(255,255,255,.5)';
+      for (let i = 0; i < 14; i++) {
+        const cx = x + ((i * 137) % bw), cy = y + ((i * 89) % bh);
+        const r = 18 + (i % 4) * 9 + Math.sin(time * 0.0006 + i) * 4;
+        ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
   /** A slow, quiet ring around things that would like some attention. */
   drawHalos(ctx, w, time, extra) {
     const pulse = 0.35 + 0.25 * Math.sin(time * 0.003);
@@ -359,13 +396,24 @@ export class Renderer {
     for (const s of w.sheep) if (s.mood !== 'ok') ring(s.x * TILE, s.y * TILE + 3, 15, 'rgba(93,145,80,.9)');
     for (const p of w.plots) if (p.state === 'ripe' || (p.state === 'growing' && p.water <= 8))
       ring(p.x * TILE + TILE, p.y * TILE + TILE, 24, 'rgba(224,185,80,.95)');
-    for (const b of w.buildings) if (b.state === 'site')
+    for (const b of w.buildings) if (b.state === 'site' && b.type === 'site')
       ring(b.x * TILE + b.w * TILE / 2, b.y * TILE + b.h * TILE - 4, b.w * TILE * 0.5, 'rgba(200,120,60,.9)');
     for (const l of w.logs) ring(l.x * TILE, l.y * TILE + 3, 16, 'rgba(169,116,63,.9)');
     if (w.bridge.damaged) ring((w.bridge.site.x0 + w.bridge.site.x1 + 1) * TILE / 2, (w.bridge.site.row + 1) * TILE, 34, 'rgba(200,90,70,.95)');
     if (extra && extra.highlight) {
       const h = extra.highlight;
       ring(h.x * TILE, h.y * TILE, h.r || 20, 'rgba(255,255,255,.95)');
+    }
+    if (extra && extra.spotlight) {
+      // who the guide is talking about: a slower, wider ring than the rest
+      const sp = extra.spotlight;
+      const beat = 0.45 + 0.35 * Math.sin(time * 0.0022);
+      ctx.strokeStyle = 'rgba(242,193,78,.95)'; ctx.lineWidth = 3;
+      ctx.globalAlpha = beat;
+      ctx.beginPath();
+      ctx.ellipse(sp.x * TILE, sp.y * TILE + 3, sp.r || 22, (sp.r || 22) * 0.55, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
     }
   }
 

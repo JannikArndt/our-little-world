@@ -234,8 +234,8 @@ export function openBridge(game) {
         if (bad) {
           test.broke = bad.a;
           test.t = 0.45;
+          // the splash is on screen already; the readout says what to change
           setTimeout(() => {
-            message(tr('msg.splash'));
             p.readout(tr('bridge.broke', { n: bad.d }));
             test = null;
           }, 1500);

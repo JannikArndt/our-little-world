@@ -10,6 +10,9 @@ import { fileURLToPath } from 'node:url';
 import { attachRelay, roomSizes } from './relay.mjs';
 import { Worlds } from './worlds.mjs';
 import { createApi } from './api.mjs';
+import { buildId } from './buildid.mjs';
+import { VERSION } from '../src/core/changelog.js';
+import { SCHEMA } from '../src/core/world.js';
 
 const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const PORT = Number(process.argv[2] || process.env.PORT || 8080);
@@ -35,10 +38,33 @@ const TYPES = {
   '.webmanifest': 'application/manifest+json',
 };
 
+// worked out once, at boot: what this server is actually serving
+const BUILD = buildId();
+const STARTED = new Date().toISOString();
+
+/**
+ * Write the build id into the page on the way out.
+ *
+ * A page saved to a Home Screen has no address bar and no reload button, and
+ * iOS keeps it alive in the background for days — so it can be a fortnight old
+ * and have no way of knowing. Knowing which build it is lets it ask /version
+ * whether there is a newer one. A plain static host does not do this, and the
+ * page copes: it just never claims anything is out of date.
+ */
+function stamp(html) {
+  return html.replace(/(<meta name="olw-build" content=")[^"]*(">)/, '$1' + BUILD + '$2');
+}
+
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
     if (await api(req, res)) return;
+    // "is what I pushed live?" — compare `build` with `node server/buildid.mjs`
+    if (url.pathname === '/version') {
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ version: VERSION, schema: SCHEMA, build: BUILD, startedAt: STARTED }));
+      return;
+    }
     if (url.pathname === '/rooms') {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify(roomSizes()));
@@ -50,11 +76,20 @@ const server = createServer(async (req, res) => {
     if (!file.startsWith(ROOT)) { res.writeHead(403); res.end('no'); return; }
     const s = await stat(file).catch(() => null);
     if (!s || !s.isFile()) { res.writeHead(404); res.end('not found'); return; }
-    const body = await readFile(file);
-    res.writeHead(200, {
-      'content-type': TYPES[extname(file)] || 'application/octet-stream',
-      'cache-control': 'no-cache',
-    });
+    let body = await readFile(file);
+    const type = TYPES[extname(file)] || 'application/octet-stream';
+    // the page is told which build it is, so it can notice when it is old
+    if (type.indexOf('text/html') === 0) body = Buffer.from(stamp(body.toString('utf8')));
+
+    // `no-cache` means "ask me first", not "do not keep it". With a tag to ask
+    // with, coming back costs one small question per file instead of the whole
+    // game again — and a stale copy can never quietly win.
+    const tag = '"' + BUILD + '-' + body.length + '"';
+    const asked = String(req.headers['if-none-match'] || '').replace(/^W\//, '');
+    res.setHeader('etag', tag);
+    res.setHeader('cache-control', 'no-cache');
+    if (asked === tag) { res.writeHead(304); res.end(); return; }
+    res.writeHead(200, { 'content-type': type });
     res.end(body);
   } catch (e) {
     res.writeHead(500); res.end('error');
@@ -69,7 +104,7 @@ server.listen(PORT, () => {
   for (const name of Object.keys(nets))
     for (const n of nets[name] || [])
       if (n.family === 'IPv4' && !n.internal) addrs.push(n.address);
-  console.log('Our Little World');
+  console.log('Our Little World  v' + VERSION + '  build ' + BUILD);
   console.log('  http://localhost:' + PORT);
   for (const a of addrs) console.log('  http://' + a + ':' + PORT + '   <- open this on the iPad');
   const s = worlds.stats();

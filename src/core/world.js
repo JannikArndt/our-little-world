@@ -5,8 +5,13 @@
 import { GW, GH, T, idx, inBounds, rebuildBlocked } from './grid.js';
 import { rnd, rndInt, rndRange } from './rng.js';
 import { tr } from './i18n.js';
+import { SCENARIOS, DEFAULT_SCENARIO, scenarioOf, ROLES, PROJECTS } from './content.js';
+import { runMigrations } from './migrate.js';
 
-export const SCHEMA = 6;
+// The shape of a saved world. It only goes up when an existing field changes
+// meaning — anything new and additive is handled by ensureWorld(), so adding
+// to the world does not cost anybody their village. See migrate.js.
+export const SCHEMA = 7;
 export const TICK_MS = 100;                 // one simulation step
 export const BLOCK_TICKS = 5 * 60 * 10;     // a five minute play block
 
@@ -19,10 +24,11 @@ export const RESOURCES = [
   { key: 'wool',  icon: '🧶' },
 ];
 
-export const ROLE = {
-  A: { id: 'A', emoji: '🔨', colour: '#c8783c' },
-  B: { id: 'B', emoji: '🌿', colour: '#5d9150' },
-};
+// what things cost and how fast they grow lives with the rest of the content
+export { PROJECT, PROJECTS, SAPLING_TICKS, REPLANT_GOAL, SCENARIOS } from './content.js';
+
+/** The roles in play, drawn from the catalogue. */
+export const ROLE = ROLES;
 
 export const CAPS = {
   fell:   { icon: '🪓', owner: 'A' },
@@ -41,10 +47,6 @@ export function roleName(id) { return tr('role.' + id + '.short'); }
 export function capName(key) { return tr('cap.' + key); }
 export function resName(key) { return tr('res.' + key); }
 
-const VILLAGER_NAMES = ['Anna', 'Bo', 'Mira', 'Ted'];
-const VILLAGER_COLOURS = ['#d96a5f', '#4f83b8', '#b47ec0', '#4f9c8a'];
-const SHEEP_NAMES = ['Cloud', 'Pip', 'Nutmeg'];
-
 let nextId = 1;
 export function newId(prefix) { return prefix + '_' + (nextId++); }
 
@@ -55,7 +57,9 @@ export function newId(prefix) { return prefix + '_' + (nextId++); }
 function riverCentre(y) { return 18.6 + Math.sin(y * 0.40) * 1.9; }
 function riverHalfWidth(y) { return 1.95 + 0.45 * Math.sin(y * 0.85 + 1); }
 
-function paintTerrain(w) {
+const PAINTERS = { valley: paintValley };
+
+function paintValley(w) {
   const t = w.terrain;
   for (let i = 0; i < GW * GH; i++) t[i] = T.GRASS;
 
@@ -93,10 +97,13 @@ function paintRoad(w, ax, ay, bx, by) {
 /* world creation                                                        */
 /* --------------------------------------------------------------------- */
 
-export function createWorld(seed) {
+export function createWorld(seed, scenarioId) {
   nextId = 1;
+  const id = SCENARIOS[scenarioId] ? scenarioId : DEFAULT_SCENARIO;
+  const scen = SCENARIOS[id];
   const w = {
     schema: SCHEMA,
+    scenario: id,
     seed: seed >>> 0,
     rng: seed >>> 0,
     tick: 0,
@@ -111,91 +118,206 @@ export function createWorld(seed) {
     sheep: [],
     villagers: [],
     stones: [],
+    visitors: [],
     bridge: { built: false, tiles: [], quality: 0, damaged: false },
-    larder: { x: 8.5, y: 14.5, food: 7 },
-    players: {
-      A: { res: { wood: 2, plank: 1, stone: 2, wheat: 0, food: 0, wool: 0 },
-           caps: { fell: 1, saw: 1, bridge: 1, house: 1, mill: 1 },
-           done: {}, busy: null, seen: 0 },
-      B: { res: { wood: 0, plank: 0, stone: 3, wheat: 0, food: 2, wool: 0 },
-           caps: { herd: 1, care: 1, road: 1, farm: 1 },
-           done: {}, busy: null, seen: 0 },
-    },
+    larder: { x: scen.larder.x, y: scen.larder.y, food: scen.larder.food },
+    players: {},
+    regions: {},
     asks: [],
     notices: [],
     journal: [],
+    flags: {},        // one-off switches: what has been seen, what is unlocked
+    ext: {},          // room for anything a later version wants to keep
     seq: 0,
   };
 
-  paintTerrain(w);
+  for (const id of scen.roles) w.players[id] = newPlayer(id);
+  for (const r of scen.regions || []) w.regions[r.id] = r.open === false ? 'later' : 'open';
 
-  // ---- village on the west bank -------------------------------------
-  addBuilding(w, { type: 'house', x: 4,  y: 12, w: 3, h: 2, state: 'built', name: "Anna & Bo's house", beds: 2, warm: true, light: true });
-  addBuilding(w, { type: 'house', x: 10, y: 12, w: 3, h: 2, state: 'built', name: "Mira's house", beds: 1, warm: true, light: true });
-  addBuilding(w, { type: 'site',  x: 4,  y: 18, w: 3, h: 2, state: 'site',  name: 'an empty plot' });
-  addBuilding(w, { type: 'workshop', x: 9, y: 16, w: 4, h: 3, state: 'built', name: 'the workshop' });
+  (PAINTERS[scen.terrain] || paintValley)(w);
 
-  paintRoad(w, 5, 14, 8, 15);
-  paintRoad(w, 8, 15, 11, 14);
-  paintRoad(w, 8, 15, 11, 19);
+  // ---- what stands in the village ------------------------------------
+  for (const h of scen.houses)
+    addBuilding(w, { key: h.key, type: 'house', x: h.x, y: h.y, w: h.w, h: h.h,
+                     state: 'built', name: h.name, beds: h.beds, warm: true, light: true });
+  for (const st of scen.sites)
+    addBuilding(w, { key: st.key, type: 'site', x: st.x, y: st.y, w: st.w, h: st.h,
+                     state: 'site', name: st.name });
+  for (const b of scen.works)
+    addBuilding(w, { key: b.key, type: b.type, x: b.x, y: b.y, w: b.w, h: b.h,
+                     state: 'built', name: b.name });
+  for (const r of scen.roads) paintRoad(w, r[0], r[1], r[2], r[3]);
 
   // ---- the forest ----------------------------------------------------
+  const f = scen.forest;
   const spots = [];
-  for (let i = 0; i < 60 && spots.length < 15; i++) {
-    const x = 1 + rndInt(w, 11), y = 1 + rndInt(w, 8);
+  for (let i = 0; i < 60 && spots.length < f.count; i++) {
+    const x = f.x + rndInt(w, f.w), y = f.y + rndInt(w, f.h);
     if (w.terrain[idx(x, y)] !== T.FOREST) continue;
-    if (spots.some(s => Math.abs(s.x - x) + Math.abs(s.y - y) < 3)) continue;
+    if (spots.some(s => Math.abs(s.x - x) + Math.abs(s.y - y) < f.apart)) continue;
     spots.push({ x, y });
   }
   for (const s of spots) addTree(w, s.x, s.y, 1 + rndInt(w, 3));
-  addTree(w, 24, 3, 2); addTree(w, 30, 12, 3); addTree(w, 35, 6, 1);   // a few on the east bank
+  for (const t of scen.extraTrees) addTree(w, t[0], t[1], t[2]);
 
   // ---- the field -----------------------------------------------------
-  const plotAt = [[26, 16], [29, 16], [32, 16], [26, 19], [29, 19], [32, 19]];
-  for (const [x, y] of plotAt) w.plots.push({ id: newId('plot'), x, y, state: 'empty', water: 0, growth: 0, nibbled: 0 });
+  for (const [x, y] of scen.plots)
+    w.plots.push({ id: newId('plot'), x, y, state: 'empty', water: 0, growth: 0, nibbled: 0 });
 
   // ---- animals -------------------------------------------------------
-  const sheepAt = [[27, 6], [31, 9], [24, 11]];
-  for (let i = 0; i < 3; i++) {
+  for (const spec of scen.sheep) {
     w.sheep.push({
-      id: newId('sheep'), name: SHEEP_NAMES[i],
-      x: sheepAt[i][0] + 0.5, y: sheepAt[i][1] + 0.5,
+      id: newId('sheep'), name: spec.name,
+      x: spec.at[0] + 0.5, y: spec.at[1] + 0.5,
       path: [], pathI: 0, hunger: 20 + rndInt(w, 25), thirst: 15 + rndInt(w, 30),
       fluff: 40 + rndInt(w, 30), mood: 'ok', wait: rndInt(w, 40), led: null, hearts: 0,
     });
   }
-  // each sheep starts wanting a different thing, so there is something to notice
-  w.sheep[0].fluff = 94;      // wants shearing
-  w.sheep[1].thirst = 82;     // wants water
-  w.sheep[2].hunger = 84;     // wants hay
+  // each one starts wanting a different thing, so there is something to notice
+  for (let i = 0; i < scen.sheep.length; i++) {
+    const spec = scen.sheep[i], sh = w.sheep[i];
+    if (spec.fluff != null) sh.fluff = spec.fluff;
+    if (spec.thirst != null) sh.thirst = spec.thirst;
+    if (spec.hunger != null) sh.hunger = spec.hunger;
+  }
 
   // ---- people --------------------------------------------------------
-  const homes = [w.buildings[0].id, w.buildings[0].id, w.buildings[1].id, null];
-  const at = [[6, 15], [9, 13], [11, 15], [7, 17]];
-  for (let i = 0; i < 4; i++) {
-    w.villagers.push({
-      id: newId('v'), name: VILLAGER_NAMES[i], colour: VILLAGER_COLOURS[i],
-      x: at[i][0] + 0.5, y: at[i][1] + 0.5,
-      path: [], pathI: 0, task: null, wait: rndInt(w, 30),
-      hunger: 28 + rndInt(w, 26), homeId: homes[i], carrying: null,
-      mood: 'ok', hearts: 0, said: null, saidUntil: 0,
-    });
+  for (const spec of scen.villagers) {
+    w.villagers.push(makeVillager(w, spec));
   }
   // the people who already live somewhere take up their beds, so the one
   // without a home really does have nowhere to go
   for (const v of w.villagers) if (v.homeId) byId(w.buildings, v.homeId).residents.push(v.id);
 
   // ---- stones you can pick up along the river ------------------------
-  for (const [sx, sy] of [[15, 20], [21, 4]]) {
+  for (const [sx, sy] of scen.stones) {
     const p = findSandNear(w, sx, sy);
     if (p) w.stones.push({ id: newId('sb'), x: p.x, y: p.y, count: 6, regrow: 0 });
   }
 
   // ---- the crossing --------------------------------------------------
-  w.bridge.site = findCrossing(w, 12);
+  w.bridge.site = findCrossing(w, scen.crossingRow);
 
+  ensureWorld(w);
   rebuildBlocked(w);
   return w;
+}
+
+/** A player's side of the table, as their role starts out. */
+function newPlayer(id) {
+  const role = ROLES[id] || {};
+  const res = {}, caps = {};
+  for (const k in (role.res || {})) res[k] = role.res[k];
+  for (const k in (role.caps || {})) caps[k] = role.caps[k];
+  return { res, caps, done: {}, busy: null, seen: 0 };
+}
+
+/** Somebody from the roster, at home if their house has room for them. */
+function makeVillager(w, spec) {
+  const home = spec.home != null ? houseFor(w, spec.home) : null;
+  return {
+    id: newId('v'), key: spec.key, name: spec.name, colour: spec.colour,
+    kid: !!spec.kid, x: spec.at[0] + 0.5, y: spec.at[1] + 0.5,
+    path: [], pathI: 0, task: null, wait: rndInt(w, 30),
+    hunger: 28 + rndInt(w, 26), homeId: home ? home.id : null, carrying: null,
+    mood: 'ok', hearts: 0, said: null, saidUntil: 0,
+  };
+}
+
+/** The nth house of the scenario, found by where it stands. */
+function houseFor(w, n) {
+  const spec = scenarioOf(w).houses[n];
+  if (!spec) return null;
+  return w.buildings.find(b => b.key === spec.key) ||
+         w.buildings.find(b => b.x === spec.x && b.y === spec.y) || null;
+}
+
+/* --------------------------------------------------------------------- */
+/* keeping a world up to date                                            */
+/* --------------------------------------------------------------------- */
+
+/**
+ * Everything a world must have, whatever version it was saved at. This runs on
+ * every load as well as on creation, so anything added to the content tables
+ * turns up in worlds that were saved before it existed — no reset, no
+ * migration step, nothing for a player to notice except the new thing.
+ */
+export function ensureWorld(w) {
+  w.scenario = SCENARIOS[w.scenario] ? w.scenario : DEFAULT_SCENARIO;
+  const scen = scenarioOf(w);
+
+  for (const k of ['trees', 'logs', 'buildings', 'plots', 'sheep', 'villagers',
+                   'stones', 'visitors', 'asks', 'notices', 'journal']) {
+    if (!Array.isArray(w[k])) w[k] = [];
+  }
+  if (!w.flags || typeof w.flags !== 'object') w.flags = {};
+  if (!w.ext || typeof w.ext !== 'object') w.ext = {};
+  if (!w.players || typeof w.players !== 'object') w.players = {};
+  if (!w.regions || typeof w.regions !== 'object') w.regions = {};
+
+  // a role the scenario plays that this world has never heard of gets a seat
+  for (const id of scen.roles || ['A', 'B']) if (!w.players[id]) w.players[id] = newPlayer(id);
+  for (const r of scen.regions || []) if (!w.regions[r.id]) w.regions[r.id] = r.open === false ? 'later' : 'open';
+  cacheRegions(w);
+  if (!w.block) w.block = { active: false, startTick: 0, length: BLOCK_TICKS, endedAt: null };
+
+  // fields that later versions expect to find on things that already exist
+  for (const t of w.trees) { if (!t.state) t.state = 'standing'; }
+  for (const b of w.buildings) { if (!b.residents) b.residents = []; if (b.beds == null) b.beds = 0; }
+  for (const v of w.villagers) { if (v.kid === undefined) v.kid = false; if (!v.poorly) v.poorly = 0; }
+
+  ensurePeople(w, scen);
+  ensurePlans(w, scen);
+  return w;
+}
+
+/** Anybody in the roster who is not in this world yet moves in. */
+function ensurePeople(w, scen) {
+  for (const spec of scen.villagers) {
+    const there = w.villagers.find(v => (v.key && v.key === spec.key) || v.name === spec.name);
+    if (there) { if (!there.key) there.key = spec.key; continue; }
+    const v = makeVillagerPlain(spec);
+    w.villagers.push(v);
+    const home = spec.home != null ? houseFor(w, spec.home) : null;
+    if (home && home.residents.length < home.beds) { home.residents.push(v.id); v.homeId = home.id; }
+  }
+}
+
+/** Like makeVillager, but for a world that is already running (no dice). */
+function makeVillagerPlain(spec) {
+  return {
+    id: newId('v'), key: spec.key, name: spec.name, colour: spec.colour,
+    kid: !!spec.kid, x: spec.at[0] + 0.5, y: spec.at[1] + 0.5,
+    path: [], pathI: 0, task: null, wait: 20,
+    hunger: 30, homeId: null, carrying: null,
+    mood: 'ok', hearts: 0, said: null, saidUntil: 0,
+  };
+}
+
+/** Every project the scenario knows about has its place marked out. */
+function ensurePlans(w, scen) {
+  for (const spec of scen.plans) {
+    if (w.buildings.some(b => b.id === spec.id)) continue;
+    const at = resolveAnchor(w, spec.anchor);
+    if (!at) continue;
+    addBuilding(w, {
+      id: spec.id, type: spec.type, x: at.x, y: at.y, w: spec.w, h: spec.h,
+      state: 'plan', name: spec.name, walkable: !!spec.walkable,
+    });
+  }
+}
+
+/** Where a plan goes: a plain tile, or the nearest river bank to one. */
+function resolveAnchor(w, a) {
+  if (!a) return null;
+  if (a.tile) return { x: a.tile[0], y: a.tile[1] };
+  if (a.sandNear) {
+    const p = findSandNear(w, a.sandNear[0], a.sandNear[1]);
+    if (!p) return null;
+    const o = a.offset || [0, 0];
+    return { x: p.x + o[0], y: p.y + o[1] };
+  }
+  return null;
 }
 
 export function addTree(w, x, y, kind) {
@@ -248,6 +370,50 @@ export function freeBed(w) {
   return null;
 }
 export function homeless(w) { return w.villagers.filter(v => !v.homeId); }
+export function poorly(w) { return w.villagers.filter(v => v.poorly > 0); }
+
+/** Whose turn it is not: everybody else at the table. */
+export function otherRoles(w, id) { return Object.keys(w.players).filter(r => r !== id); }
+
+/** Clean water to drink, and a river nobody has spoiled. */
+export function hasWell(w) { return hasProject(w, 'well'); }
+export function riverClean(w) { return hasProject(w, 'privy'); }
+export function fieldFenced(w) { return hasProject(w, 'fence'); }
+
+/**
+ * The boxes the pathfinder should treat as not-there-yet, worked out once and
+ * kept on the world so rebuildBlocked() does not have to think about it.
+ */
+export function cacheRegions(w) {
+  const out = [];
+  for (const r of scenarioOf(w).regions || []) if (w.regions[r.id] === 'later') out.push(r.box);
+  w.regionBoxes = out;
+  return out;
+}
+
+/** Which part of the map a tile is in, and whether that part is there yet. */
+export function regionAt(w, x, y) {
+  const list = scenarioOf(w).regions || [];
+  for (const r of list) {
+    const b = r.box;
+    if (x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) return r;
+  }
+  return null;
+}
+export function regionOpen(w, id) { return (w.regions || {})[id] !== 'later'; }
+export function kids(w) { return w.villagers.filter(v => v.kid); }
+
+/** The house plot people are waiting on — never one of the project plans. */
+export function openSite(w) { return w.buildings.find(b => b.state === 'site') || null; }
+
+/** A project: 'plan' while it is only an idea, 'built' once it is there. */
+export function project(w, type) { return w.buildings.find(b => b.type === type) || null; }
+export function hasProject(w, type) {
+  const b = project(w, type);
+  return !!(b && b.state === 'built');
+}
+export function stumps(w) { return w.trees.filter(t => t.state === 'stump'); }
+export function saplings(w) { return w.trees.filter(t => t.state === 'sapling'); }
 
 export function blockProgress(w) {
   if (!w.block.active) return w.block.endedAt !== null ? 1 : 0;
@@ -260,14 +426,29 @@ export function blockProgress(w) {
 
 export function serialize(w) { return JSON.stringify(w); }
 
+/**
+ * Read a world back. An older world is brought up to date rather than thrown
+ * away; only a world from a newer build than this one is refused, because we
+ * cannot know what its fields mean.
+ */
 export function deserialize(text) {
-  const w = JSON.parse(text);
-  if (!w || w.schema !== SCHEMA) return null;
-  // keep the id counter ahead of anything already in the world
+  let w = null;
+  try { w = JSON.parse(text); } catch (e) { return null; }
+  if (!w || typeof w !== 'object' || !Array.isArray(w.terrain)) return null;
+  if (!runMigrations(w, SCHEMA)) return null;
+
+  // keep the id counter ahead of anything already in the world, before
+  // ensureWorld starts handing out ids of its own
   let max = 0;
-  const scan = (list) => { for (const o of list) { const n = parseInt(String(o.id).split('_')[1], 10); if (n > max) max = n; } };
-  scan(w.trees); scan(w.buildings); scan(w.sheep); scan(w.villagers); scan(w.plots); scan(w.logs); scan(w.stones);
+  const scan = (list) => {
+    if (!Array.isArray(list)) return;
+    for (const o of list) { const n = parseInt(String(o.id).split('_')[1], 10); if (n > max) max = n; }
+  };
+  scan(w.trees); scan(w.buildings); scan(w.sheep); scan(w.villagers);
+  scan(w.plots); scan(w.logs); scan(w.stones); scan(w.visitors);
   nextId = max + 1;
+
+  ensureWorld(w);
   rebuildBlocked(w);
   return w;
 }

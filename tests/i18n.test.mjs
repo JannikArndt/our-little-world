@@ -36,7 +36,7 @@ test('translating falls back rather than blowing up', () => {
   setLang('de');
   assert.equal(tr('sum.stop'), 'Hier aufhören');
   assert.equal(tr('nope.not.a.key'), 'nope.not.a.key');
-  assert.equal(tr('notice.hungry', { name: 'Bo' }), 'Bo ist hungrig und der Brotkorb ist leer.');
+  assert.equal(tr('notice.hungry', { name: 'Bo' }), 'Bo ist hungrig — der Brotkorb müsste gefüllt werden.');
   assert.equal(trn('sum.felled', 1), 'einen Baum gefällt');
   assert.equal(trn('sum.felled', 3, { n: 3 }), '3 Bäume gefällt');
   setLang('en');

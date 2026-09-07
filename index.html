@@ -6,6 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#f6efe2">
+<!-- the server writes the build it served in here; see server/serve.mjs -->
+<meta name="olw-build" content="dev">
 <meta name="description" content="Our Little World - a calm cooperative world for two people to grow together.">
 <title>Our Little World</title>
 <link rel="stylesheet" href="styles/main.css">
@@ -22,6 +24,11 @@
     <p class="subtitle" data-t="app.subtitle">A world for two people to look after together.</p>
 
     <div id="startBody"></div>
+
+    <p class="start-foot">
+      <button id="versionBtn" class="link-btn" type="button">v0 · ✨</button>
+      <button id="reloadBtn" class="link-btn" type="button">↻</button>
+    </p>
   </div>
 </div>
 
@@ -56,9 +63,9 @@
       <button id="partnerChip" class="chip partner" type="button">🌿 <span id="partnerState">waiting…</span></button>
     </div>
   </footer>
-
-  <div id="overlay" class="overlay hidden"></div>
 </div>
+
+<div id="overlay" class="overlay hidden"></div>
 
 <script type="module" src="src/main.js"></script>
 <noscript><p style="padding:24px;font:16px system-ui">Our Little World needs JavaScript.</p></noscript>

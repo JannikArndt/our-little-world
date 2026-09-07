@@ -15,6 +15,7 @@ WORKDIR /app
 # Only what the server actually serves. Tests and tools stay out of the image.
 COPY package.json ./
 COPY index.html ./
+COPY stats.html ./
 COPY server/ ./server/
 COPY src/ ./src/
 COPY styles/ ./styles/

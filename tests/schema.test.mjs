@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { gzipSync } from 'node:zlib';
+import { readFileSync } from 'node:fs';
 
 import {
   createWorld, serialize, deserialize, ensureWorld, SCHEMA, BLOCK_TICKS,
@@ -194,4 +195,27 @@ test('a world stays the same size however long it is played', () => {
   assert.ok(thirty - ten < 500, 'a world grew by ' + (thirty - ten) + ' bytes over twenty more blocks');
   // and it gzips well, which is what the relay's bandwidth rests on
   assert.ok(gzipSync(serialize(play(createWorld(7), 10))).length * 4 < ten, 'a world should gzip better than 4:1');
+});
+
+
+/* ---------------- what actually gets on the boat ---------------- */
+
+// The build id hashes everything that ships, and the image copies in an
+// explicit list. When those two disagree the site serves a build id nobody
+// can reproduce and `npm run deployed` never says yes — which is exactly how
+// stats.html reached production as a 404.
+test('the image carries everything the build id hashes', () => {
+  const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
+  const copied = [];
+  for (const line of docker.split('\n')) {
+    const m = /^COPY\s+(\S+)\s/.exec(line.trim());
+    if (m) copied.push(m[1].replace(/\/$/, ''));
+  }
+  const hashed = readFileSync(new URL('../server/buildid.mjs', import.meta.url), 'utf8');
+  const list = /const SERVED = \[([^\]]*)\]/.exec(hashed);
+  assert.ok(list, 'buildid.mjs still has a SERVED list');
+  const served = list[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')).filter(Boolean);
+
+  for (const part of served)
+    assert.ok(copied.indexOf(part) >= 0, part + ' is hashed into the build id but never copied into the image');
 });

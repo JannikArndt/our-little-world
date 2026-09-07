@@ -128,6 +128,23 @@ async function main() {
     return pt;
   };
 
+  /**
+   * Tap until the thing that should open has opened. People and sheep answer
+   * before the ground does, and a plan can have somebody standing on every
+   * tile of it for a few seconds — she wanders off again, so the cure is
+   * another tap rather than a longer wait.
+   */
+  const tapFor = async (cands, lookAt, words) => {
+    for (let go = 0; go < 6; go++) {
+      await tapTile(cands, lookAt);
+      try {
+        await page.waitForSelector('text=' + words, { timeout: 2500 });
+        return;
+      } catch (e) { await page.waitForTimeout(500); }
+    }
+    throw new Error('six taps and nothing offered "' + words + '"');
+  };
+
   // world sanity
   const info = await api(() => {
     const w = window.OLW.world;
@@ -429,7 +446,7 @@ async function main() {
     const b = window.OLW.world.buildings.find(b => b.type === 'boat');
     return [[b.x + 0.5, b.y + 0.5], [b.x + 1.5, b.y + 0.5], [b.x + 2.5, b.y + 0.5]];
   });
-  await tapTile(landing);
+  await tapFor(landing, null, 'Build a fishing boat');
   await step(page, '25f-landing-bubble', 400);
   await page.click('text=Build a fishing boat');
   await step(page, '25g-boat', 900);
@@ -438,8 +455,7 @@ async function main() {
   if (!boatUp) throw new Error('the boat was not built');
 
   await api(() => { const g = window.OLW; g.role = 'B'; g.other = 'A'; });
-  await tapTile(landing);
-  await page.waitForTimeout(300);
+  await tapFor(landing, null, 'Go fishing');
   await page.click('text=Go fishing');
   await step(page, '25h-fishing', 600);
   // three casts: tap the water, then tap again the moment the float goes under
@@ -480,8 +496,7 @@ async function main() {
         for (let dx = 0; dx < b.w; dx++) out.push([b.x + dx + 0.5, b.y + dy + 0.5]);
       return out;
     }, pr);
-    await tapTile(spots, spots[Math.floor(spots.length / 2)]);
-    await page.waitForTimeout(300);
+    await tapFor(spots, spots[Math.floor(spots.length / 2)], pr.label);
     await page.click('text=' + pr.label);
     await step(page, pr.shot, 800);
     const up = await api((arg) => window.OLW.world.buildings.some(b => b.type === arg.type && b.state === 'built'), pr);

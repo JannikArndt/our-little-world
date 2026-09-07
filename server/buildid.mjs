@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 
 /** Everything the deployed thing is made of: the page, and what serves it. */
-const SERVED = ['index.html', 'src', 'styles', 'server'];
+const SERVED = ['index.html', 'stats.html', 'src', 'styles', 'server'];
 
 function walk(dir, out) {
   const s = statSync(dir, { throwIfNoEntry: false });

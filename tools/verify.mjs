@@ -1,6 +1,6 @@
 // Everything that has to pass before a push, in one command.
 //
-//   npm run verify          unit tests, the browser play-through, and German
+//   npm run verify          unit tests, the play-through, German, the lobby, /stats
 //   npm run verify -- quick just the unit tests and a shortened play-through
 //
 // It brings up its own server on a free port and takes it down again, so no
@@ -67,6 +67,7 @@ const steps = [
 ];
 if (!quick) steps.push(['the same in German', () => run('node', ['tools/german.mjs'], { BASE: base })]);
 if (!quick) steps.push(['two browsers finding each other', () => run('node', ['tools/lobby.mjs'], { BASE: base })]);
+if (!quick) steps.push(['the page at /stats', () => run('node', ['tools/stats.mjs'], { BASE: base })]);
 
 let ok = true;
 for (const [name, go] of steps) {

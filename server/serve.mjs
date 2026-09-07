@@ -67,9 +67,6 @@ function stamp(html) {
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
-    // /stats is the front door to /api/stats, because it is the one endpoint
-    // here meant to be typed into an address bar
-    if (url.pathname === '/stats') req.url = '/api/stats';
     if (await api(req, res)) return;
     // "is what I pushed live?" — compare `build` with `node server/buildid.mjs`
     if (url.pathname === '/version') {
@@ -84,6 +81,9 @@ const server = createServer(async (req, res) => {
     }
     let p = decodeURIComponent(url.pathname);
     if (p === '/' || p === '') p = '/index.html';
+    // the one address here meant to be typed into a browser: the page reads
+    // /api/stats, which is the same numbers without the pictures
+    if (p === '/stats') p = '/stats.html';
     const file = join(ROOT, normalize(p).replace(/^(\.\.[/\\])+/, ''));
     if (!file.startsWith(ROOT)) { res.writeHead(403); res.end('no'); return; }
     const s = await stat(file).catch(() => null);

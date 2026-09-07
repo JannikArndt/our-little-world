@@ -77,7 +77,7 @@ POST /api/worlds/:name/seen       still here — keeps the world from expiring
 POST /api/worlds/:name/leave      give the spot back
 GET  /api/worlds/:name/snapshot   the world as it was last left
 POST /api/worlds/:name/snapshot   the world as it is now (from the host)
-GET  /api/stats                   how much this gets played (also at /stats)
+GET  /api/stats                   how much this gets played (a page at /stats)
 ```
 
 The page asks `/api/health` once per host and remembers the answer, which is how
@@ -127,8 +127,15 @@ there is nothing in it that belongs to anybody. It answers two questions —
 numbers that were never attached to a person in the first place.
 
 ```
-GET /stats        (the same as /api/stats; cached for half a minute)
+/stats            a page: the week, every day, how far worlds get, what got built
+/api/stats        the same numbers as JSON, cached for half a minute
 ```
+
+The page leads with one number — spots taken in the last seven days — then a
+column per calendar day, two histograms for how far worlds get, and a bar per
+milestone and per deed. One green for every chart, because every chart here has
+one series; hovering a column says the rest of that day, and every chart has its
+numbers as a table underneath, so nothing is only reachable by hovering.
 
 | | |
 |---|---|
@@ -394,6 +401,7 @@ starts fast on an old iPad and stays quiet on the battery.
 
 ```
 index.html
+stats.html       the page at /stats: how much this gets played
 styles/main.css
 src/
   core/          the world, and nothing that draws
@@ -428,7 +436,7 @@ server/
   stats.mjs      how much this gets played, in numbers that are nobody's
   buildid.mjs    a hash of everything that ships, for /version
 tests/           simulation, schema, guide, i18n, relay, directory and stats
-tools/           verify.mjs and what it runs: smoke, german, lobby; deployed
+tools/           verify.mjs and what it runs: smoke, german, lobby, stats; deployed
 ```
 
 Two rules keep it honest:
@@ -466,17 +474,19 @@ shapes.
 ## Tests
 
 ```
-npm run verify          # everything: unit tests, a play-through, German, the lobby
+npm run verify          # everything: unit tests, a play-through, German, the lobby, /stats
 npm run verify -- quick # just the unit tests and a shortened play-through
 npm test                # the unit tests: simulation, schema, guide, i18n, relay, worlds, stats
 node tools/lobby.mjs    # two browsers find each other without typing anything
+node tools/stats.mjs    # the page at /stats, with some worlds put in first
 ```
 
 `npm run verify` starts its own server on a free port and stops it again, so
-there is nothing to set up and nothing left listening. It runs four things in
+there is nothing to set up and nothing left listening. It runs five things in
 order and stops at the first failure: the unit tests, `tools/smoke.mjs`,
-`tools/german.mjs` and `tools/lobby.mjs`. The parts can still be run by hand
-against a server of your own (`npm start`, then `BASE=... node tools/smoke.mjs`).
+`tools/german.mjs`, `tools/lobby.mjs` and `tools/stats.mjs`. The parts can still
+be run by hand against a server of your own (`npm start`, then
+`BASE=... node tools/smoke.mjs`).
 
 The play-through picks a role, fells a tree, saws it, designs and tests a bridge,
 looks after a sheep, sows the field, lays a road, designs a house, watches
@@ -494,10 +504,17 @@ one picks it out of the list, they share a world, the world stops being listed,
 and reloading the page puts the second player straight back in with the same
 role.
 
+`tools/stats.mjs` puts three worlds of different ages into the directory and
+then reads `/stats` in a browser: that the week's numbers are there, that the
+day chart drew something, that a median is stated, that the milestones and the
+deeds have their rows, that every chart has its table of numbers, that hovering
+a day says more than the column does, and that nothing hangs off the side of a
+phone.
+
 `npm run verify -- quick` keeps the unit tests and the play-through and drops
 the rest — the screenshots, the second browser, the walk round three screen
-sizes, German and the lobby. About a minute, for iterating. The full run is what
-a push waits for.
+sizes, German, the lobby and the stats page. About a minute, for iterating. The
+full run is what a push waits for.
 
 ## Adding to the world
 

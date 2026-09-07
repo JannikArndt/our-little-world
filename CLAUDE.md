@@ -104,7 +104,15 @@ reads the whole report back to make sure none of those has crept in.
 Counting rides along with what the directory already writes: each world carries
 which days it has been counted on and the furthest it got, and a world folds
 that last part into the ledger on its way out. A new entry in `PROJECTS` becomes
-a milestone on its own — there is nothing to add here for it.
+a milestone on its own — give it a line in `MILESTONES` and `DEEDS` in
+`stats.html` so it is called something, and there is nothing else to do.
+
+The page is `stats.html`, served at `/stats`, and it is in the build hash like
+anything else that ships. One green (`#5d9150`, the Keeper's) for every chart,
+because every chart there has one series; bars are capped at 24px so they never
+fill their slot; and every chart keeps its numbers in a table underneath, so no
+value is reachable only by hovering. `tools/stats.mjs` looks at it in a browser
+during `npm run verify`.
 
 ## Adding a task to the guide
 

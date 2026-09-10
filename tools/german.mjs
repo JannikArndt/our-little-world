@@ -139,10 +139,16 @@ await p.click('text=Diesen Baum fällen');
 await p.waitForTimeout(500);
 await scan('chop');
 await p.screenshot({ path: out + '63-de-chop.png' });
-await p.click('text=nach unten');
-const trunk = await p.locator('.panel canvas').boundingBox();
-for (let i = 0; i < 3; i++) { await p.mouse.click(trunk.x + trunk.width * 0.5, trunk.y + trunk.height * 0.5); await p.waitForTimeout(160); }
-await p.waitForTimeout(2500);
+const pic = p.locator('.panel canvas');
+for (let i = 0; i < 12; i++) {
+  const aim = await api(() => window.OLW._chop);
+  if (!aim) break;
+  const box = await pic.boundingBox();
+  await pic.click({ position: { x: box.width * 0.5, y: box.height * (aim.y / aim.H) } });
+  await p.waitForTimeout(150);
+  await scan('chopping');
+}
+await p.waitForTimeout(2600);
 await scan('after chop');
 
 // the workshop, both machines

@@ -121,6 +121,42 @@ card function. A card says what to *do*, names who it is about (`subject`, so
 the card can draw them and the view can find them), and gives every countable
 step a `count` so a tick explains itself.
 
+**The order is the whole design.** `allProblems()` walks `CONCERNS` and returns
+everything that applies; only the first `MAX_ACTIVE` (two) are ever shown, and
+the rest step up as those are finished. So a new concern's place in the list
+decides whether anybody will see it this morning — put it where it belongs, not
+at the end.
+
+## Nothing is laid over the world
+
+The village is the tap target, so nothing covers it. What needs doing lives
+behind your own role chip, with a red number on the chip counting it.
+
+- The number means **jobs**: what the other player asked you for, plus the two
+  active concerns. Never news. A player learns what the number means once, and
+  it has to keep meaning it.
+- `w.notices` still exists and the simulation still raises them. They surface
+  under *What has happened* in the same menu, except where `NOTICE_JOB` in
+  `hud.js` says a concern already covers one — the empty bread basket is not
+  worth saying twice.
+- A tally of what somebody has done is one row in `DEEDS` in `hud.js` plus its
+  two strings; it reads the `done` count that `actions.js` already keeps, so a
+  new deed usually means one more `tally()` call and nothing else.
+
+## The camera reaches every corner
+
+`clampCamera()` lets the camera travel anywhere from `0` to `WORLD_W`/`WORLD_H`
+in both directions — **not** only far enough to keep the world filling the
+screen. Anything a player has to tap can be brought to the middle, away from
+the top bar and the notch, and its bubble opens in clear air.
+
+That is easy to undo by accident: the world is framed to *cover* the viewport,
+which makes one axis fit exactly, and any rule of the form "if this axis fits,
+pin it to the middle" silently kills panning on that axis — on a phone, always
+the vertical one. The maximum zoom is a size on the glass (`MAX_TILE_PX`), not
+a bare number, because the same number means a different thing on a phone and
+on a laptop. `tools/smoke.mjs` checks both on every screen size it walks.
+
 ## Writing browser tests
 
 - **People answer a tap before the ground does.** A villager standing on the

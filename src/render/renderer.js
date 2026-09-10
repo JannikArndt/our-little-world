@@ -102,6 +102,19 @@ export class Renderer {
     this.clampCamera();
   }
 
+  /**
+   * The canvas can change size with no resize event to announce it: a phone's
+   * address bar sliding away moves the visual viewport, `--app-h` re-lays the
+   * page, and the stage quietly gets taller. Until we notice, every tap is
+   * mapped through the old rectangle and lands somewhere else. So the frame
+   * loop asks, and re-measuring only actually happens when something moved.
+   */
+  remeasure() {
+    const r = this.canvas.getBoundingClientRect();
+    if (Math.abs(r.width - this.view.w) < 0.5 && Math.abs(r.height - this.view.h) < 0.5) return;
+    this.resize();
+  }
+
   scale() { return this.fit * this.cam.zoom; }
 
   /**

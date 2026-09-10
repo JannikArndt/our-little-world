@@ -1,21 +1,52 @@
 // Felling a tree.
-// The rule you can work out by looking: a tree falls the way you cut it —
-// unless you try to drop it straight into the wind.
+//
+// One tree, filling the panel, and the notch you cut into it. The mark tells
+// you where the axe should land; it moves to the other lip of the notch after
+// every swing, so each one has to be aimed afresh.
+//
+// The rule you can work out by looking: **a clean bite is a log**. The pile on
+// the grass grows with every stroke that lands on the mark and stands still
+// for every one that glances off — so the wood a tree gives is the wood you
+// cut out of it. And the mark is wider for hands that have done this before,
+// which is the only thing practice buys.
 
-import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overlay.js';
-import { T, TILE, tileAt, inBounds } from '../core/grid.js';
-import { C, glyph, drawTree, drawStump, drawHouse, drawSite, drawWorkshop } from '../render/art.js';
-import { makeRng } from '../core/rng.js';
-import { tr } from '../core/i18n.js';
+import { openPanel, makeCanvas, onPointer, loop } from '../ui/overlay.js';
+import { T, tileAt, inBounds } from '../core/grid.js';
+import { C, rr, glyph } from '../render/art.js';
+import { tr, trn } from '../core/i18n.js';
 
-const DIRS = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] };
-const ARROW = { N: '⬆️', S: '⬇️', E: '➡️', W: '⬅️' };
-const R = 3;                      // tiles shown around the tree
+const W = 340, H = 340;
+const CX = 170;                 // the middle of the trunk
+const GROUND = 296;             // where it goes into the earth
+const TOP = 130;                // where it goes into the leaves
+const HALF_B = 30, HALF_T = 21; // how thick it is at the foot and at the head
+const CUT = 246;                // the height an axe swings at
+const SPREAD = 21;              // half the mouth of the notch
+const SKY = '#cfe3d4';
+
+const CANOPY = [['#6ea75a', '#8cc471'], ['#5f9a4d', '#7fb865'], ['#77b063', '#9ad07e']];
+
+/** How thick the trunk is at a given height. */
+function half(y) {
+  const f = Math.max(0, Math.min(1, (y - TOP) / (GROUND - TOP)));
+  return HALF_T + (HALF_B - HALF_T) * f;
+}
+const leftEdge = (y) => CX - half(y);
+
+// How far in the notch has to go before the tree gives: past the middle, so
+// what is left is a hinge rather than a post.
+const NEED = half(CUT) * 1.24;
+const BITE = { clean: NEED / 4.7, fair: NEED / 7.7, wide: NEED / 19 };
+
+/* ---- where it goes over ---------------------------------------------- */
+
+const DIRS = { S: [0, 1], W: [-1, 0], E: [1, 0], N: [0, -1] };
+const RANK = { clear: 0, tree: 1, edge: 2, house: 3, water: 4 };
 
 function look(w, tree, dir) {
-  const [dx, dy] = DIRS[dir];
+  const d = DIRS[dir];
   for (let i = 1; i <= 2; i++) {
-    const x = tree.x + dx * i, y = tree.y + dy * i;
+    const x = tree.x + d[0] * i, y = tree.y + d[1] * i;
     if (!inBounds(x, y)) return 'edge';
     if (tileAt(w, x, y) === T.WATER) return 'water';
     if (w.buildings.some(b => b.state !== 'site' && x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h)) return 'house';
@@ -24,243 +55,270 @@ function look(w, tree, dir) {
   return 'clear';
 }
 
-const MISHAP = {
-  water: ['chop.water', 1, 0],
-  house: ['chop.house', 2, 0],
-  tree:  ['chop.tree', 2, 0],
-  edge:  ['chop.edge', 2, 0],
-  clear: ['chop.clear', 2, 2],
-};
+/** Nobody has to choose any more: it goes wherever there is room for it. */
+function whereItFalls(w, tree) {
+  let best = 'S', score = 9;
+  for (const d in DIRS) {
+    const r = RANK[look(w, tree, d)];
+    if (r < score) { score = r; best = d; }
+  }
+  return best;
+}
+
+/* ---------------------------------------------------------------------- */
 
 export function openChop(game, tree) {
   const w = game.world;
-  const rng = makeRng((parseInt(String(tree.id).split('_')[1], 10) * 2654435761) ^ w.seed);
-  const windDir = ['N', 'S', 'E', 'W'][Math.floor(rng() * 4)];
-  const around = {};
-  for (const d in DIRS) around[d] = look(w, tree, d);
+  const dir = whereItFalls(w, tree);
+  const kind = CANOPY[(tree.kind - 1) % 3];
+
+  // The only thing practice buys: a bigger mark to hit.
+  const fells = (w.players[game.role].done.fell || 0);
+  const hand = Math.min(3, Math.floor(fells / 2));
+  const core = 10 + hand * 4;
 
   const p = openPanel({ title: tr('chop.title'), lead: tr('chop.lead') });
-
-  const cv = makeCanvas(340, 300);
+  const cv = makeCanvas(W, H);
+  cv.canvas.className = 'tall';        // a tree is taller than the panel is wide
   p.body.appendChild(cv.canvas);
 
-  const pad = el('div', 'row');
-  p.panel.appendChild(pad);
+  let depth = 0, logs = 0;
+  let next = 'top';                       // which lip of the notch is marked
+  let swing = 0, shake = 0, falling = 0, settle = 0, done = false;
+  let chips = [], scars = [];
 
-  let chosen = null, chops = 0, falling = 0, done = false, shake = 0, nudge = 0;
+  const markY = () => (next === 'top' ? CUT - SPREAD : CUT + SPREAD);
 
-  const dirBtns = {};
-  for (const d of ['W', 'N', 'S', 'E']) {
-    const b = el('button', 'btn soft small');
-    b.innerHTML = ARROW[d] + ' <span style="font-size:13px">' + tr('chop.dir.' + d) + '</span>';
-    b.addEventListener('click', () => choose(d));
-    dirBtns[d] = b;
-    pad.appendChild(b);
-  }
+  // so a test can aim at the mark instead of guessing at it; it goes away the
+  // moment the axe is out of the tree, which is also how a test knows to stop
+  const publish = () => {
+    game._chop = done ? null : { W: W, H: H, y: markY(), core: core, logs: logs, depth: depth };
+  };
 
-  const row2 = p.row();
-  const leave = p.button(tr('chop.leave'), 'soft', () => { stop(); p.close(); });
-  row2.appendChild(leave);
+  p.readout(tr('chop.aim'));
+  publish();
 
-  let swing = 0, chips = [];
-
-  function chop() {
+  function strike(y) {
     if (done) return;
-    if (!chosen) { p.readout(tr('chop.chooseFirst')); nudge = 1; return; }
+    const err = Math.abs(y - markY());
+    const how = err <= core ? 'clean' : err <= core * 2.4 ? 'fair' : 'wide';
+    depth += BITE[how];
     swing = 1; shake = 1;
-    chops++;
-    for (let i = 0; i < 7; i++)
-      chips.push({ x: 0, y: 0, vx: (Math.random() - 0.5) * 3.2, vy: -1.4 - Math.random() * 1.6, life: 1 });
-    if (chops >= 3) {
+    if (how === 'clean') logs++;
+    else if (how === 'wide') scars.push({ y: Math.max(TOP + 10, Math.min(GROUND - 6, y)) });
+
+    const apex = leftEdge(CUT) + Math.min(depth, NEED);
+    for (let i = 0; i < (how === 'clean' ? 9 : 5); i++)
+      chips.push({ x: apex, y: CUT, vx: -1 - Math.random() * 3, vy: -1.4 - Math.random() * 1.8, life: 1 });
+
+    if (depth >= NEED) {
       done = true;
       falling = 0.0001;
+      row.style.display = 'none';        // nothing left to leave standing
+      p.readout(tr('chop.timber'));
     } else {
-      p.readout(tr('chop.chips', { n: 3 - chops }));
+      p.readout(tr('chop.' + how) + (depth > NEED * 0.72 ? ' ' + tr('chop.nearly') : ''));
+      next = next === 'top' ? 'bot' : 'top';
     }
+    publish();
   }
 
-  p.readout(tr('chop.wind', { dir: tr('chop.compass.' + windDir), arrow: ARROW[windDir] }));
+  onPointer(cv.canvas, W, H, { down(pt) { strike(pt.y); } });
 
-  /* ---- drawing ---- */
-  const S = 262 / ((R * 2 + 1) * TILE);          // the 7x7 patch around the tree
-  const ox = 170, oy = 150;
-  const MARK = 2 * TILE * S;                    // where the four choices sit
+  const row = p.row();
+  row.appendChild(p.button(tr('chop.leave'), 'soft', () => { stop(); game._chop = null; p.close(); }));
 
-  function choose(d) {
-    if (done) return;
-    chosen = d; chops = 0;
-    for (const k in dirBtns) dirBtns[k].className = 'btn ' + (k === d ? '' : 'soft') + ' small';
-    p.readout(tr('chop.notch', { side: tr('chop.side.' + d) }));
-  }
+  /* ---- drawing ------------------------------------------------------- */
 
-  function drawScene(t) {
-    const ctx = cv.ctx;
-    ctx.clearRect(0, 0, 340, 300);
-    ctx.fillStyle = '#cfe3d4'; ctx.fillRect(0, 0, 340, 300);
-    ctx.save();
-    ctx.translate(ox, oy); ctx.scale(S, S);
-    ctx.translate(-(tree.x * TILE + TILE / 2), -(tree.y * TILE + TILE / 2));
-
-    for (let y = tree.y - R; y <= tree.y + R; y++)
-      for (let x = tree.x - R; x <= tree.x + R; x++) {
-        const tt = inBounds(x, y) ? tileAt(w, x, y) : T.ROCK;
-        ctx.fillStyle = tt === T.WATER ? C.water : tt === T.SAND ? C.sand : tt === T.ROAD ? C.road
-          : tt === T.FIELD ? C.field : tt === T.FOREST ? C.forest : tt === T.ROCK ? '#cfd6c8' : C.grass;
-        ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
-      }
-    for (const b of w.buildings) {
-      if (Math.abs(b.x - tree.x) > R + 3 || Math.abs(b.y - tree.y) > R + 3) continue;
-      if (b.state === 'site') drawSite(ctx, b, t);
-      else if (b.type === 'workshop') drawWorkshop(ctx, b, t, w.tick);
-      else drawHouse(ctx, b, t, w.tick);
-    }
-    for (const o of w.trees) {
-      if (o.id === tree.id) continue;
-      if (Math.abs(o.x - tree.x) > R || Math.abs(o.y - tree.y) > R) continue;
-      if (o.state === 'standing') drawTree(ctx, o, t); else drawStump(ctx, o);
-    }
-
-    // our tree, with a ring so you can tell which one it is
-    const cx = tree.x * TILE + TILE / 2, cy = tree.y * TILE + TILE / 2;
-    if (!done) {
-      ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2 / S;
-      ctx.setLineDash([5 / S, 4 / S]);
-      ctx.beginPath(); ctx.ellipse(cx, cy + 3, 15, 9, 0, 0, Math.PI * 2); ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    ctx.save();
-    ctx.translate(cx, cy);
-    if (falling > 0) {
-      const e = Math.min(1, falling);
-      const dir = fellDir();
-      const ang = (Math.PI / 2) * (1 - Math.pow(1 - e, 3)) * (dir === 'W' ? -1 : dir === 'E' ? 1 : 0.001);
-      ctx.rotate(ang);
-      if (dir === 'N' || dir === 'S') ctx.scale(1, 1 - e * 0.6);
-    } else if (shake > 0) {
-      ctx.rotate(Math.sin(t * 0.06) * 0.05 * shake);
-    }
-    // front and centre: this is the trunk you are swinging at
-    ctx.translate(0, 9); ctx.scale(1.35, 1.35); ctx.translate(0, -9);
-    drawTree(ctx, { x: -0.5, y: -0.5, kind: tree.kind, sway: 0 }, falling > 0 ? 0 : t);
-    if (chosen && !done) {                        // the notch, on the side it will fall
-      const [nx, ny] = DIRS[chosen];
-      ctx.fillStyle = '#f0e0c0';
+  function trunk(ctx) {
+    ctx.fillStyle = C.wood;
+    ctx.beginPath();
+    ctx.moveTo(CX - HALF_T, TOP);
+    ctx.lineTo(CX + HALF_T, TOP);
+    ctx.lineTo(CX + HALF_B, GROUND);
+    ctx.lineTo(CX - HALF_B, GROUND);
+    ctx.closePath();
+    ctx.fill();
+    // bark, so the trunk has a grain to aim along
+    ctx.strokeStyle = 'rgba(120,80,45,.35)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    for (let i = 0; i < 5; i++) {
+      const f = 0.18 + i * 0.16;
       ctx.beginPath();
-      ctx.moveTo(nx * 3.5, 7 + ny * 1.5);
-      ctx.lineTo(nx * 3.5 + (ny ? 4 : 0), 11 + ny * 1.5);
-      ctx.lineTo(nx * 3.5 + (ny ? -4 : nx * 4), 9 + ny * 3.5);
-      ctx.closePath(); ctx.fill();
-    }
-    ctx.restore();
-    ctx.restore();
-
-    // wind ribbon
-    ctx.save();
-    ctx.globalAlpha = 0.75;
-    ctx.strokeStyle = '#7aa7c4'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
-    const [wx, wy] = DIRS[windDir];
-    for (let i = 0; i < 3; i++) {
-      const ph = ((t * 0.00035 + i * 0.33) % 1);
-      const bx = 170 - wx * 150 + wx * 300 * ph, by = 40 + i * 16 - wy * 120 + wy * 240 * ph;
-      ctx.globalAlpha = 0.55 * Math.sin(ph * Math.PI);
-      ctx.beginPath();
-      ctx.moveTo(bx, by); ctx.lineTo(bx + wx * 22 + (wx ? 0 : 22), by + wy * 22);
+      ctx.moveTo(CX - HALF_T + HALF_T * 2 * f, TOP + 8);
+      ctx.lineTo(CX - HALF_B + HALF_B * 2 * f, GROUND - 6);
       ctx.stroke();
     }
+    for (const s of scars) {
+      ctx.fillStyle = 'rgba(90,60,32,.5)';
+      ctx.beginPath();
+      ctx.moveTo(leftEdge(s.y) - 1, s.y - 5);
+      ctx.lineTo(leftEdge(s.y) + 9, s.y);
+      ctx.lineTo(leftEdge(s.y) - 1, s.y + 5);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  function notch(ctx) {
+    if (depth <= 0) return;
+    const d = Math.min(depth, NEED);
+    ctx.fillStyle = SKY;
+    ctx.beginPath();
+    ctx.moveTo(leftEdge(CUT - SPREAD) - 3, CUT - SPREAD);
+    ctx.lineTo(leftEdge(CUT) + d, CUT);
+    ctx.lineTo(leftEdge(CUT + SPREAD) - 3, CUT + SPREAD);
+    ctx.closePath(); ctx.fill();
+    // the pale face of the cut, which is how you see how deep you are; it stays
+    // inside the bark, or it draws a little beak out into the air
+    ctx.strokeStyle = '#e8d3aa'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(leftEdge(CUT - SPREAD) + 2, CUT - SPREAD);
+    ctx.lineTo(leftEdge(CUT) + d, CUT);
+    ctx.lineTo(leftEdge(CUT + SPREAD) + 2, CUT + SPREAD);
+    ctx.stroke();
+  }
+
+  function crown(ctx, t) {
+    const sway = Math.sin(t * 0.0012) * (falling > 0 ? 0 : 2.2);
+    ctx.save();
+    ctx.translate(CX + sway, TOP - 6);
+    ctx.fillStyle = kind[0];
+    ctx.beginPath(); ctx.ellipse(0, -46, 80, 60, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-52, -8, 44, 34, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(52, -8, 44, 34, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = kind[1];
+    ctx.beginPath(); ctx.ellipse(-16, -60, 54, 40, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.16)';
+    ctx.beginPath(); ctx.ellipse(-28, -76, 26, 17, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
-    ctx.font = '20px system-ui, "Apple Color Emoji", sans-serif';
-    ctx.textAlign = 'left'; ctx.fillText('💨 ' + ARROW[windDir], 10, 26);
+  }
 
-    // direction markers with what is over there
-    if (!done) {
-      for (const d in DIRS) {
-        const [dx, dy] = DIRS[d];
-        const mx = ox + dx * MARK, my = oy + dy * MARK;
-        ctx.globalAlpha = chosen === d ? 1 : 0.8;
-        ctx.fillStyle = chosen === d ? '#f2c14e' : 'rgba(255,253,248,.92)';
-        ctx.strokeStyle = 'rgba(67,55,42,.3)'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(mx, my, 22, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.globalAlpha = 1;
-        const mark = around[d] === 'water' ? '🌊' : around[d] === 'house' ? '🏠'
-          : around[d] === 'tree' ? '🌳' : around[d] === 'edge' ? '🪨' : ARROW[d];
-        glyph(ctx, mark, mx, my, 18);
-      }
+  function logPile(ctx) {
+    // one log end for every clean bite, which is the whole rule of the game
+    for (let i = 0; i < Math.min(logs, 8); i++) {
+      const col = i % 3, rowN = Math.floor(i / 3);
+      const x = 258 + col * 26 + rowN * 13, y = 314 - rowN * 22;
+      ctx.fillStyle = C.woodDark;
+      ctx.beginPath(); ctx.ellipse(x, y, 12, 10, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e8d3aa';
+      ctx.beginPath(); ctx.ellipse(x, y, 8.5, 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(140,95,50,.5)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(x, y, 4.5, 3.6, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    if (logs > 8) glyph(ctx, '…', 330, 314, 16);
+  }
+
+  function mark(ctx, t) {
+    const y = markY();
+    const pulse = 0.65 + 0.35 * Math.sin(t * 0.005);
+    ctx.save();
+    // the width of the mark is the width of the thing you have to hit
+    ctx.globalAlpha = 0.28 * pulse;
+    ctx.fillStyle = '#f2c14e';
+    rr(ctx, CX - HALF_B - 16, y - core, HALF_B * 2 + 32, core * 2, core);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#e0a52f'; ctx.lineWidth = 2.5; ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    ctx.moveTo(CX - HALF_B - 20, y); ctx.lineTo(CX + HALF_B + 20, y);
+    ctx.stroke(); ctx.setLineDash([]);
+    ctx.restore();
+
+    // the axe waits beside the mark and swings into it
+    const s = swing > 0 ? Math.sin((1 - swing) * Math.PI) : 0;
+    ctx.save();
+    ctx.translate(CX - HALF_B - 44 + s * 30, y - 8 + s * 6);
+    ctx.rotate(-0.7 + s * 1.5);
+    glyph(ctx, '🪓', 0, 0, 36);
+    ctx.restore();
+  }
+
+  function draw(t) {
+    const ctx = cv.ctx;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = SKY; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = C.grass; ctx.fillRect(0, GROUND - 2, W, H - GROUND + 2);
+    ctx.fillStyle = C.grassDark;
+    for (let i = 0; i < 14; i++) {
+      const gx = 8 + i * 25, gy = GROUND + 8 + (i % 3) * 11;
+      ctx.fillRect(gx, gy, 2, 6);
     }
 
-    // the axe waits beside the trunk, and swings when you tap it
-    if (!done) {
-      ctx.save();
-      ctx.translate(ox - 40, oy + 34);   // down and to the left, clear of the four choices
-      ctx.rotate(-0.5 + Math.sin(Math.min(1, 1 - swing) * Math.PI) * 1.5 * (swing > 0 ? 1 : 0));
-      glyph(ctx, '🪓', 0, 0, 34);
-      ctx.restore();
-      if (!chosen || nudge > 0) {
-        ctx.save();
-        ctx.globalAlpha = 0.9;
-        ctx.fillStyle = nudge > 0 ? '#c05b4d' : 'rgba(67,55,42,.75)';
-        ctx.font = '700 13px -apple-system, system-ui, sans-serif';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(tr('chop.pickSide'), 170, 286);
-        ctx.restore();
-      } else {
-        ctx.fillStyle = 'rgba(67,55,42,.75)';
-        ctx.font = '700 13px -apple-system, system-ui, sans-serif';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(tr('chop.tapTrunk'), 170, 286);
-      }
+    // the shadow belongs to the ground, so it is drawn before anything turns
+    ctx.fillStyle = 'rgba(60,50,35,.14)';
+    ctx.beginPath(); ctx.ellipse(CX + 14, GROUND + 6, 44, 10, 0, 0, Math.PI * 2); ctx.fill();
+
+    ctx.save();
+    if (falling > 0) {
+      // over it goes, turning on the hinge the notch left behind, and then
+      // settling the last little way onto the grass
+      const e = 1 - Math.pow(1 - Math.min(1, falling), 3);
+      ctx.translate(CX - half(CUT) * 0.2, CUT + e * 26);
+      ctx.rotate(-e * 1.56);
+      ctx.translate(-(CX - half(CUT) * 0.2), -CUT);
+    } else if (shake > 0) {
+      ctx.translate(CX, GROUND);
+      ctx.rotate(Math.sin(t * 0.05) * 0.012 * shake);
+      ctx.translate(-CX, -GROUND);
+    }
+    crown(ctx, t);
+    trunk(ctx);
+    notch(ctx);
+    ctx.restore();
+
+    if (falling > 0) {                     // what is left standing
+      ctx.fillStyle = C.woodDark;
+      rr(ctx, CX - half(CUT) - 1, CUT - 4, half(CUT) * 2 + 2, GROUND - CUT + 4, 4); ctx.fill();
+      ctx.fillStyle = '#e8d3aa';
+      ctx.beginPath(); ctx.ellipse(CX, CUT - 2, half(CUT), 8, 0, 0, Math.PI * 2); ctx.fill();
+    } else {
+      mark(ctx, t);
     }
 
-    // wood chips fly off the trunk
     for (const c of chips) {
       ctx.globalAlpha = Math.max(0, c.life);
       ctx.fillStyle = '#e2c894';
-      ctx.fillRect(ox + c.x - 2, oy + c.y - 2, 4, 3);
+      ctx.fillRect(c.x - 2, c.y - 2, 4, 3);
+    }
+    ctx.globalAlpha = 1;
+
+    logPile(ctx);
+
+    // how many trees this pair of hands has had down, and so how big the mark is
+    ctx.fillStyle = 'rgba(67,55,42,.62)';
+    ctx.font = '700 12px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(tr('chop.hand.' + hand), 12, 18);
+    for (let i = 0; i < 3; i++) {
+      ctx.globalAlpha = i < hand ? 0.9 : 0.25;
+      glyph(ctx, '🪓', 20 + i * 20, 38, 15);
     }
     ctx.globalAlpha = 1;
   }
 
-  function fellDir() {
-    if (!chosen) return 'S';
-    const opposite = { N: 'S', S: 'N', E: 'W', W: 'E' };
-    return opposite[chosen] === windDir ? windDir : chosen;
-  }
-
-  onPointer(cv.canvas, 340, 300, {
-    down(pt) {
-      if (done) return;
-      for (const d in DIRS) {
-        const mx = ox + DIRS[d][0] * MARK, my = oy + DIRS[d][1] * MARK;
-        if ((pt.x - mx) * (pt.x - mx) + (pt.y - my) * (pt.y - my) < 30 * 30) { choose(d); return; }
-      }
-      if ((pt.x - ox) * (pt.x - ox) + (pt.y - oy) * (pt.y - oy) < 46 * 46) chop();
-    },
-  });
-
   const stop = loop((t, dt) => {
     cv.fit();
-    if (shake > 0) shake = Math.max(0, shake - dt / 260);
-    if (swing > 0) swing = Math.max(0, swing - dt / 240);
-    if (nudge > 0) nudge = Math.max(0, nudge - dt / 900);
-    for (const c of chips) { c.x += c.vx; c.y += c.vy; c.vy += 0.22; c.life -= dt / 700; }
+    if (shake > 0) shake = Math.max(0, shake - dt / 300);
+    if (swing > 0) swing = Math.max(0, swing - dt / 230);
+    for (const c of chips) { c.x += c.vx; c.y += c.vy; c.vy += 0.24; c.life -= dt / 700; }
     chips = chips.filter(c => c.life > 0);
-    if (falling > 0 && falling < 1.35) {
-      falling += dt / 620;
-      if (falling >= 1 && !p._settled) {
-        p._settled = true;
-        setTimeout(finish, 420);
-      }
+    if (falling > 0 && falling < 1) {
+      falling = Math.min(1, falling + dt / 700);
+      if (falling >= 1) { settle = 900; p.readout(trn('chop.gotLogs', logs, { n: logs })); }
+    } else if (settle > 0) {
+      // a beat to look at the pile, then away — no card to tap away afterwards
+      settle -= dt;
+      if (settle <= 0) finish();
     }
-    drawScene(t);
+    draw(t);
   });
 
   function finish() {
-    const dir = fellDir();
-    const what = around[dir];
-    const [key, wood, logs] = MISHAP[what];
     stop();
-    game.dispatch({ type: 'tree.fell', role: game.role, treeId: tree.id, dir, wood, logs, mishap: what !== 'clear' });
+    game._chop = null;
+    game.dispatch({
+      type: 'tree.fell', role: game.role, treeId: tree.id, dir: dir,
+      wood: 2, logs: Math.max(1, Math.min(6, logs)), mishap: false,
+    });
     p.close();
-    message(tr(key));
-    if (what !== 'clear') game.hint(tr('chop.again'));
   }
 }

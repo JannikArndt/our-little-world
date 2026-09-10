@@ -174,18 +174,42 @@ async function main() {
   await step(page, '04-tree-bubble', 400);
   await page.click('text=Fell this tree');
   await step(page, '05-chop', 600);
-  await page.click('text=up');
-  // three swings at the trunk itself, in the middle of the picture
-  const trunk = await page.locator('.panel canvas').boundingBox();
-  for (let i = 0; i < 3; i++) {
-    await page.mouse.click(trunk.x + trunk.width * 0.5, trunk.y + trunk.height * 0.5);
-    await page.waitForTimeout(160);
-  }
-  await step(page, '06-chopped', 2200);
 
-  const wood = await api(() => window.OLW.world.players.A.res.wood);
-  console.log('wood after felling:', wood);
-  if (wood < 2) throw new Error('felling gave no wood');
+  // Swing at the mark wherever it has moved to. Landing every one of them is
+  // the best a tree can be cut, so this also says what a clean fell is worth.
+  const before = await api(() => window.OLW.world.players.A.res.wood);
+  // clicking the element rather than the screen, so a picture taller than the
+  // window is scrolled to before the axe lands rather than swung at blind
+  const pic = page.locator('.panel canvas');
+  let swings = 0;
+  for (let i = 0; i < 12; i++) {
+    const aim = await api(() => window.OLW._chop);
+    if (!aim) break;
+    const box = await pic.boundingBox();
+    await pic.click({ position: { x: box.width * 0.5, y: box.height * (aim.y / aim.H) } });
+    swings++;
+    await page.waitForTimeout(150);
+    // the notch half cut and the logs stacking up beside it
+    if (swings === 3) await step(page, '05b-notch', 0);
+  }
+  await step(page, '05c-timber', 500);
+  console.log('swings to fell it:', swings);
+  if (swings > 6) throw new Error('a clean notch should take five swings, not ' + swings);
+  await step(page, '06-chopped', 2600);
+
+  // The wood is partly carried off and partly still lying there as a log, so
+  // count the lot: what the player has, what is on the ground, what is in arms.
+  const got = await api(() => {
+    const w = window.OLW.world;
+    let n = 0;
+    for (const l of w.logs) n += l.wood;
+    for (const v of w.villagers) if (v.carrying) n += v.carrying.wood;
+    return { wood: w.players.A.res.wood, loose: n, felled: w.trees.filter(t => t.state !== 'standing').length };
+  });
+  console.log('after felling:', JSON.stringify(got));
+  if (!got.felled) throw new Error('the tree is still standing');
+  const gained = (got.wood - before) + got.loose;
+  if (gained < 7) throw new Error('a clean fell should give 2 wood and 5 logs, got ' + gained);
 
   // sawmill
   await api(() => { window.OLW.world.players.A.res.wood = 6; });
@@ -774,6 +798,38 @@ async function main() {
   // and there is a way back out of the world, with the village kept
   await ph.click('text=Right, got it');
   await ph.waitForTimeout(400);
+
+  // Dragging the world up and down is the one that broke. A phone frames the
+  // world to cover the screen, which makes the vertical axis fit exactly, and
+  // an axis that fitted used to be pinned to the middle — so this drags with a
+  // real pointer rather than trusting clampCamera on its own.
+  const stageBox = await (await ph.$('#stage')).boundingBox();
+  const mid = { x: stageBox.x + stageBox.width / 2, y: stageBox.y + stageBox.height / 2 };
+  const camBefore = await ph.evaluate(() => [window.OLW.renderer.cam.x, window.OLW.renderer.cam.y]);
+  await ph.mouse.move(mid.x, mid.y);
+  await ph.mouse.down();
+  for (let i = 1; i <= 6; i++) await ph.mouse.move(mid.x, mid.y - i * 30);
+  await ph.mouse.up();
+  await ph.waitForTimeout(200);
+  const camAfter = await ph.evaluate(() => [window.OLW.renderer.cam.x, window.OLW.renderer.cam.y]);
+  console.log('dragging up and down moved the camera:', camBefore[1], '->', camAfter[1]);
+  if (Math.abs(camAfter[1] - camBefore[1]) < 20) throw new Error('the world does not pan up and down on a phone');
+
+  // And the far corner really can be brought into the middle to be tapped.
+  // This also catches a stale viewport: the notch stylesheet went in without a
+  // resize event, exactly as a phone's address bar slides away without one, so
+  // the renderer has to have noticed the stage changing height on its own.
+  await ph.addStyleTag(notch);
+  await ph.waitForTimeout(300);
+  await ph.evaluate(() => window.OLW.look(0, 0));
+  await step(ph, '31b-phone-corner', 300);
+  const corner = await ph.evaluate(() => {
+    const r = window.OLW.renderer, p = r.toScreen(0, 0), c = document.getElementById('world').getBoundingClientRect();
+    return { x: Math.round(p.x - c.width / 2), y: Math.round(p.y - c.height / 2) };
+  });
+  console.log('the top left corner sits this far from the middle:', JSON.stringify(corner));
+  if (Math.abs(corner.x) > 2 || Math.abs(corner.y) > 2) throw new Error('the corner cannot be brought to the middle');
+
   await ph.click('#dayBadge');
   await ph.waitForTimeout(400);
   await ph.click('.menu-item:has-text("Back to the start screen")');

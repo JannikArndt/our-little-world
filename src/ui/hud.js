@@ -74,12 +74,20 @@ export class Hud {
     const g = this.game;
     const items = [];
 
-    const todos = this.todoList();
+    const waiting = this.todoList();
     items.push({ icon: '📋', disabled: true, label: tr('menu.tasks') });
-    if (!todos.length) {
+    if (!waiting.jobs.length) {
       items.push({ icon: '🌤️', disabled: true, sub: true, label: tr('menu.nothingToDo') });
     }
-    for (const t of todos) items.push({ icon: t.icon, label: t.label, fn: t.fn });
+    for (const t of waiting.jobs) items.push({ icon: t.icon, label: t.label, fn: t.fn });
+
+    // Things that have happened rather than things to do. They are worth a
+    // look and not worth a red number, so they sit under their own heading.
+    if (waiting.news.length) {
+      items.push({ divider: true });
+      items.push({ icon: '📣', disabled: true, label: tr('menu.news') });
+      for (const t of waiting.news) items.push({ icon: t.icon, label: t.label, fn: t.fn });
+    }
 
     if (g.canSwap) {
       items.push({ divider: true });
@@ -111,22 +119,25 @@ export class Hud {
   }
 
   /**
-   * Everything the world is waiting on, in one list and in the order it
-   * matters: what the other player asked for, then the jobs, then the news
-   * nobody has looked at yet.
+   * What is waiting for you, in two piles.
    *
-   * Only the first two jobs are here. The queue behind them is still read, so
-   * a notice about something further down — the wheat is golden, and it will
-   * be somebody's job in a minute — is not said twice either; it simply waits
-   * its turn with the job it belongs to.
+   * `jobs` is work: what the other player asked for, then the two at the front
+   * of the world's queue. Two, because a village always wants half a dozen
+   * things and a list of eight is a chore — the rest are next, not cancelled.
+   * The whole queue is still read, so a notice about something further down —
+   * the wheat is golden, and it will be somebody's job in a minute — is not
+   * said twice either; it waits its turn with the job it belongs to.
+   *
+   * `news` is everything that has merely happened: a sapling grown, somebody
+   * moved in, a skill passed across. Worth a look, not worth a red number.
    */
   todoList() {
     const g = this.game, w = g.world;
-    const out = [], covered = {};
+    const jobs = [], news = [], covered = {};
 
     for (const a of w.asks) {
       if (a.to !== g.role) continue;
-      out.push({
+      jobs.push({
         icon: '🙋',
         label: tr('ask.notice', { role: roleName(a.from), what: tr('verb.' + a.cap) }),
         fn: () => { g.dispatch({ type: 'ask.clear', id: a.id }); g.goToAsk(a); },
@@ -136,14 +147,14 @@ export class Hud {
     const queue = allProblems(w);
     for (const pr of queue) covered[pr.id] = 1;
     for (const pr of queue.slice(0, MAX_ACTIVE)) {
-      out.push({ icon: pr.icon, label: pr.title, fn: () => this.showGuide(pr) });
+      jobs.push({ icon: pr.icon, label: pr.title, fn: () => this.showGuide(pr) });
     }
 
     for (const n of w.notices) {
       if (covered[NOTICE_JOB[n.id] || n.id]) continue;
-      out.push({ icon: n.icon, label: tr(n.key, n.vars), fn: () => g.goToNotice(n) });
+      news.push({ icon: n.icon, label: tr(n.key, n.vars), fn: () => g.goToNotice(n) });
     }
-    return out;
+    return { jobs, news };
   }
 
   /**
@@ -336,9 +347,13 @@ export class Hud {
   /* ---------------- how many jobs, as a number on your chip ---------------- */
 
   /**
-   * The red number on your own chip. Reading the world's whole list of worries
-   * is not free, so it is counted once a second rather than once a frame, and
-   * the chip only changes when the number does.
+   * The red number on your own chip: jobs only, so it always means the same
+   * thing — this many things are waiting for you to do them. News is not
+   * counted; a grown sapling is not a chore.
+   *
+   * Reading the world's whole list of worries is not free, so it is counted
+   * once a second rather than once a frame, and the chip only changes when the
+   * number does.
    */
   updateTodoCount() {
     const g = this.game, w = g.world;
@@ -348,11 +363,7 @@ export class Hud {
     this.todos.tick = w.tick;
     let n = 0;
     for (const a of w.asks) if (a.to === g.role) n++;
-    const covered = {};
-    const queue = allProblems(w);
-    for (const pr of queue) covered[pr.id] = 1;
-    n += Math.min(queue.length, MAX_ACTIVE);
-    for (const nt of w.notices) if (!covered[NOTICE_JOB[nt.id] || nt.id]) n++;
+    n += Math.min(allProblems(w).length, MAX_ACTIVE);
     this.todos.n = n;
     return n;
   }

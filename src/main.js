@@ -395,6 +395,10 @@ async function startGame(choice) {
 
   window.addEventListener('resize', () => renderer.resize());
   window.addEventListener('orientationchange', () => setTimeout(() => renderer.resize(), 300));
+  // the visual viewport moves on its own on a phone, without a window resize
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => renderer.resize());
+  }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) session.checkpoint(); });
   window.addEventListener('pagehide', () => session.checkpoint(true));
 
@@ -443,7 +447,7 @@ async function startGame(choice) {
         highlight: game.mode && game.mode.highlight ? game.mode.highlight() : null,
         spotlight: game.spotlightAt(),
       });
-      if ((frame++ % 5) === 0) { hud.update(); beat(); }
+      if ((frame++ % 5) === 0) { renderer.remeasure(); hud.update(); beat(); }
       if (game.mode && (frame % 5) === 0) renderModeBar(game);
     }
     requestAnimationFrame(step);

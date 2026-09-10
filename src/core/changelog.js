@@ -4,9 +4,24 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '1.7';
+export const VERSION = '1.8';
 
 export const CHANGELOG = [
+  {
+    v: '1.8', date: '2026-09-10',
+    en: [
+      'Felling a tree is a different job. No more wind and no more choosing a side: there is one big tree, and you cut the notch into it yourself. A mark shows where the axe should land and moves to the other lip of the notch after every swing, so each one has to be aimed.',
+      'And the rule you can see: every clean bite is a log. They stack up on the grass beside you while you work, and that pile is what the tree gives — so a carefully cut tree is worth more than a hacked-at one.',
+      'The more trees you have had down, the bigger the mark you have to hit. Your hand is drawn at the top of the picture, with an axe for every step you have earned.',
+      'Nothing pops up afterwards to tell you what happened. The tree goes over, the logs are lying there, and that is the whole story.',
+    ],
+    de: [
+      'Bäume fällt man jetzt anders. Kein Wind mehr und keine Seite mehr auszusuchen: da steht ein großer Baum, und die Kerbe schlägst du selbst hinein. Eine Markierung zeigt, wo die Axt hin soll, und wandert nach jedem Hieb auf die andere Kante der Kerbe — jeder Schlag will also gezielt sein.',
+      'Und die Regel sieht man: jeder saubere Hieb ist ein Stamm. Sie stapeln sich neben dir im Gras, während du arbeitest, und dieser Stapel ist das, was der Baum hergibt — ein sorgfältig geschlagener Baum ist mehr wert als ein zerhackter.',
+      'Je mehr Bäume du schon umgelegt hast, desto größer ist die Markierung, die du treffen musst. Oben im Bild steht, wie geübt deine Hand ist, mit einer Axt für jede Stufe.',
+      'Hinterher springt nichts mehr auf, um zu erzählen, was passiert ist. Der Baum fällt, die Stämme liegen da, und das ist die ganze Geschichte.',
+    ],
+  },
   {
     v: '1.7', date: '2026-09-10',
     en: [

@@ -99,13 +99,22 @@ export class Renderer {
 
   scale() { return this.fit * this.cam.zoom; }
 
+  /**
+   * How far you may push the world about. It used to stop as soon as an edge
+   * reached the edge of the screen, which meant a tree in the top row could
+   * never be brought away from the top bar and its bubble opened over the
+   * notch. Now the camera may travel all the way to a corner of the world, so
+   * anything at all can be put in the middle of the screen and tapped in clear
+   * air. It still never goes past the world — the far side is a soft green,
+   * not more village.
+   */
   clampCamera() {
     const s = this.scale();
     const halfW = this.view.w / 2 / s, halfH = this.view.h / 2 / s;
     if (halfW * 2 >= WORLD_W) this.cam.x = WORLD_W / 2;
-    else this.cam.x = Math.max(halfW, Math.min(WORLD_W - halfW, this.cam.x));
+    else this.cam.x = Math.max(0, Math.min(WORLD_W, this.cam.x));
     if (halfH * 2 >= WORLD_H) this.cam.y = WORLD_H / 2;
-    else this.cam.y = Math.max(halfH, Math.min(WORLD_H - halfH, this.cam.y));
+    else this.cam.y = Math.max(0, Math.min(WORLD_H, this.cam.y));
   }
 
   toScreen(wx, wy) {

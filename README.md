@@ -328,10 +328,16 @@ button appears on your role card — teach it across, and you both know it.
 
 ## What you can do
 
-Starting a morning opens with one card: the most pressing thing in the world
-right now, said as something to do — **"Build a house for Ted!"**, not "Ted has
-nowhere to sleep tonight" — and the numbered steps that would get there, each
-labelled with who can do it.
+Everything the world is waiting on lives behind your own chip in the top row,
+with a red number on it saying how many things there are. Tapping one opens its
+card: the thing said as something to do — **"Build a house for Ted!"**, not
+"Ted has nowhere to sleep tonight" — and the numbered steps that would get
+there, each labelled with who can do it. Three things wrong means three lines,
+not the most pressing one and silence about the rest.
+
+Nothing is laid over the village itself. A card you tapped away used to come
+straight back a moment later, over the very tree you were trying to fell; now
+the number on the chip is the whole of the world's nagging.
 
 Three things keep that card honest:
 
@@ -344,7 +350,6 @@ Three things keep that card honest:
   `3/3 🪨 ✓`. A tick with a number next to it explains itself; a bare tick does
   not.
 
-Tapping any of the world's notices opens the same card.
 
 | | |
 |---|---|
@@ -387,11 +392,17 @@ rotting while you are away.
 ## The two rows
 
 The top row is the people playing: one chip per role, yours marked, the others
-showing whether they are at their screen. Tapping your own opens what you do to
-the game — what needs doing, the language, starting over, back to the start
-screen. Tapping theirs opens what you do together: giving them something, and
-teaching them anything you have done often enough to show. The bottom row is
-nothing but what we have.
+showing whether they are at their screen. Tapping your own opens what needs
+doing — the whole list, one line each, counted by the red number on the chip —
+what you can do, and a tally of what you have already done: felled three trees,
+built a house, harvested six fields. Tapping theirs opens what you do together:
+giving them something, and teaching them anything you have done often enough to
+show. The language, starting over and the way back to the start screen sit
+behind the day, on the right. The bottom row is nothing but what we have.
+
+The world can be pushed about further than it fills the screen — far enough to
+bring any corner of it into the middle — so anything at all can be tapped in
+clear air rather than up against the top bar.
 
 ## How it is put together
 

@@ -73,10 +73,17 @@ async function main() {
   await page.waitForFunction(() => window.OLW.world.block.active, null, { timeout: 8000 });
   await step(page, '02-world', 900);
 
-  // the task guide lives behind your own role chip now
+  // The jobs live behind your own role chip now, all of them, one line each.
+  // "What needs doing" is only the heading — the thing to tap is the first job
+  // under it, and the chip carries a red count of how many there are.
   await page.click('#roleBar button.me');
   await step(page, '02b-menu', 400);
-  await page.click('text=What needs doing');
+  const myMenu = await page.textContent('.menu');
+  if (!/What needs doing/.test(myMenu)) throw new Error('the jobs are not behind your own chip');
+  if (!/What you have done/.test(myMenu)) throw new Error('the tally is not behind your own chip');
+  const jobs = await page.$$eval('.menu .menu-item:not(.off) .mi-label', ns => ns.map(n => n.textContent));
+  console.log('waiting for you:', JSON.stringify(jobs.slice(0, 4)));
+  await page.click('.menu .menu-item:not(.off) >> nth=0');
   await step(page, '02c-guide', 900);
   const guide = await page.textContent('.panel');
   console.log('opening card says:', guide.replace(/\s+/g, ' ').trim().slice(0, 150));
@@ -254,14 +261,9 @@ async function main() {
   await step(page, '15b-menu', 300);
   await page.click('text=Play as the Keeper');
   await step(page, '16-keeper', 500);
-  // She is a moving target, she stands near the top of a short world, and the
-  // world's notices sit over that same strip — so put the read ones away first,
-  // then frame her, check the tap really lands on the canvas, and try again.
-  await api(() => {
-    const g = window.OLW;
-    for (const n of g.world.notices.slice()) g.dispatch({ type: 'notice.dismiss', id: n.id });
-  });
-  await page.waitForTimeout(200);
+  // She is a moving target near the top of a short world. Nothing is laid over
+  // the world any more, so it is only her: frame her, check the tap really
+  // lands on the canvas, and try again.
   // Any old bubble is not good enough: a villager wandering past her opens
   // their own, and then "Look after her" is nowhere. Keep going until it is
   // hers, putting the wrong one away each time.
@@ -384,10 +386,17 @@ async function main() {
   if (!askMade) throw new Error('the ask was not recorded');
   await api(() => { window.OLW.role = 'A'; window.OLW.other = 'B'; });
   await page.waitForTimeout(700);
-  const noticeText = await page.textContent('#noticeLayer');
-  console.log('the other player sees:', noticeText.replace(/\s+/g, ' ').trim().slice(0, 80));
-  if (!/asks/.test(noticeText)) throw new Error('the ask did not reach the other player');
+  // it reaches them as a number on their chip and a line in their own menu
+  const counted = await page.textContent('#roleBar button.me .r-todo');
+  if (!(Number(counted.replace('+', '')) > 0)) throw new Error('the chip does not count what is waiting');
+  await page.click('#roleBar button.me');
+  await page.waitForTimeout(300);
+  const askText = await page.textContent('.menu');
+  console.log('the other player sees:', askText.replace(/\s+/g, ' ').trim().slice(0, 90));
+  if (!/asks/.test(askText)) throw new Error('the ask did not reach the other player');
   await step(page, '25a-ask', 300);
+  await page.evaluate(() => document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
+  await page.waitForTimeout(300);
 
   // teaching: having done it a few times, you can show the other player how.
   // This lives behind the OTHER role's chip now (yours is your own tools).
@@ -516,12 +525,28 @@ async function main() {
   // what you can do, spelled out one skill to a line behind your own chip
   await page.click('#roleBar button.me');
   await page.waitForTimeout(300);
-  const youCan = await page.evaluate(() => {
-    const rows = Array.prototype.slice.call(document.querySelectorAll('.menu-item.sub .mi-label'));
-    return rows.map(r => r.textContent);
+  // the skills and the tally are both lists of sub-lines, so read the one that
+  // sits under the "What you can do" heading rather than every sub-line there is
+  const menuLists = await page.evaluate(() => {
+    const out = {};
+    let head = null;
+    for (const row of Array.prototype.slice.call(document.querySelectorAll('.menu-item'))) {
+      const label = row.querySelector('.mi-label').textContent;
+      if (!row.classList.contains('sub')) { head = label; out[head] = []; continue; }
+      if (head) out[head].push(label);
+    }
+    return out;
   });
+  const youCan = menuLists['What you can do'] || [];
+  const youDid = menuLists['What you have done'] || [];
   console.log('what you can do:', JSON.stringify(youCan));
+  console.log('what you have done:', JSON.stringify(youDid));
   if (youCan.length < 2) throw new Error('your own menu does not say what you can do');
+  const tallied = await page.evaluate(() => {
+    const g = window.OLW;
+    return Object.keys(g.world.players[g.role].done).length;
+  });
+  if (tallied > 0 && youDid.length < 1) throw new Error('your own menu keeps no tally of what you did');
   // shut it the way a finger does — a tap anywhere that is not the menu
   await page.evaluate(() => document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
   await page.waitForTimeout(300);
@@ -693,7 +718,7 @@ async function main() {
   await ph.waitForFunction(() => window.OLW.world.block.active, null, { timeout: 8000 });
   await ph.click('#roleBar button.me');
   await ph.waitForTimeout(300);
-  await ph.click('text=What needs doing');
+  await ph.click('.menu .menu-item:not(.off) >> nth=0');
   await ph.waitForTimeout(900);
   await ph.addStyleTag(notch);
   await step(ph, '31-phone-guide', 300);

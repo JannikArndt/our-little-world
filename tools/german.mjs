@@ -10,7 +10,7 @@ p.on('pageerror', e => errs.push('pageerror: ' + e.message));
 p.on('console', m => { if (m.type() === 'error' && !/404/.test(m.text())) errs.push(m.text()); });
 
 // any text that still looks like a key is a hole in the tables
-const KEYISH = /\b(?:ui|w|msg|sum|guide|chop|saw|mill|bridge|house|care|road|herd|notice|say|give|teach|ask|verb|res|cap|next|app|role|start|day|menu|over)\.[a-zA-Z][a-zA-Z0-9_.]*\b/;
+const KEYISH = /\b(?:ui|w|msg|sum|guide|chop|saw|mill|bridge|house|care|road|herd|notice|say|give|teach|ask|verb|res|cap|next|app|role|start|day|menu|over|deed)\.[a-zA-Z][a-zA-Z0-9_.]*\b/;
 const scan = async (where) => {
   const txt = await p.evaluate(() => document.body.innerText);
   const m = txt.match(KEYISH);
@@ -50,11 +50,15 @@ await p.waitForFunction(() => window.OLW.world.block.active, null, { timeout: 80
 await p.waitForTimeout(700);
 await scan('world');
 
-// the task guide lives behind your own role chip now
+// the jobs live behind your own role chip now, one line each — the heading is
+// only a heading, so the thing to tap is the first job under it
 await p.click('#roleBar button.me');
 await p.waitForTimeout(300);
 await scan('menu');
-await p.click('text=Was zu tun ist');
+const meinMenue = await p.textContent('.menu');
+if (!/Was zu tun ist/.test(meinMenue)) throw new Error('the jobs are not behind your own chip');
+if (!/Was du geschafft hast/.test(meinMenue)) throw new Error('the tally is not behind your own chip');
+await p.click('.menu .menu-item:not(.off) >> nth=0');
 await p.waitForTimeout(900);
 await scan('guide');
 await p.screenshot({ path: out + '61-de-guide.png' });

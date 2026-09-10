@@ -3,9 +3,14 @@
 //
 // The top row belongs to the roles — one chip each, yours marked, the others
 // showing whether they are here. Every chip opens a drop-down: your own holds
-// what you are meant to do and what you can do, theirs the things you do
-// together. The day on the right opens the world's own menu — the language and
-// the ways out — so none of that sits in the way of playing.
+// what you are meant to do, what you can do and what you have already done;
+// theirs the things you do together. The day on the right opens the world's
+// own menu — the language and the ways out — so none of that sits in the way
+// of playing.
+//
+// Nothing the world has to say is laid over the world any more. What needs
+// doing lives behind your own chip, counted by a red number on it, so the
+// village is never hidden behind a stack of cards you cannot put away.
 
 import { el, openPanel, openMenu, message, clearMessages, loop } from './overlay.js';
 import { openGive } from './share.js';
@@ -13,7 +18,7 @@ import { openInvite } from './invite.js';
 import { RESOURCES, ROLE, ROLE_ORDER, CAPS, byId, capName, roleName, dayPhase } from '../core/world.js';
 import { tr, trn, LANGUAGES, currentLang, setLang } from '../core/i18n.js';
 import { nextTimeHint } from '../core/events.js';
-import { currentProblem } from '../core/guide.js';
+import { currentProblem, allProblems } from '../core/guide.js';
 import { showChangelog as openChangelog, VERSION } from './whatsnew.js';
 import { newerBuild } from '../core/fresh.js';
 import { drawPortrait } from '../render/art.js';
@@ -29,7 +34,7 @@ export class Hud {
     this.resEls = {};
     this.roleEls = {};
     this.last = {};
-    this.noticeEls = {};
+    this.todos = { tick: -1, n: 0 };
     this.buildRoleBar();
     this.buildDayBadge();
     this.buildResources();
@@ -48,6 +53,8 @@ export class Hud {
       chip.appendChild(el('span', 'r-emoji', ROLE[id].emoji));
       chip.appendChild(el('span', 'r-name', roleName(id)));
       chip.appendChild(el('span', 'r-dot'));
+      // only your own chip carries a number, and only while there is one
+      chip.appendChild(el('span', 'r-todo hidden'));
       chip.addEventListener('click', () => {
         if (id === this.game.role) this.openMyMenu(chip);
         else this.openRoleMenu(chip, id);
@@ -57,18 +64,25 @@ export class Hud {
     }
   }
 
-  /** Your own chip: what the world needs from you, and what you know how to do. */
+  /**
+   * Your own chip: everything waiting for you, everything you know how to do,
+   * and everything you have done so far. The list of jobs is the whole list —
+   * three things wrong means three lines here, not the most pressing one and
+   * silence about the rest.
+   */
   openMyMenu(anchor) {
     const g = this.game;
-    const pr = currentProblem(g.world);
     const items = [];
 
-    items.push({
-      icon: '📋', label: tr('menu.tasks'), note: pr.title,
-      fn: () => this.showGuide(),
-    });
+    const todos = this.todoList();
+    items.push({ icon: '📋', disabled: true, label: tr('menu.tasks') });
+    if (!todos.length) {
+      items.push({ icon: '🌤️', disabled: true, sub: true, label: tr('menu.nothingToDo') });
+    }
+    for (const t of todos) items.push({ icon: t.icon, label: t.label, fn: t.fn });
 
     if (g.canSwap) {
+      items.push({ divider: true });
       items.push({
         icon: '⇄', label: tr('menu.swap', { role: roleName(g.other) }),
         fn: () => g.swapRole(),
@@ -84,7 +98,47 @@ export class Hud {
       for (const c of mine) items.push({ icon: CAPS[c].icon, disabled: true, sub: true, label: capName(c) });
     }
 
+    // And what you have already done, which is the nicest part of the menu.
+    items.push({ divider: true });
+    items.push({ icon: '🏅', disabled: true, label: tr('menu.youDid') });
+    const deeds = deedsOf(g.world.players[g.role].done);
+    if (!deeds.length) {
+      items.push({ icon: '🌱', disabled: true, sub: true, label: tr('menu.didNothingYet') });
+    }
+    for (const d of deeds) items.push({ icon: d.icon, disabled: true, sub: true, label: d.text });
+
     openMenu(anchor, { title: ROLE[g.role].emoji + '  ' + roleName(g.role), items });
+  }
+
+  /**
+   * Everything the world is waiting on, in one list and in the order it
+   * matters: what the other player asked for, then the jobs, then the news
+   * nobody has looked at yet. A notice a job already covers is left out — the
+   * empty bread basket does not need saying twice.
+   */
+  todoList() {
+    const g = this.game, w = g.world;
+    const out = [], covered = {};
+
+    for (const a of w.asks) {
+      if (a.to !== g.role) continue;
+      out.push({
+        icon: '🙋',
+        label: tr('ask.notice', { role: roleName(a.from), what: tr('verb.' + a.cap) }),
+        fn: () => { g.dispatch({ type: 'ask.clear', id: a.id }); g.goToAsk(a); },
+      });
+    }
+
+    for (const pr of allProblems(w)) {
+      covered[pr.id] = 1;
+      out.push({ icon: pr.icon, label: pr.title, fn: () => this.showGuide(pr) });
+    }
+
+    for (const n of w.notices) {
+      if (covered[NOTICE_JOB[n.id] || n.id]) continue;
+      out.push({ icon: n.icon, label: tr(n.key, n.vars), fn: () => g.goToNotice(n) });
+    }
+    return out;
   }
 
   /**
@@ -202,17 +256,14 @@ export class Hud {
 
   /**
    * Something big changed under us — the language, or the whole world after
-   * starting over: redraw everything that holds words, and drop the notices,
-   * which belong to the world that was here a moment ago.
+   * starting over: redraw everything that holds words, and count the jobs
+   * again, because the ones we knew about belonged to the world that was here
+   * a moment ago.
    */
   relabel() {
     this.buildRoleBar();
     this.last = {};
-    for (const id in this.noticeEls) {
-      const e = this.noticeEls[id];
-      if (e.parentNode) e.parentNode.removeChild(e);
-      delete this.noticeEls[id];
-    }
+    this.todos = { tick: -1, n: 0 };
     this.update();
   }
 
@@ -248,6 +299,21 @@ export class Hud {
       const label = chip.querySelector('.r-name');
       if (label.textContent !== name) label.textContent = name;
       chip.title = busy || '';
+
+      // the count belongs to whoever is holding the phone, nobody else
+      const todo = chip.querySelector('.r-todo');
+      const n = mine ? this.updateTodoCount() : 0;
+      if (this.last['todo_' + id] !== n) {
+        todo.textContent = n > 9 ? '9+' : String(n);
+        todo.classList.toggle('hidden', n <= 0);
+        // a new job nudges the chip, so nothing has to be laid over the world
+        if (n > (this.last['todo_' + id] || 0)) {
+          todo.classList.remove('bump');
+          void todo.offsetWidth;
+          todo.classList.add('bump');
+        }
+        this.last['todo_' + id] = n;
+      }
     }
 
     const phase = dayPhase(w);
@@ -260,57 +326,38 @@ export class Hud {
       document.getElementById('dayNum').textContent = String(w.day);
       this.last.day = w.day;
     }
-
-    this.renderNotices();
   }
 
-  /* ---------------- notices and asks ---------------- */
+  /* ---------------- how many jobs, as a number on your chip ---------------- */
 
-  renderNotices() {
+  /**
+   * The red number on your own chip. Reading the world's whole list of worries
+   * is not free, so it is counted once a second rather than once a frame, and
+   * the chip only changes when the number does.
+   */
+  updateTodoCount() {
     const g = this.game, w = g.world;
-    const layer = document.getElementById('noticeLayer');
-    const wanted = {};
-
-    for (const a of w.asks) {
-      if (a.to !== g.role) continue;
-      wanted['ask_' + a.id] = {
-        icon: '🙋', kind: 'ask',
-        text: tr('ask.notice', { role: roleName(a.from), what: tr('verb.' + a.cap) }),
-        onTap: () => {
-          g.dispatch({ type: 'ask.clear', id: a.id });
-          g.goToAsk(a);
-        },
-      };
-    }
-    for (const n of w.notices) {
-      wanted[n.id] = { icon: n.icon, kind: n.kind, text: tr(n.key, n.vars), onTap: () => g.goToNotice(n) };
-    }
-
-    for (const id in this.noticeEls) {
-      if (wanted[id]) continue;
-      const e = this.noticeEls[id];
-      e.classList.add('fade');
-      setTimeout(() => { if (e.parentNode) e.parentNode.removeChild(e); }, 520);
-      delete this.noticeEls[id];
-    }
-    for (const id in wanted) {
-      if (this.noticeEls[id]) continue;
-      const n = wanted[id];
-      const b = el('button', 'notice ' + (n.kind || 'calm'));
-      b.innerHTML = '<span class="n-ico">' + n.icon + '</span>' + escapeHtml(n.text);
-      b.addEventListener('click', n.onTap);
-      layer.appendChild(b);
-      this.noticeEls[id] = b;
-    }
+    // A world handed over by the relay can be at an earlier tick than the one
+    // we counted, so anything but a small step forward counts again.
+    if (this.todos.tick >= 0 && w.tick >= this.todos.tick && w.tick - this.todos.tick < 10) return this.todos.n;
+    this.todos.tick = w.tick;
+    let n = 0;
+    for (const a of w.asks) if (a.to === g.role) n++;
+    const covered = {};
+    for (const pr of allProblems(w)) { covered[pr.id] = 1; n++; }
+    for (const nt of w.notices) if (!covered[NOTICE_JOB[nt.id] || nt.id]) n++;
+    this.todos.n = n;
+    return n;
   }
 
   /**
-   * What is wrong, and what would put it right. It lives in your own menu now,
-   * so it only appears when you go looking for it.
+   * What is wrong, and what would put it right. One card, for whichever job was
+   * tapped in your menu; with nothing named it falls back to the most pressing
+   * one, which is what the guide used to do on its own.
    */
-  showGuide() {
+  showGuide(problem) {
     const g = this.game;
-    const pr = currentProblem(g.world);
+    const pr = problem || currentProblem(g.world);
     const p = openPanel({ title: pr.icon + '  ' + pr.title, lead: pr.why });
 
     // Nobody is named without being shown: the card draws them, and the world
@@ -419,6 +466,58 @@ export class Hud {
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * Which job already says what a notice says. The world raises a notice and the
+ * guide raises a card about the same thing — a hungry villager, a broken
+ * bridge — and the menu should carry it once, not twice. Anything not in here
+ * is news of its own and is listed after the jobs.
+ */
+const NOTICE_JOB = {
+  hungry: 'hungry',
+  homeless: 'homeless',
+  poorly: 'poorly',
+  wheat_ready: 'wheat_ready',
+  bridge_broken: 'bridge_broken',
+  sheep_far: 'no_bridge',
+  sheep_broken: 'bridge_broken',
+  sheep_in_field: 'fence',
+};
+
+/**
+ * What somebody has done, read back to them. Each line is one name in the
+ * `done` tally kept by actions.js, in the order a day tends to go. A new thing
+ * to be proud of is one row here plus its two strings — and a name nobody has
+ * earned yet simply does not appear.
+ */
+const DEEDS = [
+  { key: 'fell',   icon: '🪓', word: 'deed.fell' },
+  { key: 'saw',    icon: '🪚', word: 'deed.saw' },
+  { key: 'bridge', icon: '🌉', word: 'deed.bridge' },
+  { key: 'house',  icon: '🏠', word: 'deed.house' },
+  { key: 'mill',   icon: '🌀', word: 'deed.mill' },
+  { key: 'well',   icon: '🪣', word: 'deed.well' },
+  { key: 'privy',  icon: '🚪', word: 'deed.privy' },
+  { key: 'fence',  icon: '🚧', word: 'deed.fence' },
+  { key: 'boat',   icon: '⛵', word: 'deed.boat' },
+  { key: 'play',   icon: '🛝', word: 'deed.play' },
+  { key: 'road',   icon: '🛤️', word: 'deed.road' },
+  { key: 'sow',    icon: '🌱', word: 'deed.sow' },
+  { key: 'reap',   icon: '🌾', word: 'deed.reap' },
+  { key: 'fish',   icon: '🎣', word: 'deed.fish' },
+  { key: 'care',   icon: '🐑', word: 'deed.care' },
+  { key: 'plant',  icon: '🌳', word: 'deed.plant' },
+];
+
+/** The tally as sentences, leaving out everything nobody has done yet. */
+export function deedsOf(done) {
+  const out = [];
+  for (const d of DEEDS) {
+    const n = (done && done[d.key]) || 0;
+    if (n > 0) out.push({ icon: d.icon, text: trn(d.word, n) });
+  }
+  return out;
+}
 
 function teachKey(cap) {
   return { fell: 'fell', saw: 'saw', bridge: 'bridge', house: 'house', mill: 'mill',

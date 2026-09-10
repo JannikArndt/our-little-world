@@ -288,12 +288,27 @@ export const CONCERNS = [
   { id: 'calm', when: () => true, card: calmCard },
 ];
 
+/**
+ * Everything the world is asking for, in the order it matters — not just the
+ * first thing. Two concerns can describe the same job (a thin forest and one
+ * last stump are both replanting), so a card is only listed once.
+ */
+export function allProblems(w) {
+  const out = [], seen = {};
+  for (const c of CONCERNS) {
+    if (c.id === 'calm') continue;
+    if (!c.when(w)) continue;
+    const card = c.card(w);
+    if (seen[card.id]) continue;
+    seen[card.id] = 1;
+    out.push(card);
+  }
+  return out;
+}
+
 /** The most pressing thing in the world right now, said as something to do. */
 export function currentProblem(w) {
-  for (const c of CONCERNS) {
-    if (c.when(w)) return c.card(w);
-  }
-  return calmCard(w);
+  return allProblems(w)[0] || calmCard(w);
 }
 
 /* ------------------------------------------------------------------ */

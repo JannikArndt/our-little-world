@@ -4,9 +4,24 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '1.6';
+export const VERSION = '1.7';
 
 export const CHANGELOG = [
+  {
+    v: '1.7', date: '2026-09-10',
+    en: [
+      'Nothing is laid over the village any more. What needs doing has moved behind your own chip, where a red number says how many things are waiting — so the tree you were about to fell is never hidden under a card that comes straight back when you tap it away.',
+      'And it is the whole list now. Three things wrong means three lines, each one opening the card that explains it, instead of only the most pressing one.',
+      'Your own chip also keeps a tally of what you have done: felled three trees, built a house, harvested six fields.',
+      'The world can be pushed further about, far enough to bring any corner of it into the middle of the screen, so anything at all can be tapped in clear air.',
+    ],
+    de: [
+      'Über dem Dorf liegt nichts mehr. Was zu tun ist, steht jetzt hinter dem eigenen Schild, mit einer roten Zahl davor, wie viel wartet — der Baum, den du gerade fällen wolltest, verschwindet nicht mehr unter einer Karte, die nach dem Wegtippen sofort wiederkommt.',
+      'Und es ist die ganze Liste. Drei Dinge im Argen heißt drei Zeilen, jede öffnet ihre eigene Erklärung — nicht mehr nur die dringendste.',
+      'Hinter dem eigenen Schild steht außerdem, was du geschafft hast: drei Bäume gefällt, ein Haus gebaut, sechs Felder geerntet.',
+      'Die Welt lässt sich weiter verschieben — weit genug, um jede Ecke in die Mitte des Bildschirms zu holen, damit alles im Freien angetippt werden kann.',
+    ],
+  },
   {
     v: '1.6', date: '2026-09-10',
     en: [

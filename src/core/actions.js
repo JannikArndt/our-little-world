@@ -45,6 +45,13 @@ export function canPay(w, role, cost) {
 function gain(w, role, key, n) {
   w.players[role].res[key] = (w.players[role].res[key] || 0) + n;
 }
+/**
+ * A running count of what somebody has actually done. It teaches — two of a
+ * thing and you can show the other player how — and it is also the tally the
+ * role's own menu reads back to them at the end of a long afternoon. Sowing
+ * and reaping are both farming, so they add to `farm` *and* to a name of their
+ * own; nothing here ever resets.
+ */
 function tally(w, role, what) {
   const d = w.players[role].done;
   d[what] = (d[what] || 0) + 1;
@@ -315,6 +322,7 @@ export function applyAction(w, a) {
       p.state = 'growing'; p.growth = 0; p.water = a.watered ? 100 : 0; p.nibbled = 0;
       fx(w, 'float', p.x + 1, p.y, '🌱');
       tally(w, a.role, 'farm');
+      tally(w, a.role, 'sow');
       return true;
     }
     case 'plot.water': {
@@ -332,6 +340,7 @@ export function applyAction(w, a) {
       gain(w, a.role, 'wheat', n);
       fx(w, 'float', p.x + 1, p.y, '+' + n + ' 🌾');
       tally(w, a.role, 'farm');
+      tally(w, a.role, 'reap');
       journal(w, '🌾', 'j.wheat', { n: n });
       w.notices = w.notices.filter(x => x.id !== 'wheat_ready');
       return true;

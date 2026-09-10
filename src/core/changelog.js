@@ -4,9 +4,22 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '1.5';
+export const VERSION = '1.6';
 
 export const CHANGELOG = [
+  {
+    v: '1.6', date: '2026-09-10',
+    en: [
+      'The top row is tidier. Your own chip now holds what needs doing and what you can do, one skill to a line, so you can see at a glance what this pair of hands is for.',
+      'The language, what is new, fetching the game again and the ways out have moved behind the day, on the right — out of the way of playing, and still one tap away.',
+      'A few menu rows had been showing their picture twice. They show it once.',
+    ],
+    de: [
+      'Oben ist mehr Ruhe. Hinter dem eigenen Schild steht jetzt, was zu tun ist und was du kannst — eine Sache pro Zeile, damit auf einen Blick klar ist, wofür diese Hände da sind.',
+      'Die Sprache, was neu ist, das Spiel neu holen und die Wege hinaus sind hinter den Tag gezogen, nach rechts — weg vom Spielen, und trotzdem einen Tipp entfernt.',
+      'Ein paar Menüzeilen hatten ihr Bild doppelt. Jetzt steht es einmal da.',
+    ],
+  },
   {
     v: '1.5', date: '2026-09-07',
     en: [

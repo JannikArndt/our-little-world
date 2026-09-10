@@ -63,6 +63,18 @@ console.log('Wegweiser:', guide.replace(/\s+/g, ' ').trim().slice(0, 120));
 await p.click('text=Verstanden');
 await p.waitForTimeout(800);
 
+// the language and the ways out sit behind the day now, on the right
+await p.click('#dayBadge');
+await p.waitForTimeout(300);
+await scan('world menu');
+await p.screenshot({ path: out + '61b-de-weltmenue.png' });
+const weltMenue = await p.textContent('.menu');
+if (!/Zurück zum Startbildschirm/.test(weltMenue)) throw new Error('the world menu is not behind the day');
+if (!/Deutsch/.test(weltMenue)) throw new Error('the language picker did not move with it');
+// shut it the way a finger does — a tap anywhere that is not the menu
+await p.evaluate(() => document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
+await p.waitForTimeout(300);
+
 const api = (fn, a) => p.evaluate(fn, a);
 
 /**

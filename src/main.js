@@ -39,7 +39,8 @@ function showReloadLabel() {
   const b = document.getElementById('reloadBtn');
   if (!b) return;
   const news = newerBuild();
-  b.textContent = tr(news ? 'ui.reloadNew' : 'ui.reload');
+  // the front door has no icon column, so the sign carries its own picture
+  b.textContent = (news ? '✨ ' : '↻ ') + tr(news ? 'ui.reloadNew' : 'ui.reload');
   b.className = 'link-btn' + (news ? ' fresh' : '');
 }
 
@@ -47,7 +48,7 @@ function showReloadLabel() {
 function applyStartText() {
   document.title = tr('app.title');
   const version = document.getElementById('versionBtn');
-  if (version) version.textContent = 'v' + VERSION + ' · ' + tr('hist.whatsNewShort');
+  if (version) version.textContent = 'v' + VERSION + ' · ✨ ' + tr('hist.whatsNewShort');
   showReloadLabel();
   const nodes = document.querySelectorAll('[data-t]');
   for (let i = 0; i < nodes.length; i++) nodes[i].textContent = tr(nodes[i].getAttribute('data-t'));

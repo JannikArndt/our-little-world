@@ -205,8 +205,9 @@ export function closeMenu() {
 }
 
 /**
- * openMenu(anchor, { title, items: [{ icon, label, note, disabled, fn }] })
+ * openMenu(anchor, { title, items: [{ icon, label, note, disabled, sub, fn }] })
  * Opens under the chip that was tapped and closes on the next tap outside.
+ * A `sub` item is one line of a list under the item above it.
  */
 export function openMenu(anchor, opts) {
   closeMenu();
@@ -219,7 +220,7 @@ export function openMenu(anchor, opts) {
   for (const it of opts.items || []) {
     if (!it) continue;
     if (it.divider) { menu.appendChild(el('div', 'menu-divider')); continue; }
-    const b = el('button', 'menu-item' + (it.disabled ? ' off' : '') + (it.on ? ' on' : ''));
+    const b = el('button', 'menu-item' + (it.disabled ? ' off' : '') + (it.on ? ' on' : '') + (it.sub ? ' sub' : ''));
     b.appendChild(el('span', 'mi-ico', it.icon || ''));
     const txt = el('span', 'mi-txt');
     txt.appendChild(el('span', 'mi-label', it.label));

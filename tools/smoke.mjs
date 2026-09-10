@@ -513,13 +513,26 @@ async function main() {
   });
   console.log('poorly villagers once the well is dug:', noPoorly);
 
-  // the changelog, tucked in your own menu
+  // what you can do, spelled out one skill to a line behind your own chip
   await page.click('#roleBar button.me');
+  await page.waitForTimeout(300);
+  const youCan = await page.evaluate(() => {
+    const rows = Array.prototype.slice.call(document.querySelectorAll('.menu-item.sub .mi-label'));
+    return rows.map(r => r.textContent);
+  });
+  console.log('what you can do:', JSON.stringify(youCan));
+  if (youCan.length < 2) throw new Error('your own menu does not say what you can do');
+  // shut it the way a finger does — a tap anywhere that is not the menu
+  await page.evaluate(() => document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
+  await page.waitForTimeout(300);
+
+  // the changelog, tucked behind the day now
+  await page.click('#dayBadge');
   await page.waitForTimeout(300);
   await page.click('.menu-item:has-text("What is new")');
   await step(page, '25l-changelog', 500);
   const log = await page.textContent('.panel');
-  if (!/What is new/.test(log)) throw new Error('the changelog is not reachable from your own menu');
+  if (!/What is new/.test(log)) throw new Error('the changelog is not reachable from the world menu');
   await page.click('text=Close');
   await page.waitForTimeout(200);
 
@@ -569,7 +582,7 @@ async function main() {
     console.log('the server is holding a world at tick:', kept.tick);
     if (!kept.tick) throw new Error('the server never heard about the world');
 
-    await po.click('#roleBar button.me');
+    await po.click('#dayBadge');
     await po.waitForTimeout(300);
     await po.click('.menu-item:has-text("Start this world over")');
     await po.waitForTimeout(300);
@@ -720,7 +733,7 @@ async function main() {
   // and there is a way back out of the world, with the village kept
   await ph.click('text=Right, got it');
   await ph.waitForTimeout(400);
-  await ph.click('#roleBar button.me');
+  await ph.click('#dayBadge');
   await ph.waitForTimeout(400);
   await ph.click('.menu-item:has-text("Back to the start screen")');
   await ph.waitForTimeout(1200);
@@ -742,7 +755,7 @@ async function main() {
 
   // fetching the game again from inside the world: the only reload a Home
   // Screen app has. It saves first, so the village must survive the trip.
-  await ph.click('#roleBar button.me');
+  await ph.click('#dayBadge');
   await ph.waitForTimeout(400);
   await ph.click('.menu-item:has-text("Fetch the game again")');
   await ph.waitForFunction(() => /fresh=/.test(location.search), null, { timeout: 8000 });

@@ -3,7 +3,9 @@
 //
 // The top row belongs to the roles — one chip each, yours marked, the others
 // showing whether they are here. Every chip opens a drop-down: your own holds
-// the things you do to the game, theirs the things you do together.
+// what you are meant to do and what you can do, theirs the things you do
+// together. The day on the right opens the world's own menu — the language and
+// the ways out — so none of that sits in the way of playing.
 
 import { el, openPanel, openMenu, message, clearMessages, loop } from './overlay.js';
 import { openGive } from './share.js';
@@ -29,6 +31,7 @@ export class Hud {
     this.last = {};
     this.noticeEls = {};
     this.buildRoleBar();
+    this.buildDayBadge();
     this.buildResources();
   }
 
@@ -54,7 +57,7 @@ export class Hud {
     }
   }
 
-  /** Everything you do to the game itself lives behind your own chip. */
+  /** Your own chip: what the world needs from you, and what you know how to do. */
   openMyMenu(anchor) {
     const g = this.game;
     const pr = currentProblem(g.world);
@@ -72,7 +75,26 @@ export class Hud {
       });
     }
 
-    items.push({ divider: true });
+    // What you can do, one skill to a line: a list run together into a
+    // sentence is the one thing nobody reads.
+    const mine = Object.keys(g.world.players[g.role].caps);
+    if (mine.length) {
+      items.push({ divider: true });
+      items.push({ icon: '👐', disabled: true, label: tr('menu.youCan') });
+      for (const c of mine) items.push({ icon: CAPS[c].icon, disabled: true, sub: true, label: capName(c) });
+    }
+
+    openMenu(anchor, { title: ROLE[g.role].emoji + '  ' + roleName(g.role), items });
+  }
+
+  /**
+   * The world itself, behind the day: which language it speaks, what is new in
+   * it, and every way out of it. Nothing here changes the village by accident.
+   */
+  openWorldMenu(anchor) {
+    const g = this.game;
+    const items = [];
+
     for (const l of LANGUAGES) {
       items.push({
         icon: l.flag, label: l.name, on: l.id === currentLang(),
@@ -94,7 +116,10 @@ export class Hud {
     items.push({ icon: '🧹', label: tr('menu.startOver'), fn: () => this.confirmStartOver() });
     items.push({ icon: '🏡', label: tr('ui.backToStart'), fn: () => g.leave() });
 
-    openMenu(anchor, { title: ROLE[g.role].emoji + '  ' + roleName(g.role), items });
+    openMenu(anchor, {
+      title: (PHASE_ICON[dayPhase(g.world)] || '☀️') + '  ' + tr('menu.world'),
+      items,
+    });
   }
 
   /** The other players: what you can hand them, and what you can teach them. */
@@ -129,10 +154,8 @@ export class Hud {
     }
     if (known.length) {
       items.push({ divider: true });
-      items.push({
-        icon: '👐', disabled: true,
-        label: tr('teach.theyKnow', { role: roleName(id), list: known.map(c => CAPS[c].icon + ' ' + capName(c)).join(', ') }),
-      });
+      items.push({ icon: '👐', disabled: true, label: tr('teach.theyKnow', { role: roleName(id) }) });
+      for (const c of known) items.push({ icon: CAPS[c].icon, disabled: true, sub: true, label: capName(c) });
     }
 
     openMenu(anchor, {
@@ -146,6 +169,21 @@ export class Hud {
     const r = p.row();
     r.appendChild(p.button(tr('over.yes'), 'go', () => { p.close(); this.game.startOver(); }));
     r.appendChild(p.button(tr('ui.notNow'), 'soft', () => p.close()));
+  }
+
+  /* ---------------- the day, on the right ---------------- */
+
+  /**
+   * The day is also the door to the world's menu. The badge outlives the world —
+   * you can walk out of one and into another — so the old handler goes first,
+   * or the door would still open onto the village you left.
+   */
+  buildDayBadge() {
+    const badge = document.getElementById('dayBadge');
+    if (!badge) return;
+    if (badge.openWorldMenu) badge.removeEventListener('click', badge.openWorldMenu);
+    badge.openWorldMenu = () => this.openWorldMenu(badge);
+    badge.addEventListener('click', badge.openWorldMenu);
   }
 
   /* ---------------- the bottom row: what we have ---------------- */

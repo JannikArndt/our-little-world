@@ -296,6 +296,17 @@ export function openChop(game, tree) {
   }
 
   const stop = loop((t, dt) => {
+    // The day can end in the middle of a swing, and the day's card wipes the
+    // overlay out from under us. Nothing else is going to tell us, so notice
+    // the canvas has gone and stop drawing into it. A tree that was already
+    // cut through still counts — the toppling is only something to watch, and
+    // the wood belongs to whoever swung the axe.
+    if (!document.body.contains(cv.canvas)) {
+      stop();
+      game._chop = null;
+      if (done) fell();
+      return;
+    }
     cv.fit();
     if (shake > 0) shake = Math.max(0, shake - dt / 300);
     if (swing > 0) swing = Math.max(0, swing - dt / 230);
@@ -312,13 +323,22 @@ export function openChop(game, tree) {
     draw(t);
   });
 
+  // Over it goes, and the pile beside it is what it gave. Kept apart from
+  // closing the panel, because the two do not always happen together.
+  let told = false;
+  function fell() {
+    if (told) return;
+    told = true;
+    game.dispatch({
+      type: 'tree.fell', role: game.role, treeId: tree.id, dir: dir,
+      wood: 2, logs: Math.max(1, Math.min(6, logs)),
+    });
+  }
+
   function finish() {
     stop();
     game._chop = null;
-    game.dispatch({
-      type: 'tree.fell', role: game.role, treeId: tree.id, dir: dir,
-      wood: 2, logs: Math.max(1, Math.min(6, logs)), mishap: false,
-    });
+    fell();
     p.close();
   }
 }

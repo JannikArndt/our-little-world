@@ -211,6 +211,57 @@ async function main() {
   const gained = (got.wood - before) + got.loose;
   if (gained < 7) throw new Error('a clean fell should give 2 wood and 5 logs, got ' + gained);
 
+  // The day can end in the middle of a swing — the day's card wipes the
+  // overlay from under the felling game. It has to notice and let go, rather
+  // than draw on into a canvas nobody can see and close somebody else's card
+  // a second later. Taking the overlay away is exactly what that looks like.
+  const nextTree = await api(() => {
+    const g = window.OLW, w = g.world;
+    const t = w.trees.find(t => t.state === 'standing');
+    g.look(t.x, t.y, 2);
+    const p = g.renderer.toScreen(t.x * 24 + 12, t.y * 24 + 12);
+    const r = document.getElementById('world').getBoundingClientRect();
+    return { x: r.left + p.x, y: r.top + p.y };
+  });
+  await page.waitForTimeout(300);
+  await page.mouse.click(nextTree.x, nextTree.y);
+  await page.waitForTimeout(400);
+  const fellBtn = await page.$('text=Fell this tree');
+  if (fellBtn) {
+    await fellBtn.click();
+    await page.waitForTimeout(500);
+    if (!(await api(() => !!window.OLW._chop))) throw new Error('the felling game did not open');
+
+    // Cut it right through first: the tree has to be on its way over when the
+    // overlay goes, because that is the case that used to bite — the settle
+    // ran on and then closed whatever card had taken its place.
+    const pic2 = page.locator('.panel canvas');
+    const standing = await api(() => window.OLW.world.trees.filter(t => t.state === 'standing').length);
+    for (let i = 0; i < 12; i++) {
+      const aim = await api(() => window.OLW._chop);
+      if (!aim) break;
+      const b = await pic2.boundingBox();
+      await pic2.click({ position: { x: b.width * 0.5, y: b.height * (aim.y / aim.H) } });
+      await page.waitForTimeout(150);
+    }
+    await api(() => window.OLW.hud.showDayEnd());          // the day ends as it falls
+    await page.waitForFunction(() => window.OLW._chop === null, null, { timeout: 4000 })
+      .catch(() => { throw new Error('the felling game held on after the overlay went'); });
+    await page.waitForTimeout(2200);                        // longer than its fall and settle
+    const stillCut = await api((n) => window.OLW.world.trees.filter(t => t.state === 'standing').length < n, standing);
+    if (!stillCut) throw new Error('a tree cut right through was not felled when the day ended');
+    const dayCard = await page.evaluate(() => {
+      const ov = document.getElementById('overlay');
+      return { open: !ov.classList.contains('hidden'), text: ov.textContent.slice(0, 40) };
+    });
+    console.log('the day card survives a swing being interrupted:', JSON.stringify(dayCard));
+    if (!dayCard.open) throw new Error('the felling game closed the day card behind it');
+    await page.click('text=Leave it for now');
+    await page.waitForTimeout(400);
+    await api(() => window.OLW.session.startBlock(false));   // back to playing
+    await page.waitForTimeout(500);
+  }
+
   // sawmill
   await api(() => { window.OLW.world.players.A.res.wood = 6; });
   const wsPt = await api(() => {

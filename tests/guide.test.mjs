@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createWorld, PROJECT, SAPLING_TICKS, REPLANT_GOAL, byId, project } from '../src/core/world.js';
 import { applyAction } from '../src/core/actions.js';
 import { tick } from '../src/core/sim.js';
-import { currentProblem } from '../src/core/guide.js';
+import { currentProblem, allProblems, activeProblems, MAX_ACTIVE } from '../src/core/guide.js';
 import { walkable } from '../src/core/grid.js';
 import { findPath } from '../src/core/pathfind.js';
 import { setLang } from '../src/core/i18n.js';
@@ -64,6 +64,38 @@ test('every countable step carries its count, and the tick follows the count', (
     if (!s.count) continue;
     assert.equal(s.done, s.count.have >= s.count.need, 'tick and count disagree: ' + s.text);
   }
+});
+
+test('never more than two jobs at once, and the rest are only waiting', () => {
+  setLang('en');
+  const w = createWorld(42);                 // a fresh world wants half a dozen things
+  const queue = allProblems(w);
+  assert.ok(queue.length > MAX_ACTIVE, 'a new world should have more to want than it shows');
+
+  const shown = activeProblems(w);
+  assert.equal(shown.length, MAX_ACTIVE);
+  assert.deepEqual(shown.map(p => p.id), queue.slice(0, MAX_ACTIVE).map(p => p.id),
+                   'the two shown are the two at the front of the queue');
+  assert.equal(shown[0].id, currentProblem(w).id, 'and the first of them is the pressing one');
+
+  // finish the one at the front and the third thing steps up — nothing is lost
+  const third = queue[MAX_ACTIVE].id;
+  assert.ok(activeProblems(w).every(p => p.id !== third), 'the third job is not shown yet');
+  w.players.A.res.plank = 9; w.players.A.res.stone = 9;
+  applyAction(w, { type: 'bridge.build', role: 'A', planks: 5, stone: 4, quality: 3 });
+  const after = activeProblems(w).map(p => p.id);
+  assert.equal(after.length, MAX_ACTIVE);
+  assert.ok(after.indexOf('no_bridge') < 0, 'the finished job is gone: ' + after.join(', '));
+});
+
+test('a calm world shows no jobs at all rather than an empty one', () => {
+  const w = settled(5);
+  for (const what of ['boat', 'play', 'well', 'privy']) {
+    w.players.A.res.plank = 9; w.players.A.res.stone = 9;
+    applyAction(w, { type: 'project.build', role: 'A', what });
+  }
+  assert.deepEqual(activeProblems(w), [], 'nothing is wrong, so nothing is listed');
+  assert.equal(currentProblem(w).id, 'calm', 'but there is still a card to fall back on');
 });
 
 test('the projects queue up in the order a village would want them', () => {

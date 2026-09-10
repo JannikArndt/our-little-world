@@ -18,7 +18,7 @@ import { openInvite } from './invite.js';
 import { RESOURCES, ROLE, ROLE_ORDER, CAPS, byId, capName, roleName, dayPhase } from '../core/world.js';
 import { tr, trn, LANGUAGES, currentLang, setLang } from '../core/i18n.js';
 import { nextTimeHint } from '../core/events.js';
-import { currentProblem, allProblems } from '../core/guide.js';
+import { currentProblem, allProblems, MAX_ACTIVE } from '../core/guide.js';
 import { showChangelog as openChangelog, VERSION } from './whatsnew.js';
 import { newerBuild } from '../core/fresh.js';
 import { drawPortrait } from '../render/art.js';
@@ -113,8 +113,12 @@ export class Hud {
   /**
    * Everything the world is waiting on, in one list and in the order it
    * matters: what the other player asked for, then the jobs, then the news
-   * nobody has looked at yet. A notice a job already covers is left out — the
-   * empty bread basket does not need saying twice.
+   * nobody has looked at yet.
+   *
+   * Only the first two jobs are here. The queue behind them is still read, so
+   * a notice about something further down — the wheat is golden, and it will
+   * be somebody's job in a minute — is not said twice either; it simply waits
+   * its turn with the job it belongs to.
    */
   todoList() {
     const g = this.game, w = g.world;
@@ -129,8 +133,9 @@ export class Hud {
       });
     }
 
-    for (const pr of allProblems(w)) {
-      covered[pr.id] = 1;
+    const queue = allProblems(w);
+    for (const pr of queue) covered[pr.id] = 1;
+    for (const pr of queue.slice(0, MAX_ACTIVE)) {
       out.push({ icon: pr.icon, label: pr.title, fn: () => this.showGuide(pr) });
     }
 
@@ -344,7 +349,9 @@ export class Hud {
     let n = 0;
     for (const a of w.asks) if (a.to === g.role) n++;
     const covered = {};
-    for (const pr of allProblems(w)) { covered[pr.id] = 1; n++; }
+    const queue = allProblems(w);
+    for (const pr of queue) covered[pr.id] = 1;
+    n += Math.min(queue.length, MAX_ACTIVE);
     for (const nt of w.notices) if (!covered[NOTICE_JOB[nt.id] || nt.id]) n++;
     this.todos.n = n;
     return n;

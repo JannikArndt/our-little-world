@@ -696,6 +696,22 @@ async function main() {
     const overflow = await pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     console.log(name + ' horizontal overflow:', overflow);
     if (overflow > 1) throw new Error(name + ' overflows sideways');
+
+    // Every corner of the world has to reach the middle of the screen, on this
+    // shape too — an axis that happens to fit exactly used to be pinned there.
+    const reach = await pg.evaluate(() => {
+      const r = window.OLW.renderer;
+      const got = (x, y) => { r.cam.x = x; r.cam.y = y; r.clampCamera(); return [r.cam.x, r.cam.y]; };
+      const before = [r.cam.x, r.cam.y];
+      const nw = got(-999, -999), se = got(9999, 9999);
+      const zoom = { now: r.cam.zoom, max: r.maxZoom() };
+      got(before[0], before[1]);
+      return { nw, se, zoom };
+    });
+    console.log(name + ' reaches:', JSON.stringify(reach));
+    if (reach.nw[0] !== 0 || reach.nw[1] !== 0) throw new Error(name + ' cannot reach the top left corner');
+    if (reach.se[0] !== 960 || reach.se[1] !== 576) throw new Error(name + ' cannot reach the bottom right corner');
+    if (!(reach.zoom.max > reach.zoom.now + 0.5)) throw new Error(name + ' has nowhere left to zoom in');
     await c.close();
   }
 

@@ -59,6 +59,11 @@ function tileNoise(x, y) {           // stable per-tile pseudo random
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
+// The closest you may get, as the size one tile ends up on the glass. Four
+// times the size it is drawn is close enough to tap a sheep's nose and far
+// enough that the village is still a village.
+const MAX_TILE_PX = 96;
+
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -100,21 +105,26 @@ export class Renderer {
   scale() { return this.fit * this.cam.zoom; }
 
   /**
-   * How far you may push the world about. It used to stop as soon as an edge
-   * reached the edge of the screen, which meant a tree in the top row could
-   * never be brought away from the top bar and its bubble opened over the
-   * notch. Now the camera may travel all the way to a corner of the world, so
-   * anything at all can be put in the middle of the screen and tapped in clear
-   * air. It still never goes past the world — the far side is a soft green,
-   * not more village.
+   * How close you may get. Not a bare number, because the same number means a
+   * different thing on a phone and on a laptop: it is a tile drawn four times
+   * the size it is painted, whatever the screen. Zoom 1 is always the whole
+   * world, so that stays the floor.
+   */
+  maxZoom() { return Math.max(1, MAX_TILE_PX / TILE / (this.fit || 1)); }
+
+  /**
+   * How far you may push the world about: anywhere from one corner to the
+   * other, in both directions, always. It used to stop as soon as an edge
+   * reached the edge of the screen — and worse, an axis that happened to fit
+   * exactly was pinned to the middle and would not budge at all, which on a
+   * phone is the up-and-down one every time. So a tree in the top row could
+   * never be brought out from under the top bar. Now anything at all can be
+   * put in the middle of the screen and tapped in clear air. The camera still
+   * never leaves the world; past the edge is a soft green, not more village.
    */
   clampCamera() {
-    const s = this.scale();
-    const halfW = this.view.w / 2 / s, halfH = this.view.h / 2 / s;
-    if (halfW * 2 >= WORLD_W) this.cam.x = WORLD_W / 2;
-    else this.cam.x = Math.max(0, Math.min(WORLD_W, this.cam.x));
-    if (halfH * 2 >= WORLD_H) this.cam.y = WORLD_H / 2;
-    else this.cam.y = Math.max(0, Math.min(WORLD_H, this.cam.y));
+    this.cam.x = Math.max(0, Math.min(WORLD_W, this.cam.x));
+    this.cam.y = Math.max(0, Math.min(WORLD_H, this.cam.y));
   }
 
   toScreen(wx, wy) {

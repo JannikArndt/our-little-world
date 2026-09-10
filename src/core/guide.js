@@ -289,9 +289,18 @@ export const CONCERNS = [
 ];
 
 /**
+ * How many jobs anybody is asked to hold in their head at once. The village
+ * always has eight things it would like; two is a morning, eight is a chore.
+ * The rest are not cancelled — they are next, and they turn up on their own
+ * as these are finished.
+ */
+export const MAX_ACTIVE = 2;
+
+/**
  * Everything the world is asking for, in the order it matters — not just the
  * first thing. Two concerns can describe the same job (a thin forest and one
- * last stump are both replanting), so a card is only listed once.
+ * last stump are both replanting), so a card is only listed once. This is the
+ * whole queue; `activeProblems` is the part of it anybody is shown.
  */
 export function allProblems(w) {
   const out = [], seen = {};
@@ -304,6 +313,11 @@ export function allProblems(w) {
     out.push(card);
   }
   return out;
+}
+
+/** The two at the front of the queue — what the village is actually doing. */
+export function activeProblems(w) {
+  return allProblems(w).slice(0, MAX_ACTIVE);
 }
 
 /** The most pressing thing in the world right now, said as something to do. */

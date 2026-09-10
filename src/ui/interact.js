@@ -430,7 +430,7 @@ export function installInput(game, renderer, canvas) {
     if (pinch && e.touches.length === 2) {
       const [a, b] = e.touches;
       const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-      renderer.cam.zoom = Math.max(1, Math.min(4, pinch.z * (d / pinch.d)));
+      renderer.cam.zoom = Math.max(1, Math.min(renderer.maxZoom(), pinch.z * (d / pinch.d)));
       renderer.userZoom = true;
       renderer.clampCamera();
       e.preventDefault();
@@ -452,7 +452,7 @@ export function installInput(game, renderer, canvas) {
   window.addEventListener('mousemove', (e) => drag(e.clientX, e.clientY));
   window.addEventListener('mouseup', (e) => end(e.clientX, e.clientY));
   canvas.addEventListener('wheel', (e) => {
-    renderer.cam.zoom = Math.max(1, Math.min(4, renderer.cam.zoom * (e.deltaY < 0 ? 1.12 : 0.89)));
+    renderer.cam.zoom = Math.max(1, Math.min(renderer.maxZoom(), renderer.cam.zoom * (e.deltaY < 0 ? 1.12 : 0.89)));
     renderer.userZoom = true;
     renderer.clampCamera();
     e.preventDefault();

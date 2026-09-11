@@ -199,15 +199,18 @@ await p.screenshot({ path: out + '69-de-role.png' });
 await p.click('text=Ihnen Tiere versorgen zeigen');
 await p.waitForTimeout(300);
 
-// the end of the block
+// the end of the block: the next day begins on its own, and says nothing
+const dayBefore = await api(() => window.OLW.world.day);
 await api(() => { const w = window.OLW.world; w.block.startTick = w.tick - w.block.length + 20; });
-await p.waitForFunction(() => !window.OLW.world.block.active, null, { timeout: 15000 });
+await p.waitForFunction((d) => window.OLW.world.block.active && window.OLW.world.day > d,
+  dayBefore, { timeout: 15000 })
+  .catch(() => { throw new Error('the next day did not begin on its own'); });
 await p.waitForTimeout(1000);
-await scan('summary');
-await p.screenshot({ path: out + '70-de-summary.png' });
-const sum = await p.textContent('.panel');
-console.log('Rückblick:', sum.replace(/\s+/g, ' ').trim().slice(0, 180));
-if (!/Tag \d+ ist vorbei/.test(sum)) throw new Error('the summary is not German');
+await scan('new day');
+await p.screenshot({ path: out + '70-de-new-day.png' });
+const quiet = await p.evaluate(() => document.getElementById('overlay').classList.contains('hidden'));
+console.log('Nichts zum Tagesende, Overlay versteckt:', quiet);
+if (!quiet) throw new Error('something was put on screen at the end of the day');
 
 await b.close();
 if (errs.length) { console.log('\nPROBLEMS:\n' + errs.join('\n')); process.exit(1); }

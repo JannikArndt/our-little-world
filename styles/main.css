@@ -582,15 +582,11 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
 .stepper button { width: 48px; height: 48px; border-radius: 12px; border: 2px solid var(--line); background: #fff; font-size: 22px; font-weight: 800; }
 .stepper .val { min-width: 42px; text-align: center; font-weight: 800; font-size: 20px; }
 
-/* summary */
-.summary-line { display: block; margin: 6px 8px; font-size: 17px; }
-.summary-line .s-ico { margin-right: 8px; }
+/* cards that speak to the middle */
 .sun-set { text-align: center; font-size: 46px; margin: 4px 0 0; }
 .panel h2.center { text-align: center; }
 .panel .lead.center { text-align: center; }
 .panel .lead.small { font-size: 13px; text-align: center; margin-top: 4px; }
-.next-time { background: #fff6e4; border: 2px dashed #e3c88b; border-radius: 14px; padding: 10px 12px; margin: 12px 4px 0; }
-.next-time b { display: block; font-size: 14px; color: var(--ink-soft); margin-bottom: 2px; text-transform: uppercase; letter-spacing: .04em; }
 
 /* learn / teach */
 .teach-card { background: #f0f7ec; border: 2px solid #c3ddb6; border-radius: 14px; padding: 10px 12px; margin: 10px 4px 0; font-size: 15px; }

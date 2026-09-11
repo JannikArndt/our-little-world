@@ -380,7 +380,12 @@ async function startGame(choice) {
   game.hud = hud;
 
   session.on((what, data) => {
-    if (what === 'block-ended') { session.checkpoint(); hud.showDayEnd(); }
+    // one day runs into the next: a good place to save, and on we go. Only
+    // the host says so, the way it does for events, so the day turns once.
+    if (what === 'block-ended') {
+      session.checkpoint();
+      if (session.isHost) game.startDay(true);
+    }
     if (what === 'status') updatePartner();
     // the other player started the next day: come along with them
     if (what === 'acted' && data && data.type === 'block.start') {

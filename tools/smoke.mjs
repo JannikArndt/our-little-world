@@ -244,21 +244,15 @@ async function main() {
       await pic2.click({ position: { x: b.width * 0.5, y: b.height * (aim.y / aim.H) } });
       await page.waitForTimeout(150);
     }
-    await api(() => window.OLW.hud.showDayEnd());          // the day ends as it falls
+    await api(() => window.OLW.startDay(false));           // the day turns as it falls
     await page.waitForFunction(() => window.OLW._chop === null, null, { timeout: 4000 })
       .catch(() => { throw new Error('the felling game held on after the overlay went'); });
     await page.waitForTimeout(2200);                        // longer than its fall and settle
     const stillCut = await api((n) => window.OLW.world.trees.filter(t => t.state === 'standing').length < n, standing);
     if (!stillCut) throw new Error('a tree cut right through was not felled when the day ended');
-    const dayCard = await page.evaluate(() => {
-      const ov = document.getElementById('overlay');
-      return { open: !ov.classList.contains('hidden'), text: ov.textContent.slice(0, 40) };
-    });
-    console.log('the day card survives a swing being interrupted:', JSON.stringify(dayCard));
-    if (!dayCard.open) throw new Error('the felling game closed the day card behind it');
-    await page.click('text=Leave it for now');
-    await page.waitForTimeout(400);
-    await api(() => window.OLW.session.startBlock(false));   // back to playing
+    const shut = await page.evaluate(() => document.getElementById('overlay').classList.contains('hidden'));
+    console.log('the overlay after a swing was interrupted, hidden:', shut);
+    if (!shut) throw new Error('the felling game left a card open behind the new morning');
     await page.waitForTimeout(500);
   }
 
@@ -636,16 +630,20 @@ async function main() {
   await page.click('text=Close');
   await page.waitForTimeout(200);
 
-  // run the block to its end quickly and check the checkpoint
+  // run the block to its end quickly: the next day starts by itself, and the
+  // world is saved on the way past
+  const dayBefore = await api(() => window.OLW.world.day);
   await api(() => {
     const w = window.OLW.world;
     w.block.startTick = w.tick - w.block.length + 30;
   });
-  await page.waitForFunction(() => !window.OLW.world.block.active, null, { timeout: 15000 });
-  await step(page, '26-summary', 1200);
-  const summaryText = await page.textContent('.panel');
-  console.log('summary contains:', summaryText.replace(/\s+/g, ' ').slice(0, 260));
-  if (!/day \d+ is over/i.test(summaryText)) throw new Error('no day-end summary');
+  await page.waitForFunction((d) => window.OLW.world.block.active && window.OLW.world.day > d,
+    dayBefore, { timeout: 15000 })
+    .catch(() => { throw new Error('the next day did not begin on its own'); });
+  await step(page, '26-new-day', 1200);
+  const quiet = await page.evaluate(() => document.getElementById('overlay').classList.contains('hidden'));
+  console.log('nothing was said at the end of the day, overlay hidden:', quiet);
+  if (!quiet) throw new Error('something was put on screen at the end of the day');
 
   // the world must still be there, and saved
   const saved = await api(() => {
@@ -655,7 +653,6 @@ async function main() {
   console.log('saved buildings:', saved);
   if (saved < 4) throw new Error('the world was not saved');
 
-  await page.click('text=Play another day');
   await step(page, '27-new-morning', 1000);
   await ipad.close();
 

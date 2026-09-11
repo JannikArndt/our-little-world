@@ -383,11 +383,10 @@ gold in the afternoon, and then the sun goes and everybody walks home. Windows
 come on one by one. The people who have a bed go to it; the one who hasn't is
 still standing outside, which is the whole reason you notice them.
 
-Then it is night, and **nothing carries on**. A card says what the day came to,
-who is better off, and one small thing still waiting. The next day only begins
-because somebody taps *play another day* — the game will not pull you into
-another one. The world is saved either way, exactly as it is, with nothing
-rotting while you are away.
+Then it is night, and the next morning follows on its own: nothing is said, no
+card to tap away, the village simply wakes up again a day older. The world is
+saved on the way past, exactly as it is, with nothing rotting while you are
+away.
 
 ## The two rows
 

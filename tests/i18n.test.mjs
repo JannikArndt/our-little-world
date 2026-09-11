@@ -34,11 +34,11 @@ test('nothing is left in English inside the German table', () => {
 
 test('translating falls back rather than blowing up', () => {
   setLang('de');
-  assert.equal(tr('day.stop'), 'Für jetzt gut sein lassen');
+  assert.equal(tr('ui.later'), 'Später');
   assert.equal(tr('nope.not.a.key'), 'nope.not.a.key');
   assert.equal(tr('notice.hungry', { name: 'Bo' }), 'Bo ist hungrig — der Brotkorb müsste gefüllt werden.');
-  assert.equal(trn('sum.felled', 1), 'einen Baum gefällt');
-  assert.equal(trn('sum.felled', 3, { n: 3 }), '3 Bäume gefällt');
+  assert.equal(trn('deed.fell', 1), 'einen Baum gefällt');
+  assert.equal(trn('deed.fell', 3, { n: 3 }), '3 Bäume gefällt');
   setLang('en');
-  assert.equal(tr('day.stop'), 'Leave it for now');
+  assert.equal(tr('ui.later'), 'Later');
 });

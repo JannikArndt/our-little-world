@@ -17,7 +17,6 @@ import { openGive } from './share.js';
 import { openInvite } from './invite.js';
 import { RESOURCES, ROLE, ROLE_ORDER, CAPS, byId, capName, roleName, dayPhase } from '../core/world.js';
 import { tr, trn, LANGUAGES, currentLang, setLang } from '../core/i18n.js';
-import { nextTimeHint } from '../core/events.js';
 import { currentProblem, allProblems, MAX_ACTIVE } from '../core/guide.js';
 import { showChangelog as openChangelog, VERSION } from './whatsnew.js';
 import { newerBuild } from '../core/fresh.js';
@@ -440,47 +439,6 @@ export class Hud {
       drawPortrait(ctx, subject.kind, live || o, sheep ? 44 : 40, sheep ? 74 : 84, sheep ? 2.9 : 2.0, t, w.tick);
     });
   }
-
-  /* ---------------- the end of the day ---------------- */
-
-  /** Night. Nothing carries on by itself: the next day is a decision. */
-  showDayEnd() {
-    const g = this.game, w = g.world;
-    const p = openPanel({ title: tr('day.overTitle', { n: w.day }), lead: tr('day.overLead'), center: true });
-
-    const lines = summarise(w);
-    if (!lines.length) lines.push({ icon: '🌙', text: tr('sum.nothing') });
-    const box = el('div');
-    box.style.cssText = 'margin:6px 0 2px;';
-    for (const l of lines) {
-      const line = el('div', 'summary-line');
-      line.innerHTML = '<span class="s-ico">' + l.icon + '</span>' + escapeHtml(l.text);
-      box.appendChild(line);
-    }
-    p.body.appendChild(box);
-
-    const who = [];
-    const housed = w.villagers.filter(v => v.homeId).length;
-    who.push(tr('sum.beds', { n: housed, total: w.villagers.length }));
-    who.push(tr('sum.basket', { n: w.larder.food }));
-    const content = w.sheep.filter(s => s.mood === 'ok').length;
-    who.push(content ? tr('sum.sheepOk', { n: content, total: w.sheep.length }) : tr('sum.sheepNeed'));
-    p.body.appendChild(el('p', 'lead center', who.join(' · ')));
-
-    const hint = nextTimeHint(w);
-    const nt = el('div', 'next-time');
-    nt.appendChild(el('b', '', tr('sum.nextTime')));
-    nt.appendChild(el('span', '', hint.icon + '  ' + tr(hint.key)));
-    p.body.appendChild(nt);
-
-    const r = p.row();
-    r.appendChild(p.button(tr('day.another'), 'go', () => {
-      p.close();
-      clearMessages();
-      g.startDay(true);
-    }));
-    r.appendChild(p.button(tr('day.stop'), 'soft', () => p.close()));
-  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -542,43 +500,3 @@ function teachKey(cap) {
            herd: 'care', care: 'care', road: 'road', farm: 'farm' }[cap] || cap;
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-/** Turn the journal into a few plain sentences, in whichever language. */
-export function summarise(w) {
-  const n = {}, num = {};
-  for (const j of w.journal) {
-    n[j.icon] = (n[j.icon] || 0) + 1;
-    if (j.vars && typeof j.vars.n === 'number') num[j.icon] = (num[j.icon] || 0) + j.vars.n;
-  }
-  const out = [];
-  const add = (icon, key, count, vars) => {
-    if (!n[icon]) return;
-    out.push({ icon, text: count == null ? tr(key, vars) : trn(key, count, vars) });
-  };
-  add('🌳', 'sum.felled', n['🌳'], { n: n['🌳'] });
-  add('🪚', 'sum.sawed', null, { n: num['🪚'] });
-  add('🌉', 'sum.bridge');
-  add('🔧', 'sum.mended');
-  add('🏠', 'sum.houses', n['🏠'], { n: n['🏠'] });
-  add('🔑', 'sum.movedIn', n['🔑'], { n: n['🔑'] });
-  add('🛤️', 'sum.road', null, { n: num['🛤️'] });
-  add('🐑', 'sum.sheep', n['🐑'], { n: n['🐑'] });
-  add('🌾', 'sum.wheat', null, { n: num['🌾'] });
-  add('🍞', 'sum.bread', null, { n: num['🍞'] });
-  add('🧺', 'sum.larder');
-  add('🤝', 'sum.shared', n['🤝'], { n: n['🤝'] });
-  add('👐', 'sum.taught');
-  add('👨‍👩‍👧', 'sum.family');
-  add('🦌', 'sum.deer');
-  add('⛵', 'sum.boat');
-  add('🛝', 'sum.play');
-  add('🪣', 'sum.well');
-  add('🚪', 'sum.privy');
-  add('🚧', 'sum.fence');
-  add('🎣', 'sum.fished', null, { n: num['🎣'] });
-  add('🌱', 'sum.planted', n['🌱'], { n: n['🌱'] });
-  return out;
-}

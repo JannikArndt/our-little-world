@@ -22,7 +22,7 @@ import { Stats } from './stats.mjs';
 export const DEFAULT_ROLES = ROLE_ORDER.slice();
 
 const DAY = 24 * 60 * 60 * 1000;
-const MAX_SNAPSHOT = 512 * 1024;        // a whole world is ~10 KB; this is a wall, not a target
+const MAX_SNAPSHOT = 512 * 1024; // a whole world is ~10 KB; this is a wall, not a target
 
 export class Worlds {
   /**
@@ -56,7 +56,9 @@ export class Worlds {
       try {
         const w = JSON.parse(await readFile(join(this.dir, f), 'utf8'));
         if (w && w.name) this.worlds.set(w.name, normalise(w));
-      } catch (e) { /* a half-written file is not worth a crash */ }
+      } catch {
+        /* a half-written file is not worth a crash */
+      }
     }
     await this.counts.load();
     await this.sweep();
@@ -73,14 +75,20 @@ export class Worlds {
       const w = this.worlds.get(name);
       const file = join(this.dir, name + '.json');
       try {
-        if (!w) { await unlink(file).catch(() => {}); continue; }
+        if (!w) {
+          await unlink(file).catch(() => {});
+          continue;
+        }
         const tmp = file + '.' + process.pid + '.tmp';
         await writeFile(tmp, JSON.stringify(w));
         await rename(tmp, file);
       } catch (e) {
         // a read-only or full disk means this run is memory-only; the game
         // itself keeps working, so say it once and carry on
-        if (!this.warned) { this.warned = true; console.warn('worlds: cannot write to ' + this.dir + ' (' + e.code + ')'); }
+        if (!this.warned) {
+          this.warned = true;
+          console.warn('worlds: cannot write to ' + this.dir + ' (' + e.code + ')');
+        }
       }
     }
   }
@@ -88,19 +96,28 @@ export class Worlds {
   /** Flush every few seconds and sweep every hour, without holding the process open. */
   startWriting(flushMs = 4000, sweepMs = 60 * 60 * 1000) {
     if (this.timer || !this.dir) return this;
-    this.timer = setInterval(() => { this.flush(); }, flushMs);
-    this.sweeper = setInterval(() => { this.sweep(); }, sweepMs);
-    this.timer.unref(); this.sweeper.unref();
+    this.timer = setInterval(() => {
+      this.flush();
+    }, flushMs);
+    this.sweeper = setInterval(() => {
+      this.sweep();
+    }, sweepMs);
+    this.timer.unref();
+    this.sweeper.unref();
     return this;
   }
 
   async close() {
-    clearInterval(this.timer); clearInterval(this.sweeper);
-    this.timer = null; this.sweeper = null;
+    clearInterval(this.timer);
+    clearInterval(this.sweeper);
+    this.timer = null;
+    this.sweeper = null;
     await this.flush();
   }
 
-  touchFile(name) { this.dirty.add(name); }
+  touchFile(name) {
+    this.dirty.add(name);
+  }
 
   /* ---------------- the worlds themselves ---------------- */
 
@@ -110,15 +127,19 @@ export class Worlds {
     let gone = 0;
     for (const [name, w] of this.worlds) {
       if (w.seen < cutoff) {
-        this.counts.fold(w);                  // the numbers stay; the name does not
-        this.worlds.delete(name); this.dirty.add(name); gone++;
+        this.counts.fold(w); // the numbers stay; the name does not
+        this.worlds.delete(name);
+        this.dirty.add(name);
+        gone++;
       }
     }
     if (gone) await this.flush();
     return gone;
   }
 
-  get(name) { return this.worlds.get(name) || null; }
+  get(name) {
+    return this.worlds.get(name) || null;
+  }
 
   /** A brand new world with one spot already taken by whoever asked. */
   create(opts) {
@@ -165,16 +186,19 @@ export class Worlds {
     const dev = device || 'anon';
     for (const r of w.roles) {
       const s = w.slots[r];
-      if (s && s.device === dev) { s.seen = t; return r; }
+      if (s && s.device === dev) {
+        s.seen = t;
+        return r;
+      }
     }
-    const free = w.roles.filter((r) => !w.slots[r]);
+    const free = w.roles.filter(r => !w.slots[r]);
     let role = null;
     if (wanted && free.indexOf(wanted) >= 0) role = wanted;
     else if (free.length) role = free[0];
     else {
       // nothing free: a spot nobody has used for days is fair game again
       const stale = w.roles
-        .filter((r) => t - w.slots[r].seen > this.staleSlotMs)
+        .filter(r => t - w.slots[r].seen > this.staleSlotMs)
         .sort((a, b) => w.slots[a].seen - w.slots[b].seen);
       if (wanted && stale.indexOf(wanted) >= 0) role = wanted;
       else if (stale.length) role = stale[0];
@@ -250,14 +274,19 @@ export class Worlds {
     const text = String(o.world || '');
     if (!text || text.length > MAX_SNAPSHOT) return { ok: false, reason: 'size' };
     const tick = Number(o.tick) || 0;
-    if (w.snapshot && tick < w.snapshot.tick && !o.reset) return { ok: false, reason: 'older', snapshot: w.snapshot };
+    if (w.snapshot && tick < w.snapshot.tick && !o.reset)
+      return { ok: false, reason: 'older', snapshot: w.snapshot };
     w.snapshot = { tick, at: this.now(), world: text };
     w.seen = this.now();
     // the one place that knows how far this world has got. Reading it here
     // costs a parse every half minute per world being played, and means the
     // stats never have to open a snapshot again.
     this.counts.mark(w, o.role || null);
-    try { this.counts.learn(w, JSON.parse(text)); } catch (e) { /* not our business */ }
+    try {
+      this.counts.learn(w, JSON.parse(text));
+    } catch {
+      /* not our business */
+    }
     this.dirty.add(name);
     return { ok: true };
   }
@@ -273,16 +302,22 @@ export class Worlds {
   }
 
   stats() {
-    let snapshots = 0, bytes = 0;
+    let snapshots = 0,
+      bytes = 0;
     for (const w of this.worlds.values()) {
-      if (w.snapshot) { snapshots++; bytes += w.snapshot.world.length; }
+      if (w.snapshot) {
+        snapshots++;
+        bytes += w.snapshot.world.length;
+      }
     }
     return { worlds: this.worlds.size, snapshots, snapshotBytes: bytes };
   }
 }
 
 /** Which spots nobody has taken. */
-export function free(w) { return w.roles.filter((r) => !w.slots[r]); }
+export function free(w) {
+  return w.roles.filter(r => !w.slots[r]);
+}
 
 /** What a browser is allowed to know about a world: no devices, no snapshot. */
 export function publicView(w) {
@@ -292,7 +327,7 @@ export function publicView(w) {
     created: w.created,
     seen: w.seen,
     roles: w.roles.slice(),
-    taken: w.roles.filter((r) => !!w.slots[r]),
+    taken: w.roles.filter(r => !!w.slots[r]),
     free: free(w),
     started: !!w.snapshot,
   };

@@ -1,10 +1,10 @@
 // Terrain grid: the single source of truth for where people and animals can walk.
 
-export const GW = 40;          // tiles across
-export const GH = 24;          // tiles down
-export const TILE = 24;        // logical pixels per tile
-export const WORLD_W = GW * TILE;   // 960
-export const WORLD_H = GH * TILE;   // 576
+export const GW = 40; // tiles across
+export const GH = 24; // tiles down
+export const TILE = 24; // logical pixels per tile
+export const WORLD_W = GW * TILE; // 960
+export const WORLD_H = GH * TILE; // 576
 
 export const T = {
   GRASS: 0,
@@ -33,16 +33,18 @@ export function setTile(world, x, y, t) {
 }
 export function costAt(world, x, y) {
   if (!inBounds(x, y)) return Infinity;
-  if (world.blocked[idx(x, y)]) return Infinity;   // buildings, standing trees
+  if (world.blocked[idx(x, y)]) return Infinity; // buildings, standing trees
   return COST[world.terrain[idx(x, y)]];
 }
-export function walkable(world, x, y) { return costAt(world, x, y) !== Infinity; }
+export function walkable(world, x, y) {
+  return costAt(world, x, y) !== Infinity;
+}
 
 // world (pixel) <-> tile helpers
-export const toTileX = (px) => Math.floor(px / TILE);
-export const toTileY = (py) => Math.floor(py / TILE);
-export const tileCenterX = (tx) => tx * TILE + TILE / 2;
-export const tileCenterY = (ty) => ty * TILE + TILE / 2;
+export const toTileX = px => Math.floor(px / TILE);
+export const toTileY = py => Math.floor(py / TILE);
+export const tileCenterX = tx => tx * TILE + TILE / 2;
+export const tileCenterY = ty => ty * TILE + TILE / 2;
 
 /** Recompute the "blocked" overlay from buildings and standing trees. */
 export function rebuildBlocked(world) {
@@ -53,15 +55,13 @@ export function rebuildBlocked(world) {
   if (world.regionBoxes) {
     for (const box of world.regionBoxes)
       for (let y = box[1]; y <= box[3]; y++)
-        for (let x = box[0]; x <= box[2]; x++)
-          if (inBounds(x, y)) b[idx(x, y)] = 1;
+        for (let x = box[0]; x <= box[2]; x++) if (inBounds(x, y)) b[idx(x, y)] = 1;
   }
   for (const bl of world.buildings) {
-    if (bl.state !== 'built') continue;            // a plot or a plan can be walked over
-    if (bl.walkable) continue;                     // a jetty and a playground are for walking on
+    if (bl.state !== 'built') continue; // a plot or a plan can be walked over
+    if (bl.walkable) continue; // a jetty and a playground are for walking on
     for (let y = bl.y; y < bl.y + bl.h; y++)
-      for (let x = bl.x; x < bl.x + bl.w; x++)
-        if (inBounds(x, y)) b[idx(x, y)] = 1;
+      for (let x = bl.x; x < bl.x + bl.w; x++) if (inBounds(x, y)) b[idx(x, y)] = 1;
     // doorway stays open so villagers can reach the door tile
     if (bl.door) b[idx(bl.door.x, bl.door.y)] = 0;
   }

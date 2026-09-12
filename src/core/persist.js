@@ -7,18 +7,28 @@
 
 import { serialize, deserialize } from './world.js';
 
-const KEY = (room) => 'olw.world.' + room;
+const KEY = room => 'olw.world.' + room;
 
 function available() {
-  try { const k = '__olw'; localStorage.setItem(k, '1'); localStorage.removeItem(k); return true; }
-  catch (e) { return false; }
+  try {
+    const k = '__olw';
+    localStorage.setItem(k, '1');
+    localStorage.removeItem(k);
+    return true;
+  } catch {
+    return false;
+  }
 }
 const OK = typeof localStorage !== 'undefined' && available();
 
 export function save(room, w) {
   if (!OK) return false;
-  try { localStorage.setItem(KEY(room), serialize(w)); return true; }
-  catch (e) { return false; }
+  try {
+    localStorage.setItem(KEY(room), serialize(w));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function load(room) {
@@ -29,16 +39,27 @@ export function load(room) {
     const w = deserialize(text);
     // A world we cannot read is a world somebody else's newer browser saved.
     // Put it aside rather than letting the next checkpoint write over it.
-    if (!w) { try { localStorage.setItem(KEY(room) + '.kept', text); } catch (e) { /* full, never mind */ } }
+    if (!w) {
+      try {
+        localStorage.setItem(KEY(room) + '.kept', text);
+      } catch {
+        /* full, never mind */
+      }
+    }
     return w;
-  } catch (e) { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export function forget(room) {
   if (!OK) return;
-  try { localStorage.removeItem(KEY(room)); } catch (e) { /* nothing to do */ }
+  try {
+    localStorage.removeItem(KEY(room));
+  } catch {
+    /* nothing to do */
+  }
 }
-
 
 /* ------------------------------------------------------------------ */
 /* which worlds this device belongs to                                */
@@ -62,7 +83,9 @@ export function deviceId() {
       localStorage.setItem(DEVICE_KEY, id);
     }
     return id;
-  } catch (e) { return 'anon'; }
+  } catch {
+    return 'anon';
+  }
 }
 
 /** The worlds this device has played in, the most recent first. */
@@ -72,7 +95,9 @@ export function recentWorlds() {
     const list = JSON.parse(localStorage.getItem(WORLDS_KEY) || '[]');
     if (!Array.isArray(list)) return [];
     return list.filter(w => w && typeof w.name === 'string').slice(0, KEEP_WORLDS);
-  } catch (e) { return []; }
+  } catch {
+    return [];
+  }
 }
 
 /** Put a world at the top of that list, with the role we play in it. */
@@ -80,12 +105,20 @@ export function rememberWorld(name, role) {
   if (!OK || !name) return;
   const list = recentWorlds().filter(w => w.name !== name);
   list.unshift({ name, role: role || null, at: Date.now() });
-  try { localStorage.setItem(WORLDS_KEY, JSON.stringify(list.slice(0, KEEP_WORLDS))); } catch (e) { /* fine */ }
+  try {
+    localStorage.setItem(WORLDS_KEY, JSON.stringify(list.slice(0, KEEP_WORLDS)));
+  } catch {
+    /* fine */
+  }
 }
 
 export function forgetWorld(name) {
   if (!OK) return;
   const list = recentWorlds().filter(w => w.name !== name);
-  try { localStorage.setItem(WORLDS_KEY, JSON.stringify(list)); } catch (e) { /* fine */ }
+  try {
+    localStorage.setItem(WORLDS_KEY, JSON.stringify(list));
+  } catch {
+    /* fine */
+  }
   forget(name);
 }

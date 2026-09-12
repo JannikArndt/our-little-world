@@ -27,8 +27,8 @@ import { cleanName } from '../src/core/names.js';
 import { publicView } from './worlds.mjs';
 
 const MAX_BODY = 1024 * 1024;
-const CREATE_PER_HOUR = 30;             // per address; a family needs a handful
-const STATS_FOR = 30000;                // the same answer for half a minute
+const CREATE_PER_HOUR = 30; // per address; a family needs a handful
+const STATS_FOR = 30000; // the same answer for half a minute
 
 export function createApi(store, opts) {
   const o = opts || {};
@@ -41,7 +41,10 @@ export function createApi(store, opts) {
     const ip = (req.socket && req.socket.remoteAddress) || 'local';
     const t = now();
     const b = buckets.get(ip) || { n: 0, until: t + 3600000 };
-    if (t > b.until) { b.n = 0; b.until = t + 3600000; }
+    if (t > b.until) {
+      b.n = 0;
+      b.until = t + 3600000;
+    }
     b.n++;
     buckets.set(ip, b);
     if (buckets.size > 5000) buckets.clear();
@@ -57,9 +60,13 @@ export function createApi(store, opts) {
     res.setHeader('access-control-allow-origin', '*');
     res.setHeader('access-control-allow-headers', 'content-type');
     res.setHeader('access-control-allow-methods', 'GET,POST,OPTIONS');
-    if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return true; }
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return true;
+    }
 
-    const parts = url.pathname.split('/').filter((p) => p.length);   // ['api','worlds',name,what]
+    const parts = url.pathname.split('/').filter(p => p.length); // ['api','worlds',name,what]
     try {
       if (parts[1] === 'health' && parts.length === 2) {
         return send(res, 200, Object.assign({ ok: true, relay: true }, store.stats()));
@@ -81,13 +88,20 @@ export function createApi(store, opts) {
 
       /* ---- the list, and starting a new world ---- */
       if (parts.length === 2) {
-        if (req.method === 'GET') return send(res, 200, { worlds: store.open({ limit: Number(url.searchParams.get('limit')) || 24 }) });
+        if (req.method === 'GET')
+          return send(res, 200, {
+            worlds: store.open({ limit: Number(url.searchParams.get('limit')) || 24 }),
+          });
         if (req.method === 'POST') {
           if (!allowedToCreate(req)) return send(res, 429, { error: 'too-many-worlds' });
           const body = await readJson(req);
           if (body === null) return send(res, 400, { error: 'bad-body' });
           const wanted = cleanName(body.name);
-          const made = store.create({ device: device(body), role: role(body), name: wanted || null });
+          const made = store.create({
+            device: device(body),
+            role: role(body),
+            name: wanted || null,
+          });
           return send(res, 201, { world: publicView(made.world), role: made.role });
         }
         return send(res, 405, { error: 'method' });
@@ -100,7 +114,9 @@ export function createApi(store, opts) {
       /* ---- one world ---- */
       if (!what && req.method === 'GET') {
         const w = store.get(name);
-        return w ? send(res, 200, { world: publicView(w) }) : send(res, 404, { error: 'no-such-world' });
+        return w
+          ? send(res, 200, { world: publicView(w) })
+          : send(res, 404, { error: 'no-such-world' });
       }
 
       if (what === 'snapshot' && req.method === 'GET') {
@@ -138,7 +154,12 @@ export function createApi(store, opts) {
       }
 
       if (what === 'snapshot') {
-        const r = store.putSnapshot(name, { device: device(body), tick: body.tick, world: body.world, reset: !!body.reset });
+        const r = store.putSnapshot(name, {
+          device: device(body),
+          tick: body.tick,
+          world: body.world,
+          reset: !!body.reset,
+        });
         if (r.ok) return send(res, 200, { ok: true });
         if (r.reason === 'no-world') return send(res, 404, { error: 'no-such-world' });
         if (r.reason === 'older') return send(res, 409, { error: 'older', snapshot: r.snapshot });
@@ -146,18 +167,25 @@ export function createApi(store, opts) {
       }
 
       return send(res, 404, { error: 'no-such-endpoint' });
-    } catch (e) {
+    } catch {
       return send(res, 500, { error: 'server' });
     }
   };
 }
 
-function device(body) { return String(body.device || '').slice(0, 64) || null; }
-function role(body) { return body.role ? String(body.role).slice(0, 8) : null; }
+function device(body) {
+  return String(body.device || '').slice(0, 64) || null;
+}
+function role(body) {
+  return body.role ? String(body.role).slice(0, 8) : null;
+}
 
 function send(res, code, obj, cache) {
   const text = JSON.stringify(obj);
-  res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': cache || 'no-store' });
+  res.writeHead(code, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': cache || 'no-store',
+  });
   res.end(text);
   return true;
 }
@@ -165,18 +193,28 @@ function send(res, code, obj, cache) {
 /** Reads a JSON body, however it was sent — fetch and sendBeacon disagree
  *  about content types and neither of them matters here. */
 function readJson(req) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     let size = 0;
     const chunks = [];
-    req.on('data', (c) => {
+    req.on('data', c => {
       size += c.length;
-      if (size > MAX_BODY) { resolve(null); req.destroy(); return; }
+      if (size > MAX_BODY) {
+        resolve(null);
+        req.destroy();
+        return;
+      }
       chunks.push(c);
     });
     req.on('end', () => {
-      if (!chunks.length) { resolve({}); return; }
-      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
-      catch (e) { resolve(null); }
+      if (!chunks.length) {
+        resolve({});
+        return;
+      }
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      } catch {
+        resolve(null);
+      }
     });
     req.on('error', () => resolve(null));
   });

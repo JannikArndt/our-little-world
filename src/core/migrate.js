@@ -13,7 +13,7 @@
 // The only world that is refused is one saved by a *newer* build than this one,
 // because we cannot know what it means.
 
-import { scenarioOf, DEFAULT_SCENARIO } from './content.js';
+import { scenarioOf } from './content.js';
 
 /** version n -> n + 1. Keep them small, and never delete one. */
 export const MIGRATIONS = {
@@ -35,7 +35,7 @@ export const MIGRATIONS = {
  */
 export function runMigrations(w, schema) {
   if (!w || typeof w.schema !== 'number') return null;
-  if (w.schema > schema) return null;              // saved by a newer version
+  if (w.schema > schema) return null; // saved by a newer version
   let guard = 64;
   while (w.schema < schema && guard-- > 0) {
     const step = MIGRATIONS[w.schema];

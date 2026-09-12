@@ -15,16 +15,23 @@ const SHOTS = new URL('./shots/', import.meta.url).pathname;
 const errors = [];
 
 const watch = (page, tag) => {
-  page.on('pageerror', (e) => errors.push(tag + ' pageerror: ' + e.message));
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(tag + ' console: ' + m.text()); });
+  page.on('pageerror', e => errors.push(tag + ' pageerror: ' + e.message));
+  page.on('console', m => {
+    if (m.type() === 'error') errors.push(tag + ' console: ' + m.text());
+  });
 };
 const shot = (page, name) => page.screenshot({ path: SHOTS + name + '.png' });
-const inWorld = (page) => page.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 10000 });
+const inWorld = page =>
+  page.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 10000 });
 
 const browser = await chromium.launch();
 
 /* ---------- the child starts a world ---------- */
-const kidCtx = await browser.newContext({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true });
+const kidCtx = await browser.newContext({
+  viewport: { width: 1024, height: 768 },
+  hasTouch: true,
+  isMobile: true,
+});
 const kid = await kidCtx.newPage();
 watch(kid, 'kid');
 await kid.goto(BASE + '/', { waitUntil: 'load' });
@@ -38,7 +45,8 @@ const worldName = await kid.textContent('.w-name');
 console.log('the child started:', worldName);
 await shot(kid, '71-lobby-made');
 if (!/^[A-Z]/.test(worldName)) throw new Error('the new world has no readable name');
-if (!/waiting|wartet/i.test(await kid.textContent('.w-line'))) throw new Error('the card does not say who it is waiting for');
+if (!/waiting|wartet/i.test(await kid.textContent('.w-line')))
+  throw new Error('the card does not say who it is waiting for');
 
 await kid.click('text=Start playing');
 await inWorld(kid);
@@ -61,7 +69,11 @@ await shot(kid, '71b-lobby-invite');
 await kid.click('.panel .btn.soft');
 
 /* ---------- the parent finds it in the list ---------- */
-const dadCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+const dadCtx = await browser.newContext({
+  viewport: { width: 390, height: 844 },
+  hasTouch: true,
+  isMobile: true,
+});
 const dad = await dadCtx.newPage();
 watch(dad, 'dad');
 await dad.goto(BASE + '/', { waitUntil: 'load' });
@@ -70,21 +82,28 @@ await dad.waitForSelector('.world-card', { timeout: 8000 });
 await shot(dad, '72-lobby-list');
 const listed = await dad.textContent('.w-name');
 console.log('the list offers:', listed);
-if (listed !== worldName) throw new Error('the world the child started is not the one being offered');
+if (listed !== worldName)
+  throw new Error('the world the child started is not the one being offered');
 
 await dad.click('.world-card');
 await inWorld(dad);
 const dadRole = await dad.evaluate(() => window.OLW.role);
 console.log('the parent plays:', dadRole);
 if (dadRole !== 'B') throw new Error('the parent did not get the free spot');
-if (await dad.evaluate(() => window.OLW.worldName) !== await kid.evaluate(() => window.OLW.worldName))
+if (
+  (await dad.evaluate(() => window.OLW.worldName)) !==
+  (await kid.evaluate(() => window.OLW.worldName))
+)
   throw new Error('the two of them are in different worlds');
 
 /* ---------- and it is not on offer any more ---------- */
 const slug = worldName.toLowerCase().replace(/ /g, '-');
 const open = await (await fetch(BASE + '/api/worlds')).json();
-console.log('worlds still waiting for somebody:', open.worlds.map((w) => w.name).join(', ') || 'none');
-if (open.worlds.some((w) => w.name === slug))
+console.log(
+  'worlds still waiting for somebody:',
+  open.worlds.map(w => w.name).join(', ') || 'none',
+);
+if (open.worlds.some(w => w.name === slug))
   throw new Error('a world with both spots taken is still being offered');
 
 /* ---------- one of them builds something, the other sees it ---------- */
@@ -106,12 +125,18 @@ await dad.waitForSelector('text=Your worlds', { timeout: 8000 });
 await shot(dad, '74-lobby-carry-on');
 await dad.click('.world-card');
 await inWorld(dad);
-if (await dad.evaluate(() => window.OLW.role) !== 'B') throw new Error('coming back gave a different role');
+if ((await dad.evaluate(() => window.OLW.role)) !== 'B')
+  throw new Error('coming back gave a different role');
 console.log('coming back: same world, same role, no typing');
 
 /* ---------- the world survives the parent being the only one to open it ---------- */
 const stored = await (await fetch(BASE + '/api/worlds/' + slug + '/snapshot')).json();
-console.log('the server holds a world of', String(stored.world || '').length, 'bytes at tick', stored.tick);
+console.log(
+  'the server holds a world of',
+  String(stored.world || '').length,
+  'bytes at tick',
+  stored.tick,
+);
 if (!stored.world) throw new Error('the server kept no copy of the world');
 
 /* ---------- a Home Screen copy is a browser that has never been here ---------- */
@@ -120,12 +145,16 @@ if (!stored.world) throw new Error('the server kept no copy of the world');
 // by the very person whose village it is. Saying which chair is theirs is the
 // way back in. Safari stays open — that is the situation: you are adding the
 // world you are already playing to the Home Screen, not moving out of it.
-const appCtx = await browser.newContext({ viewport: { width: 393, height: 852 }, hasTouch: true, isMobile: true });
+const appCtx = await browser.newContext({
+  viewport: { width: 393, height: 852 },
+  hasTouch: true,
+  isMobile: true,
+});
 const app = await appCtx.newPage();
 watch(app, 'app');
 await app.goto(BASE + '/?world=' + slug, { waitUntil: 'load' });
 await app.waitForSelector('.world-card', { timeout: 8000 });
-await app.click('.world-card');                      // the world the link names
+await app.click('.world-card'); // the world the link names
 await app.waitForSelector('text=Both seats are taken', { timeout: 8000 });
 console.log('a browser that has never been here is asked which seat is theirs');
 await shot(app, '75-lobby-seat');
@@ -134,7 +163,10 @@ await inWorld(app);
 const appRole = await app.evaluate(() => window.OLW.role);
 console.log('and it carries on as:', appRole);
 if (appRole !== 'A') throw new Error('claiming a seat back did not work');
-if (await app.evaluate(() => window.OLW.worldName) !== await dad.evaluate(() => window.OLW.worldName))
+if (
+  (await app.evaluate(() => window.OLW.worldName)) !==
+  (await dad.evaluate(() => window.OLW.worldName))
+)
   throw new Error('claiming a seat landed in the wrong world');
 
 // and from in there, the link that saves anybody doing that twice
@@ -148,5 +180,8 @@ if (!/[?&]role=A(&|$)/.test(seatUrl)) throw new Error('the seat link does not sa
 
 await kidCtx.close();
 await browser.close();
-if (errors.length) { console.error('\n' + errors.join('\n')); process.exit(1); }
+if (errors.length) {
+  console.error('\n' + errors.join('\n'));
+  process.exit(1);
+}
 console.log('\nlobby: all good');

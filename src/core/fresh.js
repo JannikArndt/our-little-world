@@ -20,19 +20,21 @@
 export const BUILD = (function () {
   const m = document.querySelector('meta[name="olw-build"]');
   const v = m ? m.getAttribute('content') : '';
-  return v === 'dev' ? '' : v;                  // 'dev' is the unstamped file
+  return v === 'dev' ? '' : v; // 'dev' is the unstamped file
 })();
 
-const QUIET_FOR = 60000;    // never ask twice in the same minute
-const POLL_EVERY = 180000;  // and ask again on a slow timer even if nobody switches away and back
+const QUIET_FOR = 60000; // never ask twice in the same minute
+const POLL_EVERY = 180000; // and ask again on a slow timer even if nobody switches away and back
 const STARTUP_GRACE = 20000; // never reload out from under somebody who just arrived
 const startedAt = Date.now();
 let asked = 0;
 let newer = null;
-let reloaded = false;       // at most once per page life; a reload loop beats a stale copy at nothing
+let reloaded = false; // at most once per page life; a reload loop beats a stale copy at nothing
 
 /** The newer build we have already seen, or null. No question asked. */
-export function newerBuild() { return newer; }
+export function newerBuild() {
+  return newer;
+}
 
 /**
  * Ask the server what it is serving. Answers with the newer build or null.
@@ -43,12 +45,16 @@ export function askIfNewer() {
   if (!BUILD || newer || now - asked < QUIET_FOR) return Promise.resolve(newer);
   asked = now;
   return fetch('/version', { cache: 'no-store' })
-    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (r) {
+      return r.ok ? r.json() : null;
+    })
     .then(function (v) {
       if (v && v.build && v.build !== BUILD) newer = v;
       return newer;
     })
-    .catch(function () { return newer; });
+    .catch(function () {
+      return newer;
+    });
 }
 
 /**
@@ -75,7 +81,12 @@ export function reloadNow(world) {
 export function watchForNewer(onNews) {
   const look = function () {
     if (document.hidden) return;
-    askIfNewer().then(function (v) { if (v && onNews) { onNews(v); onNews = null; } });
+    askIfNewer().then(function (v) {
+      if (v && onNews) {
+        onNews(v);
+        onNews = null;
+      }
+    });
   };
   document.addEventListener('visibilitychange', look);
   window.addEventListener('pageshow', look);
@@ -99,7 +110,10 @@ export function whenQuiet(isQuiet, go) {
   if (reloaded) return;
   const tryNow = function () {
     if (reloaded) return;
-    if (Date.now() - startedAt < STARTUP_GRACE || !isQuiet()) { setTimeout(tryNow, 2000); return; }
+    if (Date.now() - startedAt < STARTUP_GRACE || !isQuiet()) {
+      setTimeout(tryNow, 2000);
+      return;
+    }
     reloaded = true;
     go();
   };

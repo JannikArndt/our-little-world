@@ -12,10 +12,19 @@
 // doing lives behind your own chip, counted by a red number on it, so the
 // village is never hidden behind a stack of cards you cannot put away.
 
-import { el, openPanel, openMenu, message, clearMessages, loop } from './overlay.js';
+import { el, openPanel, openMenu, message, loop } from './overlay.js';
 import { openGive } from './share.js';
-import { openInvite, openSeat } from './invite.js';
-import { RESOURCES, ROLE, ROLE_ORDER, CAPS, byId, capName, roleName, dayPhase } from '../core/world.js';
+import { openSeat } from './invite.js';
+import {
+  RESOURCES,
+  ROLE,
+  ROLE_ORDER,
+  CAPS,
+  byId,
+  capName,
+  roleName,
+  dayPhase,
+} from '../core/world.js';
 import { tr, trn, LANGUAGES, currentLang, setLang } from '../core/i18n.js';
 import { currentProblem, allProblems, MAX_ACTIVE } from '../core/guide.js';
 import { showChangelog as openChangelog, VERSION } from './whatsnew.js';
@@ -23,8 +32,12 @@ import { newerBuild } from '../core/fresh.js';
 import { drawPortrait } from '../render/art.js';
 
 const PHASE_ICON = {
-  dawn: '🌅', morning: '🌤️', midday: '☀️',
-  afternoon: '🌥️', evening: '🌇', night: '🌙',
+  dawn: '🌅',
+  morning: '🌤️',
+  midday: '☀️',
+  afternoon: '🌥️',
+  evening: '🌇',
+  night: '🌙',
 };
 
 export class Hud {
@@ -82,7 +95,8 @@ export class Hud {
   }
 
   openFolkMenu(anchor) {
-    const g = this.game, w = g.world;
+    const g = this.game,
+      w = g.world;
     const items = [];
 
     for (const v of w.villagers) {
@@ -93,10 +107,14 @@ export class Hud {
         icon: v.kid ? '🧒' : '🧑',
         label: v.name + (v.kid ? ' · ' + tr('villagers.kid') : ''),
         note: this.homeLine(v) + ' · ' + (doing || this.wantLine(v)),
-        fn: () => g.showMe({
-          points: [[v.x, v.y]],
-          subject: { kind: 'villager', id: v.id },
-        }, 2.2),
+        fn: () =>
+          g.showMe(
+            {
+              points: [[v.x, v.y]],
+              subject: { kind: 'villager', id: v.id },
+            },
+            2.2,
+          ),
       });
     }
 
@@ -105,13 +123,26 @@ export class Hud {
       items.push({ icon: '🐑', disabled: true, label: tr('menu.sheepHere') });
       for (const s of w.sheep) {
         items.push({
-          icon: '🐑', sub: true, label: s.name,
-          note: tr(s.mood === 'hungry' ? 'w.sheepHungry' : s.mood === 'thirsty' ? 'w.sheepThirsty'
-            : s.mood === 'woolly' ? 'w.sheepWoolly' : 'w.sheepOk'),
-          fn: () => g.showMe({
-            points: [[s.x, s.y]],
-            subject: { kind: 'sheep', id: s.id },
-          }, 2.2),
+          icon: '🐑',
+          sub: true,
+          label: s.name,
+          note: tr(
+            s.mood === 'hungry'
+              ? 'w.sheepHungry'
+              : s.mood === 'thirsty'
+                ? 'w.sheepThirsty'
+                : s.mood === 'woolly'
+                  ? 'w.sheepWoolly'
+                  : 'w.sheepOk',
+          ),
+          fn: () =>
+            g.showMe(
+              {
+                points: [[s.x, s.y]],
+                subject: { kind: 'sheep', id: s.id },
+              },
+              2.2,
+            ),
         });
       }
     }
@@ -171,7 +202,8 @@ export class Hud {
     if (g.canSwap) {
       items.push({ divider: true });
       items.push({
-        icon: '⇄', label: tr('menu.swap', { role: roleName(g.other) }),
+        icon: '⇄',
+        label: tr('menu.swap', { role: roleName(g.other) }),
         fn: () => g.swapRole(),
       });
     } else {
@@ -186,7 +218,8 @@ export class Hud {
     if (mine.length) {
       items.push({ divider: true });
       items.push({ icon: '👐', disabled: true, label: tr('menu.youCan') });
-      for (const c of mine) items.push({ icon: CAPS[c].icon, disabled: true, sub: true, label: capName(c) });
+      for (const c of mine)
+        items.push({ icon: CAPS[c].icon, disabled: true, sub: true, label: capName(c) });
     }
 
     // And what you have already done, which is the nicest part of the menu.
@@ -215,8 +248,11 @@ export class Hud {
    * moved in, a skill passed across. Worth a look, not worth a red number.
    */
   todoList() {
-    const g = this.game, w = g.world;
-    const jobs = [], news = [], covered = {};
+    const g = this.game,
+      w = g.world;
+    const jobs = [],
+      news = [],
+      covered = {};
 
     const queue = allProblems(w);
     for (const pr of queue) covered[pr.id] = 1;
@@ -241,20 +277,28 @@ export class Hud {
 
     for (const l of LANGUAGES) {
       items.push({
-        icon: l.flag, label: l.name, on: l.id === currentLang(),
-        fn: () => { setLang(l.id); g.relabel(); },
+        icon: l.flag,
+        label: l.name,
+        on: l.id === currentLang(),
+        fn: () => {
+          setLang(l.id);
+          g.relabel();
+        },
       });
     }
 
     items.push({ divider: true });
     items.push({
-      icon: '✨', label: tr('hist.whatsNew', { v: VERSION }),
+      icon: '✨',
+      label: tr('hist.whatsNew', { v: VERSION }),
       fn: () => openChangelog(),
     });
     // on a Home Screen this is the only reload there is, so it is always here
     items.push({
-      icon: '↻', label: tr(newerBuild() ? 'ui.reloadNew' : 'ui.reload'),
-      note: tr('ui.reloadNote'), on: !!newerBuild(),
+      icon: '↻',
+      label: tr(newerBuild() ? 'ui.reloadNew' : 'ui.reload'),
+      note: tr('ui.reloadNote'),
+      on: !!newerBuild(),
       fn: () => g.refetch(),
     });
     items.push({ icon: '🧹', label: tr('menu.startOver'), fn: () => this.confirmStartOver() });
@@ -268,27 +312,35 @@ export class Hud {
 
   /** The other players: what you can hand them, and what you can teach them. */
   openRoleMenu(anchor, id) {
-    const g = this.game, w = g.world;
+    const g = this.game,
+      w = g.world;
     const here = g.isOnline(id);
     const items = [];
 
     // nobody has taken this spot: the one thing worth doing here is asking
     // somebody to. It goes first, and the sharing below it still works.
     if (g.freeRoles && g.freeRoles.indexOf(id) >= 0) {
-      items.push({ icon: '📨', label: tr('menu.invite', { role: roleName(id) }), fn: () => g.invite(id) });
+      items.push({
+        icon: '📨',
+        label: tr('menu.invite', { role: roleName(id) }),
+        fn: () => g.invite(id),
+      });
       items.push({ divider: true });
     }
     items.push({ icon: '🤝', label: tr('menu.share'), fn: () => openGive(g, null, id) });
 
     const mine = Object.keys(w.players[g.role].caps);
-    const teachable = mine.filter(c => !w.players[id].caps[c] && (w.players[g.role].done[teachKey(c)] || 0) >= 2);
+    const teachable = mine.filter(
+      c => !w.players[id].caps[c] && (w.players[g.role].done[teachKey(c)] || 0) >= 2,
+    );
     const known = Object.keys(w.players[id].caps).filter(c => !w.players[g.role].caps[c]);
 
     if (teachable.length) {
       items.push({ divider: true });
       for (const c of teachable) {
         items.push({
-          icon: CAPS[c].icon, label: tr('menu.teach', { what: capName(c) }),
+          icon: CAPS[c].icon,
+          label: tr('menu.teach', { what: capName(c) }),
           fn: () => {
             g.dispatch({ type: 'teach', from: g.role, to: id, cap: c });
             message(tr('teach.done', { what: capName(c) }));
@@ -298,8 +350,13 @@ export class Hud {
     }
     if (known.length) {
       items.push({ divider: true });
-      items.push({ icon: '👐', disabled: true, label: tr('teach.theyKnow', { role: roleName(id) }) });
-      for (const c of known) items.push({ icon: CAPS[c].icon, disabled: true, sub: true, label: capName(c) });
+      items.push({
+        icon: '👐',
+        disabled: true,
+        label: tr('teach.theyKnow', { role: roleName(id) }),
+      });
+      for (const c of known)
+        items.push({ icon: CAPS[c].icon, disabled: true, sub: true, label: capName(c) });
     }
 
     openMenu(anchor, {
@@ -311,7 +368,12 @@ export class Hud {
   confirmStartOver() {
     const p = openPanel({ title: tr('over.title'), lead: tr('over.lead'), center: true });
     const r = p.row();
-    r.appendChild(p.button(tr('over.yes'), 'go', () => { p.close(); this.game.startOver(); }));
+    r.appendChild(
+      p.button(tr('over.yes'), 'go', () => {
+        p.close();
+        this.game.startOver();
+      }),
+    );
     r.appendChild(p.button(tr('ui.notNow'), 'soft', () => p.close()));
   }
 
@@ -361,7 +423,8 @@ export class Hud {
   /* ---------------- per frame ---------------- */
 
   update() {
-    const g = this.game, w = g.world;
+    const g = this.game,
+      w = g.world;
     const me = w.players[g.role];
 
     for (const r of RESOURCES) {
@@ -440,10 +503,12 @@ export class Hud {
    * number does.
    */
   updateTodoCount() {
-    const g = this.game, w = g.world;
+    const g = this.game,
+      w = g.world;
     // A world handed over by the relay can be at an earlier tick than the one
     // we counted, so anything but a small step forward counts again.
-    if (this.todos.tick >= 0 && w.tick >= this.todos.tick && w.tick - this.todos.tick < 10) return this.todos.n;
+    if (this.todos.tick >= 0 && w.tick >= this.todos.tick && w.tick - this.todos.tick < 10)
+      return this.todos.n;
     this.todos.tick = w.tick;
     const n = Math.min(allProblems(w).length, MAX_ACTIVE);
     this.todos.n = n;
@@ -494,7 +559,12 @@ export class Hud {
     const r = p.row();
     r.appendChild(p.button(tr('ui.gotIt'), 'go', () => p.close()));
     if (pr.points && pr.points.length) {
-      r.appendChild(p.button(tr('ui.where'), 'soft', () => { p.close(); g.showMe(pr, 2.4); }));
+      r.appendChild(
+        p.button(tr('ui.where'), 'soft', () => {
+          p.close();
+          g.showMe(pr, 2.4);
+        }),
+      );
     }
     return p;
   }
@@ -506,7 +576,8 @@ export class Hud {
     if (!o) return;
     const card = el('div', 'guide-who');
     const cv = el('canvas', 'who-face');
-    cv.width = 96; cv.height = 96;
+    cv.width = 96;
+    cv.height = 96;
     const ctx = cv.getContext('2d');
     card.appendChild(cv);
     const name = el('div', 'who-name', o.name);
@@ -515,11 +586,23 @@ export class Hud {
 
     // room above the head for whatever they are thinking about
     const sheep = subject.kind === 'sheep';
-    const stop = loop((t) => {
-      if (!document.body.contains(cv)) { stop(); return; }
+    const stop = loop(t => {
+      if (!document.body.contains(cv)) {
+        stop();
+        return;
+      }
       const live = sheep ? byId(w.sheep, subject.id) : byId(w.villagers, subject.id);
       ctx.clearRect(0, 0, 96, 96);
-      drawPortrait(ctx, subject.kind, live || o, sheep ? 44 : 40, sheep ? 74 : 84, sheep ? 2.9 : 2.0, t, w.tick);
+      drawPortrait(
+        ctx,
+        subject.kind,
+        live || o,
+        sheep ? 44 : 40,
+        sheep ? 74 : 84,
+        sheep ? 2.9 : 2.0,
+        t,
+        w.tick,
+      );
     });
   }
 }
@@ -565,22 +648,22 @@ const NOTICE_JOB = {
  * earned yet simply does not appear.
  */
 const DEEDS = [
-  { key: 'fell',   icon: '🪓', word: 'deed.fell' },
-  { key: 'saw',    icon: '🪚', word: 'deed.saw' },
+  { key: 'fell', icon: '🪓', word: 'deed.fell' },
+  { key: 'saw', icon: '🪚', word: 'deed.saw' },
   { key: 'bridge', icon: '🌉', word: 'deed.bridge' },
-  { key: 'house',  icon: '🏠', word: 'deed.house' },
-  { key: 'mill',   icon: '🌀', word: 'deed.mill' },
-  { key: 'well',   icon: '🪣', word: 'deed.well' },
-  { key: 'privy',  icon: '🚪', word: 'deed.privy' },
-  { key: 'fence',  icon: '🚧', word: 'deed.fence' },
-  { key: 'boat',   icon: '⛵', word: 'deed.boat' },
-  { key: 'play',   icon: '🛝', word: 'deed.play' },
-  { key: 'road',   icon: '🛤️', word: 'deed.road' },
-  { key: 'sow',    icon: '🌱', word: 'deed.sow' },
-  { key: 'reap',   icon: '🌾', word: 'deed.reap' },
-  { key: 'fish',   icon: '🎣', word: 'deed.fish' },
-  { key: 'care',   icon: '🐑', word: 'deed.care' },
-  { key: 'plant',  icon: '🌳', word: 'deed.plant' },
+  { key: 'house', icon: '🏠', word: 'deed.house' },
+  { key: 'mill', icon: '🌀', word: 'deed.mill' },
+  { key: 'well', icon: '🪣', word: 'deed.well' },
+  { key: 'privy', icon: '🚪', word: 'deed.privy' },
+  { key: 'fence', icon: '🚧', word: 'deed.fence' },
+  { key: 'boat', icon: '⛵', word: 'deed.boat' },
+  { key: 'play', icon: '🛝', word: 'deed.play' },
+  { key: 'road', icon: '🛤️', word: 'deed.road' },
+  { key: 'sow', icon: '🌱', word: 'deed.sow' },
+  { key: 'reap', icon: '🌾', word: 'deed.reap' },
+  { key: 'fish', icon: '🎣', word: 'deed.fish' },
+  { key: 'care', icon: '🐑', word: 'deed.care' },
+  { key: 'plant', icon: '🌳', word: 'deed.plant' },
 ];
 
 /** The tally as sentences, leaving out everything nobody has done yet. */
@@ -594,7 +677,17 @@ export function deedsOf(done) {
 }
 
 function teachKey(cap) {
-  return { fell: 'fell', saw: 'saw', bridge: 'bridge', house: 'house', mill: 'mill',
-           herd: 'care', care: 'care', road: 'road', farm: 'farm' }[cap] || cap;
+  return (
+    {
+      fell: 'fell',
+      saw: 'saw',
+      bridge: 'bridge',
+      house: 'house',
+      mill: 'mill',
+      herd: 'care',
+      care: 'care',
+      road: 'road',
+      farm: 'farm',
+    }[cap] || cap
+  );
 }
-

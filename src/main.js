@@ -7,7 +7,7 @@ import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
 import { installInput, renderModeBar, closeBubble } from './ui/interact.js';
 import { message, closePanel, closeMenu, clearMessages, isPanelOpen } from './ui/overlay.js';
-import { ROLE, otherRole, byId } from './core/world.js';
+import { otherRole, byId } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
 import { deviceId, rememberWorld } from './core/persist.js';
@@ -20,17 +20,39 @@ const qs = new URLSearchParams(location.search);
 const dir = new Directory(apiBase(qs));
 const device = deviceId();
 let screen = null;
-let liveGame = null;   // the game object, once a world is actually up and running
+let liveGame = null; // the game object, once a world is actually up and running
 
 // A tap in progress anywhere is not a quiet moment, wherever on the page it
 // lands — this is the one thing `whenQuiet` needs that nothing else here
 // already tracks, so it is watched for on its own.
 let pointerDown = false;
-window.addEventListener('touchstart', () => { pointerDown = true; }, { passive: true });
-window.addEventListener('touchend', () => { pointerDown = false; }, { passive: true });
-window.addEventListener('touchcancel', () => { pointerDown = false; }, { passive: true });
-window.addEventListener('mousedown', () => { pointerDown = true; });
-window.addEventListener('mouseup', () => { pointerDown = false; });
+window.addEventListener(
+  'touchstart',
+  () => {
+    pointerDown = true;
+  },
+  { passive: true },
+);
+window.addEventListener(
+  'touchend',
+  () => {
+    pointerDown = false;
+  },
+  { passive: true },
+);
+window.addEventListener(
+  'touchcancel',
+  () => {
+    pointerDown = false;
+  },
+  { passive: true },
+);
+window.addEventListener('mousedown', () => {
+  pointerDown = true;
+});
+window.addEventListener('mouseup', () => {
+  pointerDown = false;
+});
 
 /* ------------------------------------------------------------------ */
 /* start screen                                                       */
@@ -95,7 +117,10 @@ function applyStartText() {
     b.className = 'lang-btn' + (l.id === currentLang() ? ' on' : '');
     b.type = 'button';
     b.textContent = l.flag + ' ' + l.name;
-    b.addEventListener('click', () => { setLang(l.id); applyStartText(); });
+    b.addEventListener('click', () => {
+      setLang(l.id);
+      applyStartText();
+    });
     row.appendChild(b);
   }
   if (screen) screen.render();
@@ -138,7 +163,10 @@ async function boot() {
   // whether it is old. The doors say more either way, and the moment it is
   // safe to, the game fetches the newer build itself — nobody has to notice
   // the doors to get it.
-  watchForNewer(() => { showReloadLabel(); whenQuiet(quietForReload, fetchNewBuild); });
+  watchForNewer(() => {
+    showReloadLabel();
+    whenQuiet(quietForReload, fetchNewBuild);
+  });
 
   // one question to the host: is there a world directory here? The answer is
   // remembered, so a static host is asked once ever and costs one 404.
@@ -148,7 +176,7 @@ async function boot() {
   screen = startScreen({
     dir: dir,
     qs: qs,
-    onPlay: (choice) => {
+    onPlay: choice => {
       document.getElementById('start').classList.add('hidden');
       document.getElementById('game').classList.remove('hidden');
       startGame(choice);
@@ -163,7 +191,10 @@ function chooseTransport(room, solo) {
   if (given) return new WsTransport(given, room);
   if (location.protocol.indexOf('http') !== 0) return new LocalTransport(room);
   if (dir.reachable) {
-    return new WsTransport((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/relay', room);
+    return new WsTransport(
+      (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/relay',
+      room,
+    );
   }
   return new LocalTransport(room);
 }
@@ -181,12 +212,15 @@ async function startGame(choice) {
   // A world the directory knows about keeps its state on the server as well as
   // on this device, so whoever opens the page first gets the real world back.
   const registered = !solo && dir.reachable;
-  const remote = registered ? {
-    load: () => dir.snapshot(room),
-    save: (tick, text, beacon, reset) => (beacon
-      ? dir.beaconSnapshot(room, device, tick, text)
-      : dir.putSnapshot(room, device, tick, text, reset)),
-  } : null;
+  const remote = registered
+    ? {
+        load: () => dir.snapshot(room),
+        save: (tick, text, beacon, reset) =>
+          beacon
+            ? dir.beaconSnapshot(room, device, tick, text)
+            : dir.putSnapshot(room, device, tick, text, reset),
+      }
+    : null;
 
   const session = new Session({ room, role: chosenRole, transport, solo, remote });
 
@@ -194,13 +228,16 @@ async function startGame(choice) {
   rememberWorld(room, solo ? null : chosenRole);
   try {
     history.replaceState(null, '', location.pathname + '?world=' + encodeURIComponent(room));
-  } catch (e) { /* a file:// page has no history to rewrite */ }
+  } catch {
+    /* a file:// page has no history to rewrite */
+  }
 
   const canvas = document.getElementById('world');
   const renderer = new Renderer(canvas);
 
   const game = {
-    session, renderer,
+    session,
+    renderer,
     role: chosenRole,
     other: otherRole(chosenRole),
     canSwap: solo,
@@ -210,11 +247,17 @@ async function startGame(choice) {
     // the roles in this world nobody has taken yet: their chip in the top row
     // offers an invitation rather than a way to share planks
     freeRoles: (registered && choice.free) || [],
-    get world() { return session.world; },
+    get world() {
+      return session.world;
+    },
 
-    invite(id) { openInvite(game, id); },
+    invite(id) {
+      openInvite(game, id);
+    },
 
-    dispatch(a) { return session.dispatch(a); },
+    dispatch(a) {
+      return session.dispatch(a);
+    },
 
     /** Is that role at the screen right now? Yours always is. */
     isOnline(id) {
@@ -222,7 +265,7 @@ async function startGame(choice) {
       if (solo) return true;
       const w = session.world;
       if (!w || !w.players[id]) return false;
-      return (w.tick - (w.players[id].seen || -9999)) < 120;
+      return w.tick - (w.players[id].seen || -9999) < 120;
     },
 
     setMode(m) {
@@ -243,7 +286,9 @@ async function startGame(choice) {
       renderer.clampCamera();
     },
 
-    hint(text) { message(text); },
+    hint(text) {
+      message(text);
+    },
 
     /**
      * Out of the world and back to the front door. Everything is saved first,
@@ -304,9 +349,16 @@ async function startGame(choice) {
     showMe(problem, maxZoom) {
       const pts = (problem && problem.points) || [];
       game.spotlight = null;
-      if (!pts.length) { renderer.userZoom = false; renderer.resize(); return; }
+      if (!pts.length) {
+        renderer.userZoom = false;
+        renderer.resize();
+        return;
+      }
 
-      let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+      let minX = 1e9,
+        minY = 1e9,
+        maxX = -1e9,
+        maxY = -1e9;
       for (const p of pts) {
         if (p[0] < minX) minX = p[0];
         if (p[0] > maxX) maxX = p[0];
@@ -314,15 +366,22 @@ async function startGame(choice) {
         if (p[1] > maxY) maxY = p[1];
       }
       // everything named, plus room to see what is around it
-      const spanX = (maxX - minX) + 8, spanY = (maxY - minY) + 6;
-      const vw = renderer.view.w || 640, vh = renderer.view.h || 480;
+      const spanX = maxX - minX + 8,
+        spanY = maxY - minY + 6;
+      const vw = renderer.view.w || 640,
+        vh = renderer.view.h || 480;
       const fits = Math.min(vw / (spanX * TILE), vh / (spanY * TILE)) / (renderer.fit || 1);
-      game.look((minX + maxX) / 2, (minY + maxY) / 2,
-                Math.max(1, Math.min(maxZoom || 2.2, fits)), true);
+      game.look(
+        (minX + maxX) / 2,
+        (minY + maxY) / 2,
+        Math.max(1, Math.min(maxZoom || 2.2, fits)),
+        true,
+      );
 
       if (problem.subject) {
         game.spotlight = {
-          kind: problem.subject.kind, id: problem.subject.id,
+          kind: problem.subject.kind,
+          id: problem.subject.id,
           r: problem.subject.kind === 'sheep' ? 20 : 17,
           until: Date.now() + 25000,
         };
@@ -333,30 +392,57 @@ async function startGame(choice) {
     spotlightAt() {
       const sp = game.spotlight;
       if (!sp) return null;
-      if (Date.now() > sp.until) { game.spotlight = null; return null; }
+      if (Date.now() > sp.until) {
+        game.spotlight = null;
+        return null;
+      }
       const w = game.world;
       const o = sp.kind === 'sheep' ? byId(w.sheep, sp.id) : byId(w.villagers, sp.id);
-      if (!o) { game.spotlight = null; return null; }
+      if (!o) {
+        game.spotlight = null;
+        return null;
+      }
       return { x: o.x, y: o.y, r: sp.r };
     },
 
     pointAtSite() {
       const s = game.world.buildings.find(b => b.state === 'site');
-      if (s) { game.look(s.x + s.w / 2, s.y + s.h / 2, 1.8); message(tr('msg.plotHere')); }
+      if (s) {
+        game.look(s.x + s.w / 2, s.y + s.h / 2, 1.8);
+        message(tr('msg.plotHere'));
+      }
     },
 
     goToNotice(n) {
       const w = game.world;
       const at = {
         hungry: () => [w.larder.x, w.larder.y],
-        poorly: () => { const v = w.villagers.find(x => x.poorly > 0); return v ? [v.x, v.y] : null; },
-        homeless: () => { const s = w.buildings.find(b => b.state === 'site'); return s ? [s.x + 1.5, s.y + 1] : null; },
+        poorly: () => {
+          const v = w.villagers.find(x => x.poorly > 0);
+          return v ? [v.x, v.y] : null;
+        },
+        homeless: () => {
+          const s = w.buildings.find(b => b.state === 'site');
+          return s ? [s.x + 1.5, s.y + 1] : null;
+        },
         sheep_far: () => [w.sheep[0].x, w.sheep[0].y],
-        sheep_in_field: () => { const s = w.sheep.find(s => s.x > 24); return s ? [s.x, s.y] : null; },
-        wheat_ready: () => { const p = w.plots.find(p => p.state === 'ripe'); return p ? [p.x + 1, p.y + 1] : null; },
-        bridge_broken: () => [(w.bridge.site.x0 + w.bridge.site.x1) / 2 + 0.5, w.bridge.site.row + 1],
-        newfamily: () => { const b = byId(w.buildings, 'site_east'); return b ? [b.x + 1.5, b.y + 1] : null; },
-        critter: () => (w.visitors && w.visitors[0]) ? [w.visitors[0].x, w.visitors[0].y] : null,
+        sheep_in_field: () => {
+          const s = w.sheep.find(s => s.x > 24);
+          return s ? [s.x, s.y] : null;
+        },
+        wheat_ready: () => {
+          const p = w.plots.find(p => p.state === 'ripe');
+          return p ? [p.x + 1, p.y + 1] : null;
+        },
+        bridge_broken: () => [
+          (w.bridge.site.x0 + w.bridge.site.x1) / 2 + 0.5,
+          w.bridge.site.row + 1,
+        ],
+        newfamily: () => {
+          const b = byId(w.buildings, 'site_east');
+          return b ? [b.x + 1.5, b.y + 1] : null;
+        },
+        critter: () => (w.visitors && w.visitors[0] ? [w.visitors[0].x, w.visitors[0].y] : null),
       }[n.id];
       const p = at ? at() : null;
       if (p) game.look(p[0], p[1], 1.9);
@@ -372,7 +458,7 @@ async function startGame(choice) {
     },
   };
 
-  liveGame = game;    // from here on, `quietForReload` is checking this world
+  liveGame = game; // from here on, `quietForReload` is checking this world
   const hud = new Hud(game);
   game.hud = hud;
 
@@ -401,7 +487,9 @@ async function startGame(choice) {
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', () => renderer.resize());
   }
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) session.checkpoint(); });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) session.checkpoint();
+  });
   window.addEventListener('pagehide', () => session.checkpoint(true));
 
   function updatePartner() {
@@ -429,7 +517,7 @@ async function startGame(choice) {
     const now = Date.now();
     if (now - lastSeen < 60000) return;
     lastSeen = now;
-    dir.seen(room, device, chosenRole).then((r) => {
+    dir.seen(room, device, chosenRole).then(r => {
       if (r && r.world) game.freeRoles = r.world.free || [];
     });
   }
@@ -437,7 +525,8 @@ async function startGame(choice) {
 
   /* ---------------- the frame loop ---------------- */
 
-  let last = 0, frame = 0;
+  let last = 0,
+    frame = 0;
   function step(t) {
     const dt = last ? Math.min(100, t - last) : 16;
     last = t;
@@ -445,12 +534,16 @@ async function startGame(choice) {
     const w = session.world;
     if (w) {
       renderer.render(w, t, {
-        overlay: game.mode && game.mode.overlay ? (ctx) => game.mode.overlay(ctx) : null,
+        overlay: game.mode && game.mode.overlay ? ctx => game.mode.overlay(ctx) : null,
         highlight: game.mode && game.mode.highlight ? game.mode.highlight() : null,
         spotlight: game.spotlightAt(),
       });
-      if ((frame++ % 5) === 0) { renderer.remeasure(); hud.update(); beat(); }
-      if (game.mode && (frame % 5) === 0) renderModeBar(game);
+      if (frame++ % 5 === 0) {
+        renderer.remeasure();
+        hud.update();
+        beat();
+      }
+      if (game.mode && frame % 5 === 0) renderModeBar(game);
     }
     requestAnimationFrame(step);
   }
@@ -460,7 +553,7 @@ async function startGame(choice) {
   // one — the other player got here first — we simply join it.
   if (!session.world.block.active) game.startDay(session.world.block.endedAt !== null);
 
-  window.OLW = game;      // handy when poking at it from a console
+  window.OLW = game; // handy when poking at it from a console
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

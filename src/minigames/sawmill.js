@@ -10,14 +10,23 @@ import { makeRng } from '../core/rng.js';
 const LOG_UNITS = 12;
 const MIN_PLANK = 3;
 // Orders that use the whole log: 2 sixes, 3 fours, 4 threes.
-const ORDERS = [[2, 6], [3, 4], [4, 3]];
+const ORDERS = [
+  [2, 6],
+  [3, 4],
+  [4, 3],
+];
 // Three perfect logs — every piece the size that was asked for — are enough
 // to show it wasn't luck, without making the reward feel far away. That's
 // when the drawn example goes away and the ruler has to carry the job alone.
 const LEVEL2_AT = 3;
-const W = 480, H = 236;
-const X0 = 96, X1 = 384, U = (X1 - X0) / LOG_UNITS, Y = 128;
-const STACK_L = 48, STACK_R = 432;
+const W = 480,
+  H = 236;
+const X0 = 96,
+  X1 = 384,
+  U = (X1 - X0) / LOG_UNITS,
+  Y = 128;
+const STACK_L = 48,
+  STACK_R = 432;
 
 /* ------------------------------------------------------------------ */
 /* sawmill                                                            */
@@ -31,7 +40,8 @@ export function openSawmill(game) {
 
   if (wood() < 1) {
     p.body.appendChild(el('p', 'lead', tr('saw.noWood')));
-    const r = p.row(); r.appendChild(p.button(tr('ui.alright'), 'soft', () => p.close()));
+    const r = p.row();
+    r.appendChild(p.button(tr('ui.alright'), 'soft', () => p.close()));
     return;
   }
 
@@ -40,11 +50,13 @@ export function openSawmill(game) {
   // Which level this player is on lives on the world, not the panel, so it is
   // still true the next time the sawmill opens.
   function levelOf() {
-    return ((game.world.players[game.role].done.sawPerfect) || 0) >= LEVEL2_AT ? 2 : 1;
+    return (game.world.players[game.role].done.sawPerfect || 0) >= LEVEL2_AT ? 2 : 1;
   }
   let level = levelOf();
   const levelLine = el('p', 'lead small', '');
-  function showLevel() { levelLine.textContent = tr(level === 2 ? 'saw.level2' : 'saw.level1'); }
+  function showLevel() {
+    levelLine.textContent = tr(level === 2 ? 'saw.level2' : 'saw.level1');
+  }
   showLevel();
   p.body.appendChild(levelLine);
   p.body.appendChild(cv.canvas);
@@ -52,7 +64,11 @@ export function openSawmill(game) {
   // Every log comes with its own order, so nobody can cut the same thing twice
   // without thinking about it.
   const rng = makeRng((game.world.tick * 2654435761) ^ game.world.seed);
-  let order = null, cuts = [], sawing = 0, result = null, flying = [];
+  let order = null,
+    cuts = [],
+    sawing = 0,
+    result = null,
+    flying = [];
 
   function newOrder() {
     const pick = ORDERS[Math.floor(rng() * ORDERS.length)];
@@ -60,7 +76,10 @@ export function openSawmill(game) {
     // changes its picture mid-cut — only the *next* one does
     order = { pieces: pick[0], size: pick[1], level: level };
     game._saw = { pieces: order.pieces, size: order.size, level: level }; // so a test can read what was asked for
-    cuts = []; sawing = 0; result = null; flying = [];
+    cuts = [];
+    sawing = 0;
+    result = null;
+    flying = [];
     describe();
     buttons();
   }
@@ -76,9 +95,11 @@ export function openSawmill(game) {
 
   function describe() {
     if (result) return;
-    p.readout(cuts.length
-      ? trn('saw.sofar', right(), { n: right(), pieces: order.pieces, size: order.size })
-      : trn('saw.order', order.pieces, { n: order.pieces, size: order.size }));
+    p.readout(
+      cuts.length
+        ? trn('saw.sofar', right(), { n: right(), pieces: order.pieces, size: order.size })
+        : trn('saw.order', order.pieces, { n: order.pieces, size: order.size }),
+    );
   }
 
   onPointer(cv.canvas, W, H, {
@@ -97,12 +118,18 @@ export function openSawmill(game) {
 
   /* ---- buttons ---- */
   const row = p.row();
-  let sawBtn = null, nextBtn = null;
+  let sawBtn = null,
+    nextBtn = null;
 
   function buttons() {
     row.innerHTML = '';
     if (!result) {
-      sawBtn = p.button(tr('saw.go'), '', () => { if (!sawing && cuts.length) { sawing = 0.0001; buttons(); } });
+      sawBtn = p.button(tr('saw.go'), '', () => {
+        if (!sawing && cuts.length) {
+          sawing = 0.0001;
+          buttons();
+        }
+      });
       sawBtn.disabled = !cuts.length || !!sawing;
       row.appendChild(sawBtn);
     } else if (wood() > 0) {
@@ -110,7 +137,10 @@ export function openSawmill(game) {
       nextBtn = p.button(tr('saw.nextLog'), 'go', () => newOrder());
       row.appendChild(nextBtn);
     }
-    const done = p.button(result ? tr('ui.done') : tr('ui.notNow'), 'soft', () => { stop(); p.close(); });
+    const done = p.button(result ? tr('ui.done') : tr('ui.notNow'), 'soft', () => {
+      stop();
+      p.close();
+    });
     done.style.flex = '0 0 auto';
     row.appendChild(done);
   }
@@ -120,13 +150,17 @@ export function openSawmill(game) {
   /* ---- drawing ---- */
   function plank(ctx, x, y, w, h, ok) {
     ctx.fillStyle = ok ? C.wood : '#8e7550';
-    rr(ctx, x, y, w, h, 5); ctx.fill();
+    rr(ctx, x, y, w, h, 5);
+    ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,.18)';
-    rr(ctx, x + 2, y + 3, Math.max(2, w - 5), Math.max(2, h * 0.26), 3); ctx.fill();
-    ctx.strokeStyle = 'rgba(120,80,45,.35)'; ctx.lineWidth = 1;
+    rr(ctx, x + 2, y + 3, Math.max(2, w - 5), Math.max(2, h * 0.26), 3);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(120,80,45,.35)';
+    ctx.lineWidth = 1;
     for (let g = 1; g < 3; g++) {
       ctx.beginPath();
-      ctx.moveTo(x + 4, y + (h / 3) * g); ctx.lineTo(x + w - 5, y + (h / 3) * g);
+      ctx.moveTo(x + 4, y + (h / 3) * g);
+      ctx.lineTo(x + w - 5, y + (h / 3) * g);
       ctx.stroke();
     }
   }
@@ -135,21 +169,26 @@ export function openSawmill(game) {
     const show = Math.min(n, 6);
     for (let i = 0; i < show; i++) {
       ctx.fillStyle = colour;
-      rr(ctx, x - 26, 176 - i * 11, 52, 9, 3); ctx.fill();
-      ctx.strokeStyle = 'rgba(120,80,45,.3)'; ctx.lineWidth = 1;
-      rr(ctx, x - 26, 176 - i * 11, 52, 9, 3); ctx.stroke();
+      rr(ctx, x - 26, 176 - i * 11, 52, 9, 3);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(120,80,45,.3)';
+      ctx.lineWidth = 1;
+      rr(ctx, x - 26, 176 - i * 11, 52, 9, 3);
+      ctx.stroke();
     }
     ctx.fillStyle = '#43372a';
     ctx.font = '800 17px -apple-system, system-ui, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillText(String(n), x, 199);
     glyph(ctx, label, x, 216, 18);
   }
 
-  function draw(t) {
+  function draw(_t) {
     const ctx = cv.ctx;
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#efe4cd'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#efe4cd';
+    ctx.fillRect(0, 0, W, H);
 
     // the order. Level 1 draws it at the log's own scale, so the cuts can be
     // copied by eye; level 2 keeps only the sum, big enough to read at a
@@ -157,15 +196,17 @@ export function openSawmill(game) {
     ctx.fillStyle = '#43372a';
     if (order.level === 2) {
       ctx.font = '800 15px -apple-system, system-ui, sans-serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       ctx.fillText(tr('saw.wanted'), W / 2, 22);
       ctx.font = '800 34px -apple-system, system-ui, sans-serif';
       ctx.fillText(order.pieces + ' × ' + order.size, W / 2, 54);
     } else {
       const wide = order.pieces * order.size * U + (order.pieces - 1) * 5;
-      let ox = Math.max(102, (W - wide) / 2);   // clear of the words on the left
+      let ox = Math.max(102, (W - wide) / 2); // clear of the words on the left
       ctx.font = '800 15px -apple-system, system-ui, sans-serif';
-      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
       ctx.fillText(tr('saw.wanted'), 14, 26);
       ctx.font = '800 19px -apple-system, system-ui, sans-serif';
       ctx.fillText(order.pieces + ' × ' + order.size, 14, 52);
@@ -175,14 +216,20 @@ export function openSawmill(game) {
         ctx.globalAlpha = 0.5;
         plank(ctx, ox, 30, w, 26, true);
         ctx.restore();
-        ctx.strokeStyle = '#5d9150'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
-        rr(ctx, ox, 30, w, 26, 5); ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = '#5d9150';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 4]);
+        rr(ctx, ox, 30, w, 26, 5);
+        ctx.stroke();
+        ctx.setLineDash([]);
         ox += w + 5;
       }
     }
 
     // bench
-    ctx.fillStyle = '#c9b38c'; rr(ctx, X0 - 14, Y + 26, (X1 - X0) + 28, 14, 6); ctx.fill();
+    ctx.fillStyle = '#c9b38c';
+    rr(ctx, X0 - 14, Y + 26, X1 - X0 + 28, 14, 6);
+    ctx.fill();
 
     // the log, cut where you said
     const ps = pieces();
@@ -190,11 +237,19 @@ export function openSawmill(game) {
     for (let i = 0; i < ps.length; i++) {
       const w = ps[i] * U;
       const ok = ps[i] === order.size;
-      let dx = 0, dy = 0, alpha = 1;
+      let dx = 0,
+        dy = 0,
+        alpha = 1;
       if (result) {
         const f = flying[i] || { ok: ok, at: 0 };
-        if (ok) { dx = (STACK_R - (x + w / 2)) * f.at; dy = (170 - Y) * f.at; alpha = 1 - f.at * 0.8; }
-        else { dy = f.at * 60; alpha = 1 - f.at; }
+        if (ok) {
+          dx = (STACK_R - (x + w / 2)) * f.at;
+          dy = (170 - Y) * f.at;
+          alpha = 1 - f.at * 0.8;
+        } else {
+          dy = f.at * 60;
+          alpha = 1 - f.at;
+        }
       }
       ctx.save();
       ctx.globalAlpha = Math.max(0, alpha);
@@ -206,22 +261,31 @@ export function openSawmill(game) {
     }
 
     // the ruler underneath
-    ctx.strokeStyle = 'rgba(67,55,42,.35)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(67,55,42,.35)';
+    ctx.lineWidth = 1;
     ctx.font = '11px -apple-system, system-ui, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
     ctx.fillStyle = 'rgba(67,55,42,.6)';
     for (let u = 0; u <= LOG_UNITS; u++) {
       const px = X0 + u * U;
-      ctx.beginPath(); ctx.moveTo(px, Y + 18); ctx.lineTo(px, Y + 18 + (u % order.size === 0 ? 9 : 4)); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(px, Y + 18);
+      ctx.lineTo(px, Y + 18 + (u % order.size === 0 ? 9 : 4));
+      ctx.stroke();
       if (u % order.size === 0) ctx.fillText(String(u), px, Y + 29);
     }
 
     if (!result) {
       for (const u of cuts) {
         const px = X0 + u * U;
-        ctx.strokeStyle = '#c05b4d'; ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#c05b4d';
+        ctx.lineWidth = 2.5;
         ctx.setLineDash([4, 3]);
-        ctx.beginPath(); ctx.moveTo(px, Y - 24); ctx.lineTo(px, Y + 24); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(px, Y - 24);
+        ctx.lineTo(px, Y + 24);
+        ctx.stroke();
         ctx.setLineDash([]);
       }
     }
@@ -236,7 +300,8 @@ export function openSawmill(game) {
       ctx.save();
       ctx.translate(bx, Y - 40);
       ctx.fillStyle = '#cfd4d8';
-      rr(ctx, -5, 0, 10, 58, 3); ctx.fill();
+      rr(ctx, -5, 0, 10, 58, 3);
+      ctx.fill();
       ctx.fillStyle = '#8e959b';
       for (let i = 0; i < 8; i++) ctx.fillRect(-6, 6 + i * 7, 12, 2);
       ctx.restore();
@@ -265,18 +330,30 @@ export function openSawmill(game) {
     const good = ps.filter(n => n === order.size).length;
     result = { good: good, scraps: ps.length - good };
     flying = ps.map(n => ({ ok: n === order.size, at: 0 }));
-    game.dispatch({ type: 'saw.run', role: game.role, wood: 1, planks: good, pieces: order.pieces });
+    game.dispatch({
+      type: 'saw.run',
+      role: game.role,
+      wood: 1,
+      planks: good,
+      pieces: order.pieces,
+    });
 
-    p.readout(good === order.pieces
-      ? tr('saw.perfect', { n: good, size: order.size })
-      : good > 0
-        ? trn('saw.some', good, { n: good, scraps: result.scraps })
-        : tr('saw.none'));
+    p.readout(
+      good === order.pieces
+        ? tr('saw.perfect', { n: good, size: order.size })
+        : good > 0
+          ? trn('saw.some', good, { n: good, scraps: result.scraps })
+          : tr('saw.none'),
+    );
 
     // Levelling up happens between logs, never under one that's still flying
     // apart — the next order is the first one measured with the ruler alone.
     const now = levelOf();
-    if (now > level) { level = now; showLevel(); message(tr('saw.levelUp')); }
+    if (now > level) {
+      level = now;
+      showLevel();
+      message(tr('saw.levelUp'));
+    }
 
     buttons();
   }
@@ -293,83 +370,124 @@ export function openMill(game) {
 
   if (wheat < 2) {
     p.body.appendChild(el('p', 'lead', tr(wheat === 1 ? 'mill.oneWheat' : 'mill.noWheat')));
-    const r = p.row(); r.appendChild(p.button(tr('ui.alright'), 'soft', () => p.close()));
+    const r = p.row();
+    r.appendChild(p.button(tr('ui.alright'), 'soft', () => p.close()));
     return;
   }
 
   const cv = makeCanvas(400, 240);
   p.body.appendChild(cv.canvas);
 
-  let angle = 0, turned = 0, last = null, flour = 0, baking = 0, done = false;
-  const NEEDED = Math.PI * 6;         // three full turns
+  let angle = 0,
+    turned = 0,
+    last = null,
+    flour = 0,
+    baking = 0,
+    done = false;
+  const NEEDED = Math.PI * 6; // three full turns
 
   onPointer(cv.canvas, 400, 240, {
-    down(pt) { last = pt; },
+    down(pt) {
+      last = pt;
+    },
     move(pt) {
       if (!last || flour >= 1) return;
-      const cx = 150, cy = 120;
+      const cx = 150,
+        cy = 120;
       const a0 = Math.atan2(last.y - cy, last.x - cx);
       const a1 = Math.atan2(pt.y - cy, pt.x - cx);
       let d = a1 - a0;
       while (d > Math.PI) d -= Math.PI * 2;
       while (d < -Math.PI) d += Math.PI * 2;
-      angle += d; turned += Math.abs(d);
+      angle += d;
+      turned += Math.abs(d);
       last = pt;
-      if (turned >= NEEDED) { flour = 1; bakeBtn.disabled = false; p.readout(tr('mill.flour')); }
-      else p.readout(tr('mill.keepTurning', { n: Math.round((turned / NEEDED) * 100) }));
+      if (turned >= NEEDED) {
+        flour = 1;
+        bakeBtn.disabled = false;
+        p.readout(tr('mill.flour'));
+      } else p.readout(tr('mill.keepTurning', { n: Math.round((turned / NEEDED) * 100) }));
     },
-    up() { last = null; },
+    up() {
+      last = null;
+    },
   });
 
   const row = p.row();
   const bakeBtn = p.button(tr('mill.bake'), '', () => {
     if (done || flour < 1) return;
-    done = true; baking = 0.0001; bakeBtn.disabled = true;
+    done = true;
+    baking = 0.0001;
+    bakeBtn.disabled = true;
   });
   bakeBtn.disabled = true;
   row.appendChild(bakeBtn);
-  const back = p.button(tr('ui.later'), 'soft', () => { stop(); p.close(); });
+  const back = p.button(tr('ui.later'), 'soft', () => {
+    stop();
+    p.close();
+  });
   back.style.flex = '0 0 auto';
   row.appendChild(back);
   p.readout(tr('mill.turn'));
 
-  function draw(t) {
+  function draw(_t) {
     const ctx = cv.ctx;
     ctx.clearRect(0, 0, 400, 240);
-    ctx.fillStyle = '#efe4cd'; ctx.fillRect(0, 0, 400, 240);
+    ctx.fillStyle = '#efe4cd';
+    ctx.fillRect(0, 0, 400, 240);
 
     // hopper
     ctx.fillStyle = '#b5946a';
-    ctx.beginPath(); ctx.moveTo(120, 20); ctx.lineTo(180, 20); ctx.lineTo(162, 56); ctx.lineTo(138, 56); ctx.closePath(); ctx.fill();
-    ctx.font = '18px system-ui, "Apple Color Emoji", sans-serif'; ctx.textAlign = 'center';
+    ctx.beginPath();
+    ctx.moveTo(120, 20);
+    ctx.lineTo(180, 20);
+    ctx.lineTo(162, 56);
+    ctx.lineTo(138, 56);
+    ctx.closePath();
+    ctx.fill();
+    ctx.font = '18px system-ui, "Apple Color Emoji", sans-serif';
+    ctx.textAlign = 'center';
     ctx.fillText('🌾🌾', 150, 40);
 
     // millstone
     ctx.save();
-    ctx.translate(150, 120); ctx.rotate(angle);
+    ctx.translate(150, 120);
+    ctx.rotate(angle);
     ctx.fillStyle = '#a9a49b';
-    ctx.beginPath(); ctx.arc(0, 0, 56, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, 0, 56, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = '#8b867e';
     for (let i = 0; i < 8; i++) {
-      ctx.save(); ctx.rotate(i * Math.PI / 4);
-      ctx.fillRect(-2.5, -54, 5, 44); ctx.restore();
+      ctx.save();
+      ctx.rotate((i * Math.PI) / 4);
+      ctx.fillRect(-2.5, -54, 5, 44);
+      ctx.restore();
     }
     ctx.fillStyle = '#6f6a63';
-    ctx.beginPath(); ctx.arc(0, 0, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, 0, 11, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = '#8a5c30';
-    rr(ctx, 30, -6, 26, 12, 5); ctx.fill();
+    rr(ctx, 30, -6, 26, 12, 5);
+    ctx.fill();
     ctx.restore();
 
-    ctx.strokeStyle = 'rgba(67,55,42,.25)'; ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(67,55,42,.25)';
+    ctx.lineWidth = 2;
     ctx.setLineDash([5, 6]);
-    ctx.beginPath(); ctx.arc(150, 120, 70, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(150, 120, 70, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.setLineDash([]);
 
     // the empty track fills in as you turn — a picture of the percentage,
     // not just the word for it
     const pct = Math.max(0, Math.min(1, turned / NEEDED));
     if (pct > 0) {
-      ctx.strokeStyle = '#5d9150'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+      ctx.strokeStyle = '#5d9150';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.arc(150, 120, 70, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
       ctx.stroke();
@@ -381,40 +499,56 @@ export function openMill(game) {
     // floor, not round: a box only fills once its whole ten percent is done,
     // so the boxes never race ahead of the number beside them
     const filled = Math.min(10, Math.floor(pct * 10 + 1e-9));
-    const segW = 13, segH = 14, gap = 2, segN = 10;
+    const segW = 13,
+      segH = 14,
+      gap = 2,
+      segN = 10;
     const barW = segN * segW + (segN - 1) * gap;
-    const bx0 = 150 - barW / 2, by = 195;
+    const bx0 = 150 - barW / 2,
+      by = 195;
     for (let i = 0; i < segN; i++) {
       const sx = bx0 + i * (segW + gap);
       ctx.fillStyle = i < filled ? '#5d9150' : 'rgba(67,55,42,.12)';
-      rr(ctx, sx, by, segW, segH, 3); ctx.fill();
-      ctx.strokeStyle = 'rgba(67,55,42,.25)'; ctx.lineWidth = 1;
-      rr(ctx, sx, by, segW, segH, 3); ctx.stroke();
+      rr(ctx, sx, by, segW, segH, 3);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(67,55,42,.25)';
+      ctx.lineWidth = 1;
+      rr(ctx, sx, by, segW, segH, 3);
+      ctx.stroke();
     }
     ctx.fillStyle = '#43372a';
     ctx.font = '800 15px -apple-system, system-ui, sans-serif';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
     ctx.fillText(Math.round(pct * 100) + '%', bx0 + barW + 10, by + segH / 2);
 
     // flour chute + oven
-    ctx.fillStyle = '#c9b38c'; rr(ctx, 210, 150, 150, 12, 5); ctx.fill();
+    ctx.fillStyle = '#c9b38c';
+    rr(ctx, 210, 150, 150, 12, 5);
+    ctx.fill();
     if (flour >= 1) {
       ctx.fillStyle = '#f3ecdc';
-      ctx.beginPath(); ctx.ellipse(255, 146, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(255, 146, 22, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.fillStyle = '#9a6b4c';
-    rr(ctx, 285, 78, 82, 72, 10); ctx.fill();
+    rr(ctx, 285, 78, 82, 72, 10);
+    ctx.fill();
     ctx.fillStyle = baking > 0 ? '#f0a34a' : '#5a3f2c';
-    rr(ctx, 297, 96, 58, 44, 8); ctx.fill();
+    rr(ctx, 297, 96, 58, 44, 8);
+    ctx.fill();
     ctx.font = '24px system-ui, "Apple Color Emoji", sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     if (baking > 0.55) ctx.fillText('🍞🍞🍞', 326, 118);
     else if (baking > 0) ctx.fillText('🔥', 326, 118);
 
     if (turned < NEEDED) {
       ctx.font = '600 12px -apple-system, system-ui, sans-serif';
       ctx.fillStyle = 'rgba(67,55,42,.6)';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
       ctx.fillText(tr('mill.turnMe'), 150, 222);
     }
   }
@@ -429,7 +563,12 @@ export function openMill(game) {
         game.dispatch({ type: 'mill.run', role: game.role, wheat: 2, food: 3 });
         p.readout(tr('mill.baked'));
         row.innerHTML = '';
-        row.appendChild(p.button(tr('mill.take'), 'go', () => { stop(); p.close(); }));
+        row.appendChild(
+          p.button(tr('mill.take'), 'go', () => {
+            stop();
+            p.close();
+          }),
+        );
       }
     }
     draw(t);

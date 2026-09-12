@@ -4,8 +4,17 @@ import { gzipSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 
 import {
-  createWorld, serialize, deserialize, ensureWorld, SCHEMA, BLOCK_TICKS,
-  freeBed, project, otherRoles, loavesPerDay, basketDays,
+  createWorld,
+  serialize,
+  deserialize,
+  ensureWorld,
+  SCHEMA,
+  BLOCK_TICKS,
+  freeBed,
+  project,
+  otherRoles,
+  loavesPerDay,
+  basketDays,
 } from '../src/core/world.js';
 import { findPath } from '../src/core/pathfind.js';
 import { walkable } from '../src/core/grid.js';
@@ -14,7 +23,10 @@ import { SCENARIOS, DEFAULT_SCENARIO, ROLES } from '../src/core/content.js';
 import { applyAction } from '../src/core/actions.js';
 import { tick } from '../src/core/sim.js';
 
-const run = (w, n) => { for (let i = 0; i < n; i++) tick(w); return w; };
+const run = (w, n) => {
+  for (let i = 0; i < n; i++) tick(w);
+  return w;
+};
 
 /** A world as an older build would have saved it. */
 function asVersion(w, schema, strip) {
@@ -32,15 +44,19 @@ test('a world saved by this build comes back exactly as it was', () => {
 test('a world from an older build is brought up to date, not thrown away', () => {
   const now = createWorld(5);
   // version 6: no children, no plans, and houses built for the grown-ups only
-  const before = asVersion(now, 6, (o) => {
+  const before = asVersion(now, 6, o => {
     o.villagers = o.villagers.filter(v => !v.kid);
     o.buildings = o.buildings.filter(b => b.state !== 'plan');
     const houses = o.buildings.filter(b => b.type === 'house');
-    houses[0].beds = 2; houses[1].beds = 1;
+    houses[0].beds = 2;
+    houses[1].beds = 1;
     houses[0].residents = houses[0].residents.slice(0, 2);
     houses[1].residents = houses[1].residents.slice(0, 1);
     for (const v of o.villagers) delete v.kid;
-    delete o.scenario; delete o.flags; delete o.ext; delete o.visitors;
+    delete o.scenario;
+    delete o.flags;
+    delete o.ext;
+    delete o.visitors;
   });
 
   const w = deserialize(before);
@@ -51,7 +67,10 @@ test('a world from an older build is brought up to date, not thrown away', () =>
   // the children arrive, with beds, and nobody is turned out of theirs
   const kids = w.villagers.filter(v => v.kid);
   assert.equal(kids.length, 2, 'the children moved in');
-  assert.ok(kids.every(k => k.homeId), 'and they have somewhere to sleep');
+  assert.ok(
+    kids.every(k => k.homeId),
+    'and they have somewhere to sleep',
+  );
   assert.equal(w.villagers.filter(v => !v.homeId).length, 1, 'Ted still has not');
   assert.equal(freeBed(w), null, 'and no bed is going spare');
 
@@ -67,7 +86,8 @@ test('a world from an older build is brought up to date, not thrown away', () =>
 
 test('what an old world already had is left alone', () => {
   const now = createWorld(7);
-  now.players.A.res.plank = 9; now.players.A.res.stone = 9;
+  now.players.A.res.plank = 9;
+  now.players.A.res.stone = 9;
   applyAction(now, { type: 'bridge.build', role: 'A', planks: 5, stone: 4, quality: 3 });
   applyAction(now, { type: 'boat.build', role: 'A' });
   const before = asVersion(now, 6);
@@ -120,7 +140,11 @@ test('a scenario is a recipe the world remembers', () => {
   assert.equal(w.villagers.length, scen.villagers.length);
   assert.equal(w.plots.length, scen.plots.length);
   assert.equal(w.sheep.length, scen.sheep.length);
-  for (const p of scen.plans) assert.ok(w.buildings.some(b => b.id === p.id), p.id + ' is marked out');
+  for (const p of scen.plans)
+    assert.ok(
+      w.buildings.some(b => b.id === p.id),
+      p.id + ' is marked out',
+    );
   // an unknown scenario falls back rather than making an empty world
   assert.equal(createWorld(19, 'atlantis').scenario, DEFAULT_SCENARIO);
 });
@@ -192,11 +216,16 @@ test('a world stays the same size however long it is played', () => {
   assert.ok(fresh < 12000, 'a fresh world is about 10 KB, not ' + fresh);
   assert.ok(ten < 12000, 'ten play blocks in, a world is still about 10 KB, not ' + ten);
   // twenty more blocks may add a journal entry or two, never a proportion
-  assert.ok(thirty - ten < 500, 'a world grew by ' + (thirty - ten) + ' bytes over twenty more blocks');
+  assert.ok(
+    thirty - ten < 500,
+    'a world grew by ' + (thirty - ten) + ' bytes over twenty more blocks',
+  );
   // and it gzips well, which is what the relay's bandwidth rests on
-  assert.ok(gzipSync(serialize(play(createWorld(7), 10))).length * 4 < ten, 'a world should gzip better than 4:1');
+  assert.ok(
+    gzipSync(serialize(play(createWorld(7), 10))).length * 4 < ten,
+    'a world should gzip better than 4:1',
+  );
 });
-
 
 /* ---------------- what actually gets on the boat ---------------- */
 
@@ -214,12 +243,17 @@ test('the image carries everything the build id hashes', () => {
   const hashed = readFileSync(new URL('../server/buildid.mjs', import.meta.url), 'utf8');
   const list = /const SERVED = \[([^\]]*)\]/.exec(hashed);
   assert.ok(list, 'buildid.mjs still has a SERVED list');
-  const served = list[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')).filter(Boolean);
+  const served = list[1]
+    .split(',')
+    .map(s => s.trim().replace(/^'|'$/g, ''))
+    .filter(Boolean);
 
   for (const part of served)
-    assert.ok(copied.indexOf(part) >= 0, part + ' is hashed into the build id but never copied into the image');
+    assert.ok(
+      copied.indexOf(part) >= 0,
+      part + ' is hashed into the build id but never copied into the image',
+    );
 });
-
 
 /* ---------------- how long the basket lasts ---------------- */
 

@@ -12,7 +12,7 @@ test('both languages say the same things', () => {
 });
 
 test('every value that takes a name or a number takes the same ones in both', () => {
-  const slots = (s) => (String(s).match(/\{(\w+)\}/g) || []).sort().join(',');
+  const slots = s => (String(s).match(/\{(\w+)\}/g) || []).sort().join(',');
   for (const k of Object.keys(en)) {
     assert.equal(slots(de[k]), slots(en[k]), 'placeholders differ for ' + k);
   }
@@ -36,7 +36,10 @@ test('translating falls back rather than blowing up', () => {
   setLang('de');
   assert.equal(tr('ui.later'), 'Später');
   assert.equal(tr('nope.not.a.key'), 'nope.not.a.key');
-  assert.equal(tr('notice.hungry', { name: 'Bo' }), 'Bo ist hungrig — der Brotkorb müsste gefüllt werden.');
+  assert.equal(
+    tr('notice.hungry', { name: 'Bo' }),
+    'Bo ist hungrig — der Brotkorb müsste gefüllt werden.',
+  );
   assert.equal(trn('deed.fell', 1), 'einen Baum gefällt');
   assert.equal(trn('deed.fell', 3, { n: 3 }), '3 Bäume gefällt');
   setLang('en');

@@ -21,7 +21,7 @@ export function openGive(game, focusKey, toRole) {
     const have = mine[r.key] || 0;
     if (have <= 0) continue;
     any = true;
-    amounts[r.key] = (focusKey === r.key) ? Math.min(1, have) : 0;
+    amounts[r.key] = focusKey === r.key ? Math.min(1, have) : 0;
 
     const row = el('div', 'give-row');
     const head = el('div', 'g-head');
@@ -32,7 +32,9 @@ export function openGive(game, focusKey, toRole) {
     const minus = el('button', '', '−');
     const val = el('span', 'val', String(amounts[r.key]));
     const plus = el('button', '', '+');
-    st.appendChild(minus); st.appendChild(val); st.appendChild(plus);
+    st.appendChild(minus);
+    st.appendChild(val);
+    st.appendChild(plus);
     head.appendChild(st);
     row.appendChild(head);
 
@@ -69,22 +71,30 @@ export function openGive(game, focusKey, toRole) {
 
   const row = p.row();
   if (any) {
-    row.appendChild(p.button(tr('give.button', { role: roleName(to), emoji: ROLE[to].emoji }), 'go', () => {
-      let n = 0;
-      for (const k in amounts) {
-        if (amounts[k] > 0 && game.dispatch({ type: 'give', from: game.role, to: to, res: k, n: amounts[k] })) n += amounts[k];
-      }
-      p.close();
-      if (n) message(tr('msg.gaveAcross', { n: n, role: roleName(to) }));
-    }));
+    row.appendChild(
+      p.button(tr('give.button', { role: roleName(to), emoji: ROLE[to].emoji }), 'go', () => {
+        let n = 0;
+        for (const k in amounts) {
+          if (
+            amounts[k] > 0 &&
+            game.dispatch({ type: 'give', from: game.role, to: to, res: k, n: amounts[k] })
+          )
+            n += amounts[k];
+        }
+        p.close();
+        if (n) message(tr('msg.gaveAcross', { n: n, role: roleName(to) }));
+      }),
+    );
   }
   if ((mine.food || 0) > 0) {
-    row.appendChild(p.button(tr('give.basket'), 'soft', () => {
-      const n = Math.min(3, mine.food);
-      game.dispatch({ type: 'larder.give', from: game.role, n });
-      p.close();
-      message(tr('msg.inBasket', { n: n }));
-    }));
+    row.appendChild(
+      p.button(tr('give.basket'), 'soft', () => {
+        const n = Math.min(3, mine.food);
+        game.dispatch({ type: 'larder.give', from: game.role, n });
+        p.close();
+        message(tr('msg.inBasket', { n: n }));
+      }),
+    );
   }
   row.appendChild(p.button(tr('ui.close'), 'soft', () => p.close()));
 }

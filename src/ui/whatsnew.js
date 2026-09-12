@@ -18,6 +18,11 @@ export function showChangelog(onClose) {
     for (const line of e.lines) p.body.appendChild(el('p', 'log-line', line));
   }
   const r = p.row();
-  r.appendChild(p.button(tr('ui.close'), 'soft', () => { p.close(); if (onClose) onClose(); }));
+  r.appendChild(
+    p.button(tr('ui.close'), 'soft', () => {
+      p.close();
+      if (onClose) onClose();
+    }),
+  );
   return p;
 }

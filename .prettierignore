@@ -1,0 +1,8 @@
+icons/
+node_modules/
+data/
+tools/shots/
+
+# Prose is wrapped by hand and read by people. A formatter rewriting the
+# rulebook is churn with no reader: it only ever swaps *this* for _this_.
+*.md

@@ -1,474 +1,780 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f6efe2">
-<meta name="description" content="How much Our Little World gets played, in numbers that belong to nobody.">
-<title>Our Little World — how it is played</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%237fb069'/%3E%3Cpath d='M4 20q12-8 24 0v8H4z' fill='%235d9150'/%3E%3Ccircle cx='11' cy='11' r='4' fill='%23f2c14e'/%3E%3C/svg%3E">
-<style>
-/* The game's own paper and ink. Baseline Safari 12: no flexbox `gap`, no
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f6efe2" />
+    <meta
+      name="description"
+      content="How much Our Little World gets played, in numbers that belong to nobody."
+    />
+    <title>Our Little World — how it is played</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%237fb069'/%3E%3Cpath d='M4 20q12-8 24 0v8H4z' fill='%235d9150'/%3E%3Ccircle cx='11' cy='11' r='4' fill='%23f2c14e'/%3E%3C/svg%3E"
+    />
+    <style>
+      /* The game's own paper and ink. Baseline Safari 12: no flexbox `gap`, no
    :is(), no logical properties — margins do the spacing. */
-:root {
-  --paper:      #f6efe2;
-  --card:       #fffaf0;
-  --paper-deep: #ece0cb;
-  --ink:        #43372a;
-  --ink-soft:   #7a6a56;
-  --ink-faint:  #9c8d78;
-  --line:       #d9c9ae;
-  --hair:       #e6dac3;
-  --data:       #5d9150;   /* one hue for every chart; validated on this paper */
-  --track:      #e7ddc8;
-  --radius:     16px;
-  --shadow:     0 2px 0 rgba(67,55,42,.10), 0 6px 14px rgba(67,55,42,.07);
-}
-* { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
-body {
-  margin: 0;
-  padding: 28px 20px 64px;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  font-size: 16px;
-  line-height: 1.45;
-  -webkit-font-smoothing: antialiased;
-}
-.wrap { max-width: 940px; margin: 0 auto; }
+      :root {
+        --paper: #f6efe2;
+        --card: #fffaf0;
+        --paper-deep: #ece0cb;
+        --ink: #43372a;
+        --ink-soft: #7a6a56;
+        --ink-faint: #9c8d78;
+        --line: #d9c9ae;
+        --hair: #e6dac3;
+        --data: #5d9150; /* one hue for every chart; validated on this paper */
+        --track: #e7ddc8;
+        --radius: 16px;
+        --shadow: 0 2px 0 rgba(67, 55, 42, 0.1), 0 6px 14px rgba(67, 55, 42, 0.07);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        padding: 28px 20px 64px;
+        background: var(--paper);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        font-size: 16px;
+        line-height: 1.45;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 940px;
+        margin: 0 auto;
+      }
 
-/* ---------------- header ---------------- */
-h1 { font-size: 24px; margin: 0; letter-spacing: -.01em; }
-.sub { color: var(--ink-soft); margin: 4px 0 0; }
-.stamp { color: var(--ink-faint); font-size: 13px; margin: 10px 0 0; }
-.stamp a { color: var(--ink-soft); }
+      /* ---------------- header ---------------- */
+      h1 {
+        font-size: 24px;
+        margin: 0;
+        letter-spacing: -0.01em;
+      }
+      .sub {
+        color: var(--ink-soft);
+        margin: 4px 0 0;
+      }
+      .stamp {
+        color: var(--ink-faint);
+        font-size: 13px;
+        margin: 10px 0 0;
+      }
+      .stamp a {
+        color: var(--ink-soft);
+      }
 
-/* ---------------- cards ---------------- */
-.card {
-  background: var(--card);
-  border: 1px solid var(--hair);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 20px;
-  margin: 22px 0 0;
-}
-h2 { font-size: 15px; margin: 0 0 2px; letter-spacing: .01em; }
-.note { color: var(--ink-soft); font-size: 13px; margin: 0 0 18px; }
-.empty { color: var(--ink-faint); font-size: 14px; padding: 18px 0; margin: 0; }
+      /* ---------------- cards ---------------- */
+      .card {
+        background: var(--card);
+        border: 1px solid var(--hair);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 20px;
+        margin: 22px 0 0;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0 0 2px;
+        letter-spacing: 0.01em;
+      }
+      .note {
+        color: var(--ink-soft);
+        font-size: 13px;
+        margin: 0 0 18px;
+      }
+      .empty {
+        color: var(--ink-faint);
+        font-size: 14px;
+        padding: 18px 0;
+        margin: 0;
+      }
 
-/* ---------------- the one hero, and the tiles ---------------- */
-.hero-n { font-size: 56px; line-height: 1; font-weight: 600; letter-spacing: -.02em; }
-.hero-l { color: var(--ink-soft); font-size: 14px; margin: 8px 0 0; }
-.tiles { margin: 22px -8px 0; font-size: 0; }
-.tile { display: inline-block; vertical-align: top; width: 33.333%; padding: 0 8px; font-size: 16px; }
-.tile-n { font-size: 26px; font-weight: 600; line-height: 1.1; }
-.tile-l { color: var(--ink-soft); font-size: 13px; margin-top: 2px; }
-.now { border-top: 1px solid var(--hair); margin-top: 20px; padding-top: 14px; color: var(--ink-soft); font-size: 14px; }
-.now b { color: var(--ink); font-weight: 600; }
+      /* ---------------- the one hero, and the tiles ---------------- */
+      .hero-n {
+        font-size: 56px;
+        line-height: 1;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .hero-l {
+        color: var(--ink-soft);
+        font-size: 14px;
+        margin: 8px 0 0;
+      }
+      .tiles {
+        margin: 22px -8px 0;
+        font-size: 0;
+      }
+      .tile {
+        display: inline-block;
+        vertical-align: top;
+        width: 33.333%;
+        padding: 0 8px;
+        font-size: 16px;
+      }
+      .tile-n {
+        font-size: 26px;
+        font-weight: 600;
+        line-height: 1.1;
+      }
+      .tile-l {
+        color: var(--ink-soft);
+        font-size: 13px;
+        margin-top: 2px;
+      }
+      .now {
+        border-top: 1px solid var(--hair);
+        margin-top: 20px;
+        padding-top: 14px;
+        color: var(--ink-soft);
+        font-size: 14px;
+      }
+      .now b {
+        color: var(--ink);
+        font-weight: 600;
+      }
 
-/* ---------------- columns over time ---------------- */
-.cols { position: relative; height: 150px; border-bottom: 1px solid var(--line); font-size: 0; white-space: nowrap; }
-.band { display: inline-block; height: 100%; position: relative; vertical-align: bottom; }
-.band i {
-  position: absolute; left: 0; right: 0; bottom: 0; margin: 0 auto;
-  width: calc(100% - 2px);      /* 2px of surface between neighbours */
-  max-width: 24px;              /* never fill the slot: the leftover is air */
-  background: var(--data); border-radius: 4px 4px 0 0; min-height: 2px;
-}
-.band.zero i { background: var(--track); }
-.band:hover i, .band:focus i { background: #4e7d43; }
-.band:focus { outline: none; }
-.axis { color: var(--ink-faint); font-size: 12px; margin-top: 6px; }
-.axis span:last-child { float: right; }
-.peak {
-  position: absolute; font-size: 12px; color: var(--ink-soft);
-  -webkit-transform: translateX(-50%); transform: translateX(-50%); white-space: nowrap;
-}
+      /* ---------------- columns over time ---------------- */
+      .cols {
+        position: relative;
+        height: 150px;
+        border-bottom: 1px solid var(--line);
+        font-size: 0;
+        white-space: nowrap;
+      }
+      .band {
+        display: inline-block;
+        height: 100%;
+        position: relative;
+        vertical-align: bottom;
+      }
+      .band i {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        margin: 0 auto;
+        width: calc(100% - 2px); /* 2px of surface between neighbours */
+        max-width: 24px; /* never fill the slot: the leftover is air */
+        background: var(--data);
+        border-radius: 4px 4px 0 0;
+        min-height: 2px;
+      }
+      .band.zero i {
+        background: var(--track);
+      }
+      .band:hover i,
+      .band:focus i {
+        background: #4e7d43;
+      }
+      .band:focus {
+        outline: none;
+      }
+      .axis {
+        color: var(--ink-faint);
+        font-size: 12px;
+        margin-top: 6px;
+      }
+      .axis span:last-child {
+        float: right;
+      }
+      .peak {
+        position: absolute;
+        font-size: 12px;
+        color: var(--ink-soft);
+        -webkit-transform: translateX(-50%);
+        transform: translateX(-50%);
+        white-space: nowrap;
+      }
 
-/* ---------------- two histograms side by side ---------------- */
-.pair { margin: 0 -10px; font-size: 0; }
-.half { display: inline-block; vertical-align: top; width: 50%; padding: 0 10px; font-size: 16px; }
-.half h3 { font-size: 14px; margin: 0 0 2px; font-weight: 600; }
-.half .note { margin-bottom: 14px; }
-.hist { height: 124px; border-bottom: 1px solid var(--line); font-size: 0; }
-.hist .band i { border-radius: 4px 4px 0 0; }
-.ticks { color: var(--ink-faint); font-size: 12px; margin-top: 6px; font-variant-numeric: tabular-nums; }
-.ticks span:last-child { float: right; }
+      /* ---------------- two histograms side by side ---------------- */
+      .pair {
+        margin: 0 -10px;
+        font-size: 0;
+      }
+      .half {
+        display: inline-block;
+        vertical-align: top;
+        width: 50%;
+        padding: 0 10px;
+        font-size: 16px;
+      }
+      .half h3 {
+        font-size: 14px;
+        margin: 0 0 2px;
+        font-weight: 600;
+      }
+      .half .note {
+        margin-bottom: 14px;
+      }
+      .hist {
+        height: 124px;
+        border-bottom: 1px solid var(--line);
+        font-size: 0;
+      }
+      .hist .band i {
+        border-radius: 4px 4px 0 0;
+      }
+      .ticks {
+        color: var(--ink-faint);
+        font-size: 12px;
+        margin-top: 6px;
+        font-variant-numeric: tabular-nums;
+      }
+      .ticks span:last-child {
+        float: right;
+      }
 
-/* ---------------- rows of bars ---------------- */
-.rows { margin: 0; }
-.row { margin: 0 0 12px; }
-.row:last-child { margin-bottom: 0; }
-.row-h { font-size: 14px; margin-bottom: 5px; }
-.row-h b { float: right; font-weight: 600; font-variant-numeric: tabular-nums; }
-.bar { height: 10px; background: var(--track); border-radius: 5px; overflow: hidden; }
-.bar i { display: block; height: 100%; background: var(--data); border-radius: 5px; min-width: 3px; }
+      /* ---------------- rows of bars ---------------- */
+      .rows {
+        margin: 0;
+      }
+      .row {
+        margin: 0 0 12px;
+      }
+      .row:last-child {
+        margin-bottom: 0;
+      }
+      .row-h {
+        font-size: 14px;
+        margin-bottom: 5px;
+      }
+      .row-h b {
+        float: right;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .bar {
+        height: 10px;
+        background: var(--track);
+        border-radius: 5px;
+        overflow: hidden;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        background: var(--data);
+        border-radius: 5px;
+        min-width: 3px;
+      }
 
-/* ---------------- the numbers themselves ---------------- */
-details { margin-top: 16px; }
-summary { cursor: pointer; color: var(--ink-soft); font-size: 13px; }
-summary::-webkit-details-marker { color: var(--ink-faint); }
-table { border-collapse: collapse; margin-top: 10px; font-size: 13px; width: 100%; }
-th, td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--hair); font-variant-numeric: tabular-nums; }
-th:first-child, td:first-child { text-align: left; font-variant-numeric: normal; }
-th { color: var(--ink-soft); font-weight: 600; }
+      /* ---------------- the numbers themselves ---------------- */
+      details {
+        margin-top: 16px;
+      }
+      summary {
+        cursor: pointer;
+        color: var(--ink-soft);
+        font-size: 13px;
+      }
+      summary::-webkit-details-marker {
+        color: var(--ink-faint);
+      }
+      table {
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 13px;
+        width: 100%;
+      }
+      th,
+      td {
+        text-align: right;
+        padding: 4px 8px;
+        border-bottom: 1px solid var(--hair);
+        font-variant-numeric: tabular-nums;
+      }
+      th:first-child,
+      td:first-child {
+        text-align: left;
+        font-variant-numeric: normal;
+      }
+      th {
+        color: var(--ink-soft);
+        font-weight: 600;
+      }
 
-/* ---------------- the hovering label ---------------- */
-#tip {
-  position: fixed; z-index: 9; pointer-events: none; opacity: 0;
-  background: var(--ink); color: #fdf7ec; border-radius: 10px;
-  padding: 8px 11px; font-size: 12.5px; line-height: 1.5; white-space: nowrap;
-  box-shadow: 0 6px 18px rgba(67,55,42,.22);
-  -webkit-transition: opacity .12s; transition: opacity .12s;
-}
-#tip b { font-weight: 600; }
-#tip.on { opacity: 1; }
+      /* ---------------- the hovering label ---------------- */
+      #tip {
+        position: fixed;
+        z-index: 9;
+        pointer-events: none;
+        opacity: 0;
+        background: var(--ink);
+        color: #fdf7ec;
+        border-radius: 10px;
+        padding: 8px 11px;
+        font-size: 12.5px;
+        line-height: 1.5;
+        white-space: nowrap;
+        box-shadow: 0 6px 18px rgba(67, 55, 42, 0.22);
+        -webkit-transition: opacity 0.12s;
+        transition: opacity 0.12s;
+      }
+      #tip b {
+        font-weight: 600;
+      }
+      #tip.on {
+        opacity: 1;
+      }
 
-/* ---------------- foot ---------------- */
-.foot { color: var(--ink-soft); font-size: 13.5px; margin: 26px 0 0; }
-.foot p { margin: 0 0 8px; }
-.foot b { color: var(--ink); }
+      /* ---------------- foot ---------------- */
+      .foot {
+        color: var(--ink-soft);
+        font-size: 13.5px;
+        margin: 26px 0 0;
+      }
+      .foot p {
+        margin: 0 0 8px;
+      }
+      .foot b {
+        color: var(--ink);
+      }
 
-@media (max-width: 620px) {
-  .tile { width: 100%; padding-bottom: 14px; }
-  .half { width: 100%; padding-bottom: 22px; }
-  .hero-n { font-size: 46px; }
-}
-</style>
-</head>
-<body>
-<div class="wrap">
+      @media (max-width: 620px) {
+        .tile {
+          width: 100%;
+          padding-bottom: 14px;
+        }
+        .half {
+          width: 100%;
+          padding-bottom: 22px;
+        }
+        .hero-n {
+          font-size: 46px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Our Little World</h1>
+      <p class="sub">How much it gets played — in numbers that belong to nobody.</p>
+      <p class="stamp" id="stamp">reading…</p>
 
-  <h1>Our Little World</h1>
-  <p class="sub">How much it gets played — in numbers that belong to nobody.</p>
-  <p class="stamp" id="stamp">reading…</p>
+      <div id="body"></div>
 
-  <div id="body"></div>
+      <div class="foot">
+        <p>
+          <b>What is counted.</b> Worlds, spots taken, minutes played, the day a world reached, what
+          got built, what got done. A <b>spot</b> is one role in one world on one day — as close to
+          “a person” as this gets. Two spots is a parent and a child, or one person playing twice;
+          nothing here can tell those apart.
+        </p>
+        <p>
+          <b>What is never counted.</b> No addresses, no device ids, no world names, no times of
+          day. A calendar day is the finest grain kept anywhere, and a world that is forgotten
+          leaves its numbers behind without its name.
+        </p>
+        <p>
+          The same thing as JSON: <a href="/api/stats">/api/stats</a> ·
+          <a href="/">the game itself</a>
+        </p>
+      </div>
+    </div>
 
-  <div class="foot">
-    <p><b>What is counted.</b> Worlds, spots taken, minutes played, the day a world
-      reached, what got built, what got done. A <b>spot</b> is one role in one world
-      on one day — as close to “a person” as this gets. Two spots is a parent and a
-      child, or one person playing twice; nothing here can tell those apart.</p>
-    <p><b>What is never counted.</b> No addresses, no device ids, no world names, no
-      times of day. A calendar day is the finest grain kept anywhere, and a world
-      that is forgotten leaves its numbers behind without its name.</p>
-    <p>The same thing as JSON: <a href="/api/stats">/api/stats</a> · <a href="/">the game itself</a></p>
-  </div>
-</div>
+    <div id="tip" role="status" aria-live="polite"></div>
 
-<div id="tip" role="status" aria-live="polite"></div>
+    <script>
+      (function () {
+        'use strict';
 
-<script>
-(function () {
-  'use strict';
+        var MILESTONES = {
+          bridge: '🌉 A bridge over the river',
+          house: '🏠 A house somebody built',
+          housed: '🛏️ Everybody has a bed',
+          well: '🪣 A well',
+          privy: '🚪 The little house',
+          fence: '🚧 A fence round the field',
+          boat: '⛵ A fishing boat',
+          play: '🛝 A playground',
+        };
+        var DEEDS = {
+          fell: '🪓 Trees felled',
+          saw: '🪚 Logs sawn',
+          bridge: '🌉 Bridges built',
+          house: '🏠 Houses built',
+          mill: '🌀 Trips to the mill',
+          road: '🛤️ Roads laid',
+          farm: '🌾 Jobs in the field',
+          care: '🐑 Sheep looked after',
+          fish: '🎣 Fish landed',
+          plant: '🌱 Saplings planted',
+          boat: '⛵ Boats built',
+          play: '🛝 Playgrounds built',
+          well: '🪣 Wells dug',
+          privy: '🚪 Little houses built',
+          fence: '🚧 Fences put up',
+        };
 
-  var MILESTONES = {
-    bridge: '🌉 A bridge over the river',
-    house:  '🏠 A house somebody built',
-    housed: '🛏️ Everybody has a bed',
-    well:   '🪣 A well',
-    privy:  '🚪 The little house',
-    fence:  '🚧 A fence round the field',
-    boat:   '⛵ A fishing boat',
-    play:   '🛝 A playground'
-  };
-  var DEEDS = {
-    fell:  '🪓 Trees felled',       saw:   '🪚 Logs sawn',
-    bridge:'🌉 Bridges built',      house: '🏠 Houses built',
-    mill:  '🌀 Trips to the mill',  road:  '🛤️ Roads laid',
-    farm:  '🌾 Jobs in the field',  care:  '🐑 Sheep looked after',
-    fish:  '🎣 Fish landed',        plant: '🌱 Saplings planted',
-    boat:  '⛵ Boats built',        play:  '🛝 Playgrounds built',
-    well:  '🪣 Wells dug',          privy: '🚪 Little houses built',
-    fence: '🚧 Fences put up'
-  };
+        var el = function (tag, cls, text) {
+          var n = document.createElement(tag);
+          if (cls) n.className = cls;
+          if (text !== undefined && text !== null) n.textContent = String(text);
+          return n;
+        };
+        var n0 = function (v) {
+          return typeof v === 'number' && isFinite(v) ? v : 0;
+        };
+        var plural = function (n, one, many) {
+          return n + ' ' + (n === 1 ? one : many);
+        };
 
-  var el = function (tag, cls, text) {
-    var n = document.createElement(tag);
-    if (cls) n.className = cls;
-    if (text !== undefined && text !== null) n.textContent = String(text);
-    return n;
-  };
-  var n0 = function (v) { return typeof v === 'number' && isFinite(v) ? v : 0; };
-  var plural = function (n, one, many) { return n + ' ' + (n === 1 ? one : many); };
+        /* ---------------- the hovering label ---------------- */
+        var tip = document.getElementById('tip');
+        function showTip(ev, html) {
+          tip.innerHTML = html;
+          tip.className = 'on';
+          var r = tip.getBoundingClientRect();
+          var x = ev.clientX - r.width / 2;
+          var y = ev.clientY - r.height - 14;
+          tip.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
+          tip.style.top = (y < 8 ? ev.clientY + 18 : y) + 'px';
+        }
+        function hideTip() {
+          tip.className = '';
+        }
 
-  /* ---------------- the hovering label ---------------- */
-  var tip = document.getElementById('tip');
-  function showTip(ev, html) {
-    tip.innerHTML = html;
-    tip.className = 'on';
-    var r = tip.getBoundingClientRect();
-    var x = ev.clientX - r.width / 2;
-    var y = ev.clientY - r.height - 14;
-    tip.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
-    tip.style.top = (y < 8 ? ev.clientY + 18 : y) + 'px';
-  }
-  function hideTip() { tip.className = ''; }
+        /** A column with a hit area the whole height of the band, not just the mark. */
+        function column(heightPct, label, zero) {
+          var band = el('div', 'band' + (zero ? ' zero' : ''));
+          band.setAttribute('tabindex', '0');
+          var bar = el('i');
+          bar.style.height = Math.max(heightPct * 0.86, zero ? 1.5 : 2) + '%';
+          band.appendChild(bar);
+          var show = function (ev) {
+            showTip(ev, label);
+          };
+          band.addEventListener('mousemove', show);
+          band.addEventListener('mouseleave', hideTip);
+          band.addEventListener('focus', function () {
+            var b = band.getBoundingClientRect();
+            showTip({ clientX: b.left + b.width / 2, clientY: b.top }, label);
+          });
+          band.addEventListener('blur', hideTip);
+          return band;
+        }
 
-  /** A column with a hit area the whole height of the band, not just the mark. */
-  function column(heightPct, label, zero) {
-    var band = el('div', 'band' + (zero ? ' zero' : ''));
-    band.setAttribute('tabindex', '0');
-    var bar = el('i');
-    bar.style.height = Math.max(heightPct * 0.86, zero ? 1.5 : 2) + '%';
-    band.appendChild(bar);
-    var show = function (ev) { showTip(ev, label); };
-    band.addEventListener('mousemove', show);
-    band.addEventListener('mouseleave', hideTip);
-    band.addEventListener('focus', function () {
-      var b = band.getBoundingClientRect();
-      showTip({ clientX: b.left + b.width / 2, clientY: b.top }, label);
-    });
-    band.addEventListener('blur', hideTip);
-    return band;
-  }
+        /* ---------------- a card, and the numbers behind it ---------------- */
+        function card(title, note) {
+          var c = el('div', 'card');
+          c.appendChild(el('h2', null, title));
+          if (note) c.appendChild(el('p', 'note', note));
+          return c;
+        }
 
-  /* ---------------- a card, and the numbers behind it ---------------- */
-  function card(title, note) {
-    var c = el('div', 'card');
-    c.appendChild(el('h2', null, title));
-    if (note) c.appendChild(el('p', 'note', note));
-    return c;
-  }
+        function table(head, rows) {
+          var d = el('details');
+          d.appendChild(el('summary', null, 'See the numbers'));
+          var t = el('table'),
+            tr = el('tr');
+          for (var h = 0; h < head.length; h++) tr.appendChild(el('th', null, head[h]));
+          var thead = el('thead');
+          thead.appendChild(tr);
+          t.appendChild(thead);
+          var tb = el('tbody');
+          for (var i = 0; i < rows.length; i++) {
+            var r = el('tr');
+            for (var j = 0; j < rows[i].length; j++) r.appendChild(el('td', null, rows[i][j]));
+            tb.appendChild(r);
+          }
+          t.appendChild(tb);
+          d.appendChild(t);
+          return d;
+        }
 
-  function table(head, rows) {
-    var d = el('details');
-    d.appendChild(el('summary', null, 'See the numbers'));
-    var t = el('table'), tr = el('tr');
-    for (var h = 0; h < head.length; h++) tr.appendChild(el('th', null, head[h]));
-    var thead = el('thead'); thead.appendChild(tr); t.appendChild(thead);
-    var tb = el('tbody');
-    for (var i = 0; i < rows.length; i++) {
-      var r = el('tr');
-      for (var j = 0; j < rows[i].length; j++) r.appendChild(el('td', null, rows[i][j]));
-      tb.appendChild(r);
-    }
-    t.appendChild(tb);
-    d.appendChild(t);
-    return d;
-  }
+        /* ---------------- every day ---------------- */
 
-  /* ---------------- every day ---------------- */
-
-  /** The ledger only keeps a row for a day something happened; a time axis
+        /** The ledger only keeps a row for a day something happened; a time axis
       with those days missing would draw the wrong shape. */
-  function fillGaps(days, today) {
-    if (!days.length) return [];
-    var from = new Date(today + 'T00:00:00Z');
-    from.setUTCDate(from.getUTCDate() - 13);        // always at least a fortnight
-    var first = new Date(days[0].d + 'T00:00:00Z');
-    var out = [], at = first < from ? first : from;
-    var end = new Date(today + 'T00:00:00Z'), by = {};
-    for (var i = 0; i < days.length; i++) by[days[i].d] = days[i];
-    var guard = 0;
-    while (at <= end && guard++ < 400) {
-      var k = at.toISOString().slice(0, 10);
-      out.push(by[k] || { d: k, started: 0, played: 0, spots: 0, minutes: 0 });
-      at.setUTCDate(at.getUTCDate() + 1);
-    }
-    return out;
-  }
+        function fillGaps(days, today) {
+          if (!days.length) return [];
+          var from = new Date(today + 'T00:00:00Z');
+          from.setUTCDate(from.getUTCDate() - 13); // always at least a fortnight
+          var first = new Date(days[0].d + 'T00:00:00Z');
+          var out = [],
+            at = first < from ? first : from;
+          var end = new Date(today + 'T00:00:00Z'),
+            by = {};
+          for (var i = 0; i < days.length; i++) by[days[i].d] = days[i];
+          var guard = 0;
+          while (at <= end && guard++ < 400) {
+            var k = at.toISOString().slice(0, 10);
+            out.push(by[k] || { d: k, started: 0, played: 0, spots: 0, minutes: 0 });
+            at.setUTCDate(at.getUTCDate() + 1);
+          }
+          return out;
+        }
 
-  function pretty(d) {
-    var p = d.split('-');
-    var m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return Number(p[2]) + ' ' + m[Number(p[1]) - 1];
-  }
+        function pretty(d) {
+          var p = d.split('-');
+          var m = [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+          ];
+          return Number(p[2]) + ' ' + m[Number(p[1]) - 1];
+        }
 
-  function everyDay(days) {
-    var c = card('Every day', 'Spots taken each day — one role in one world. Hover a day for the rest of it.');
-    if (!days.length) {
-      c.appendChild(el('p', 'empty', 'Nobody has played yet. The first world to be opened turns up here.'));
-      return c;
-    }
-    var max = 1, i;
-    for (i = 0; i < days.length; i++) max = Math.max(max, days[i].spots);
+        function everyDay(days) {
+          var c = card(
+            'Every day',
+            'Spots taken each day — one role in one world. Hover a day for the rest of it.',
+          );
+          if (!days.length) {
+            c.appendChild(
+              el(
+                'p',
+                'empty',
+                'Nobody has played yet. The first world to be opened turns up here.',
+              ),
+            );
+            return c;
+          }
+          var max = 1,
+            i;
+          for (i = 0; i < days.length; i++) max = Math.max(max, days[i].spots);
 
-    var plot = el('div', 'cols');
-    var width = (100 / days.length) + '%';
-    var peakAt = 0;
-    for (i = 0; i < days.length; i++) {
-      var d = days[i];
-      if (d.spots > days[peakAt].spots) peakAt = i;
-      var label = '<b>' + pretty(d.d) + '</b><br>' +
-        plural(d.spots, 'spot', 'spots') + ' · ' +
-        plural(d.played, 'world', 'worlds') + ' played<br>' +
-        plural(d.minutes, 'minute', 'minutes') +
-        (d.started ? '<br>' + plural(d.started, 'world', 'worlds') + ' started' : '');
-      var band = column(d.spots / max * 100, label, d.spots === 0);
-      band.style.width = width;
-      plot.appendChild(band);
-    }
-    // one direct label, on the busiest day; the axis and the tooltip carry the rest
-    if (days[peakAt].spots > 0) {
-      var peak = el('div', 'peak', days[peakAt].spots);
-      peak.style.left = ((peakAt + 0.5) / days.length * 100) + '%';
-      peak.style.bottom = (days[peakAt].spots / max * 86) + '%';
-      peak.style.marginBottom = '4px';
-      plot.appendChild(peak);
-    }
-    c.appendChild(plot);
+          var plot = el('div', 'cols');
+          var width = 100 / days.length + '%';
+          var peakAt = 0;
+          for (i = 0; i < days.length; i++) {
+            var d = days[i];
+            if (d.spots > days[peakAt].spots) peakAt = i;
+            var label =
+              '<b>' +
+              pretty(d.d) +
+              '</b><br>' +
+              plural(d.spots, 'spot', 'spots') +
+              ' · ' +
+              plural(d.played, 'world', 'worlds') +
+              ' played<br>' +
+              plural(d.minutes, 'minute', 'minutes') +
+              (d.started ? '<br>' + plural(d.started, 'world', 'worlds') + ' started' : '');
+            var band = column((d.spots / max) * 100, label, d.spots === 0);
+            band.style.width = width;
+            plot.appendChild(band);
+          }
+          // one direct label, on the busiest day; the axis and the tooltip carry the rest
+          if (days[peakAt].spots > 0) {
+            var peak = el('div', 'peak', days[peakAt].spots);
+            peak.style.left = ((peakAt + 0.5) / days.length) * 100 + '%';
+            peak.style.bottom = (days[peakAt].spots / max) * 86 + '%';
+            peak.style.marginBottom = '4px';
+            plot.appendChild(peak);
+          }
+          c.appendChild(plot);
 
-    var axis = el('div', 'axis');
-    axis.appendChild(el('span', null, pretty(days[0].d)));
-    axis.appendChild(el('span', null, pretty(days[days.length - 1].d)));
-    c.appendChild(axis);
+          var axis = el('div', 'axis');
+          axis.appendChild(el('span', null, pretty(days[0].d)));
+          axis.appendChild(el('span', null, pretty(days[days.length - 1].d)));
+          c.appendChild(axis);
 
-    var rows = [];
-    for (i = days.length - 1; i >= 0; i--)
-      rows.push([days[i].d, days[i].started, days[i].played, days[i].spots, days[i].minutes]);
-    c.appendChild(table(['Day', 'Started', 'Played', 'Spots', 'Minutes'], rows));
-    return c;
-  }
+          var rows = [];
+          for (i = days.length - 1; i >= 0; i--)
+            rows.push([days[i].d, days[i].started, days[i].played, days[i].spots, days[i].minutes]);
+          c.appendChild(table(['Day', 'Started', 'Played', 'Spots', 'Minutes'], rows));
+          return c;
+        }
 
-  /* ---------------- how far worlds get ---------------- */
+        /* ---------------- how far worlds get ---------------- */
 
-  /** Histogram keys are "3", "30+" or "15-19"; sort them by where they start. */
-  function low(k) { return parseInt(String(k), 10) || 0; }
+        /** Histogram keys are "3", "30+" or "15-19"; sort them by where they start. */
+        function low(k) {
+          return parseInt(String(k), 10) || 0;
+        }
 
-  function histogram(hist, unit, one, median) {
-    var keys = Object.keys(hist).sort(function (a, b) { return low(a) - low(b); });
-    var box = el('div');
-    if (!keys.length) {
-      box.appendChild(el('p', 'empty', 'Nothing to measure yet.'));
-      return box;
-    }
-    var max = 1, i;
-    for (i = 0; i < keys.length; i++) max = Math.max(max, hist[keys[i]]);
+        function histogram(hist, unit, one, median) {
+          var keys = Object.keys(hist).sort(function (a, b) {
+            return low(a) - low(b);
+          });
+          var box = el('div');
+          if (!keys.length) {
+            box.appendChild(el('p', 'empty', 'Nothing to measure yet.'));
+            return box;
+          }
+          var max = 1,
+            i;
+          for (i = 0; i < keys.length; i++) max = Math.max(max, hist[keys[i]]);
 
-    var plot = el('div', 'cols hist');
-    var width = (100 / keys.length) + '%';
-    for (i = 0; i < keys.length; i++) {
-      var k = keys[i], v = hist[k];
-      var label = '<b>' + k + ' ' + unit + '</b><br>' + plural(v, 'world', 'worlds');
-      if (String(k) === '1') label = '<b>1 ' + one + '</b><br>' + plural(v, 'world', 'worlds');
-      var band = column(v / max * 100, label, v === 0);
-      band.style.width = width;
-      plot.appendChild(band);
-    }
-    box.appendChild(plot);
+          var plot = el('div', 'cols hist');
+          var width = 100 / keys.length + '%';
+          for (i = 0; i < keys.length; i++) {
+            var k = keys[i],
+              v = hist[k];
+            var label = '<b>' + k + ' ' + unit + '</b><br>' + plural(v, 'world', 'worlds');
+            if (String(k) === '1')
+              label = '<b>1 ' + one + '</b><br>' + plural(v, 'world', 'worlds');
+            var band = column((v / max) * 100, label, v === 0);
+            band.style.width = width;
+            plot.appendChild(band);
+          }
+          box.appendChild(plot);
 
-    var ticks = el('div', 'ticks');
-    ticks.appendChild(el('span', null, keys[0]));
-    ticks.appendChild(el('span', null, keys[keys.length - 1]));
-    box.appendChild(ticks);
-    box.appendChild(el('p', 'note', 'The middle world got to ' + plural(median, one, unit) + '.'));
+          var ticks = el('div', 'ticks');
+          ticks.appendChild(el('span', null, keys[0]));
+          ticks.appendChild(el('span', null, keys[keys.length - 1]));
+          box.appendChild(ticks);
+          box.appendChild(
+            el('p', 'note', 'The middle world got to ' + plural(median, one, unit) + '.'),
+          );
 
-    var rows = [];
-    for (i = 0; i < keys.length; i++) rows.push([keys[i], hist[keys[i]]]);
-    box.appendChild(table([unit.charAt(0).toUpperCase() + unit.slice(1), 'Worlds'], rows));
-    return box;
-  }
+          var rows = [];
+          for (i = 0; i < keys.length; i++) rows.push([keys[i], hist[keys[i]]]);
+          box.appendChild(table([unit.charAt(0).toUpperCase() + unit.slice(1), 'Worlds'], rows));
+          return box;
+        }
 
-  function howFar(far) {
-    var c = card('How far a world gets',
-      plural(far.worlds, 'world', 'worlds') + ' counted, the ones being played now and the ones already forgotten.');
-    if (!far.worlds) {
-      c.appendChild(el('p', 'empty', 'No world has been played through yet.'));
-      return c;
-    }
-    var pair = el('div', 'pair');
-    var a = el('div', 'half');
-    a.appendChild(el('h3', null, 'Days reached'));
-    a.appendChild(el('p', 'note', 'A day is one five-minute block, asked for on purpose.'));
-    a.appendChild(histogram(far.days, 'days', 'day', far.medianDays));
-    var b = el('div', 'half');
-    b.appendChild(el('h3', null, 'Minutes played'));
-    b.appendChild(el('p', 'note', 'The world’s own clock, over its whole life.'));
-    b.appendChild(histogram(far.minutes, 'minutes', 'minute', far.medianMinutes));
-    pair.appendChild(a); pair.appendChild(b);
-    c.appendChild(pair);
-    return c;
-  }
+        function howFar(far) {
+          var c = card(
+            'How far a world gets',
+            plural(far.worlds, 'world', 'worlds') +
+              ' counted, the ones being played now and the ones already forgotten.',
+          );
+          if (!far.worlds) {
+            c.appendChild(el('p', 'empty', 'No world has been played through yet.'));
+            return c;
+          }
+          var pair = el('div', 'pair');
+          var a = el('div', 'half');
+          a.appendChild(el('h3', null, 'Days reached'));
+          a.appendChild(el('p', 'note', 'A day is one five-minute block, asked for on purpose.'));
+          a.appendChild(histogram(far.days, 'days', 'day', far.medianDays));
+          var b = el('div', 'half');
+          b.appendChild(el('h3', null, 'Minutes played'));
+          b.appendChild(el('p', 'note', 'The world’s own clock, over its whole life.'));
+          b.appendChild(histogram(far.minutes, 'minutes', 'minute', far.medianMinutes));
+          pair.appendChild(a);
+          pair.appendChild(b);
+          c.appendChild(pair);
+          return c;
+        }
 
-  /* ---------------- rows of bars ---------------- */
+        /* ---------------- rows of bars ---------------- */
 
-  function bars(map, names, total, unit) {
-    var keys = Object.keys(map).sort(function (a, b) { return map[b] - map[a]; });
-    if (!keys.length) return null;
-    var max = total || 1, i;
-    if (!total) for (i = 0; i < keys.length; i++) max = Math.max(max, map[keys[i]]);
+        function bars(map, names, total, unit) {
+          var keys = Object.keys(map).sort(function (a, b) {
+            return map[b] - map[a];
+          });
+          if (!keys.length) return null;
+          var max = total || 1,
+            i;
+          if (!total) for (i = 0; i < keys.length; i++) max = Math.max(max, map[keys[i]]);
 
-    var box = el('div', 'rows');
-    for (i = 0; i < keys.length; i++) {
-      var k = keys[i], v = map[k];
-      var row = el('div', 'row');
-      var head = el('div', 'row-h', names[k] || k);
-      head.appendChild(el('b', null, total ? v + ' of ' + total : String(v)));
-      row.appendChild(head);
-      var bar = el('div', 'bar'), fill = el('i');
-      fill.style.width = Math.min(100, v / max * 100) + '%';
-      bar.appendChild(fill);
-      row.appendChild(bar);
-      box.appendChild(row);
-    }
-    var rows = [];
-    for (i = 0; i < keys.length; i++) rows.push([names[keys[i]] || keys[i], map[keys[i]]]);
-    box.appendChild(table([unit, 'Worlds'], rows));
-    return box;
-  }
+          var box = el('div', 'rows');
+          for (i = 0; i < keys.length; i++) {
+            var k = keys[i],
+              v = map[k];
+            var row = el('div', 'row');
+            var head = el('div', 'row-h', names[k] || k);
+            head.appendChild(el('b', null, total ? v + ' of ' + total : String(v)));
+            row.appendChild(head);
+            var bar = el('div', 'bar'),
+              fill = el('i');
+            fill.style.width = Math.min(100, (v / max) * 100) + '%';
+            bar.appendChild(fill);
+            row.appendChild(bar);
+            box.appendChild(row);
+          }
+          var rows = [];
+          for (i = 0; i < keys.length; i++) rows.push([names[keys[i]] || keys[i], map[keys[i]]]);
+          box.appendChild(table([unit, 'Worlds'], rows));
+          return box;
+        }
 
-  /* ---------------- put it together ---------------- */
+        /* ---------------- put it together ---------------- */
 
-  function render(s) {
-    var body = document.getElementById('body');
-    body.innerHTML = '';
+        function render(s) {
+          var body = document.getElementById('body');
+          body.innerHTML = '';
 
-    var lede = el('div', 'card');
-    lede.appendChild(el('div', 'hero-n', n0(s.week.spots)));
-    lede.appendChild(el('p', 'hero-l', 'spots taken in the last seven days'));
+          var lede = el('div', 'card');
+          lede.appendChild(el('div', 'hero-n', n0(s.week.spots)));
+          lede.appendChild(el('p', 'hero-l', 'spots taken in the last seven days'));
 
-    var tiles = el('div', 'tiles');
-    var add = function (v, l) {
-      var t = el('div', 'tile');
-      t.appendChild(el('div', 'tile-n', v));
-      t.appendChild(el('div', 'tile-l', l));
-      tiles.appendChild(t);
-    };
-    add(n0(s.week.played), 'worlds played in');
-    add(n0(s.week.minutes), 'minutes played');
-    add(n0(s.week.started), 'worlds started');
-    lede.appendChild(tiles);
+          var tiles = el('div', 'tiles');
+          var add = function (v, l) {
+            var t = el('div', 'tile');
+            t.appendChild(el('div', 'tile-n', v));
+            t.appendChild(el('div', 'tile-l', l));
+            tiles.appendChild(t);
+          };
+          add(n0(s.week.played), 'worlds played in');
+          add(n0(s.week.minutes), 'minutes played');
+          add(n0(s.week.started), 'worlds started');
+          lede.appendChild(tiles);
 
-    var now = el('div', 'now');
-    now.appendChild(document.createTextNode('Right now: '));
-    now.appendChild(el('b', null, plural(n0(s.now.worlds), 'world', 'worlds')));
-    now.appendChild(document.createTextNode(' remembered, '));
-    now.appendChild(el('b', null, plural(n0(s.now.openSpots), 'spot', 'spots')));
-    now.appendChild(document.createTextNode(' still free, '));
-    now.appendChild(el('b', null, s.now.playingNow === null ? 'unknown' : plural(n0(s.now.playingNow), 'world', 'worlds')));
-    now.appendChild(document.createTextNode(' with somebody in it this second.'));
-    lede.appendChild(now);
-    body.appendChild(lede);
+          var now = el('div', 'now');
+          now.appendChild(document.createTextNode('Right now: '));
+          now.appendChild(el('b', null, plural(n0(s.now.worlds), 'world', 'worlds')));
+          now.appendChild(document.createTextNode(' remembered, '));
+          now.appendChild(el('b', null, plural(n0(s.now.openSpots), 'spot', 'spots')));
+          now.appendChild(document.createTextNode(' still free, '));
+          now.appendChild(
+            el(
+              'b',
+              null,
+              s.now.playingNow === null
+                ? 'unknown'
+                : plural(n0(s.now.playingNow), 'world', 'worlds'),
+            ),
+          );
+          now.appendChild(document.createTextNode(' with somebody in it this second.'));
+          lede.appendChild(now);
+          body.appendChild(lede);
 
-    body.appendChild(everyDay(fillGaps(s.days || [], s.generated)));
-    body.appendChild(howFar(s.howFar));
+          body.appendChild(everyDay(fillGaps(s.days || [], s.generated)));
+          body.appendChild(howFar(s.howFar));
 
-    var m = card('What worlds reach', 'Out of every world counted, how many ever got this far.');
-    var mb = bars(s.milestones || {}, MILESTONES, s.howFar.worlds, 'Milestone');
-    m.appendChild(mb || el('p', 'empty', 'Nothing has been built yet.'));
-    body.appendChild(m);
+          var m = card(
+            'What worlds reach',
+            'Out of every world counted, how many ever got this far.',
+          );
+          var mb = bars(s.milestones || {}, MILESTONES, s.howFar.worlds, 'Milestone');
+          m.appendChild(mb || el('p', 'empty', 'Nothing has been built yet.'));
+          body.appendChild(m);
 
-    var d = card('What people actually do', 'Every time somebody did the thing, in every world counted.');
-    var db = bars(s.deeds || {}, DEEDS, 0, 'Deed');
-    d.appendChild(db || el('p', 'empty', 'Nobody has done anything yet.'));
-    body.appendChild(d);
-  }
+          var d = card(
+            'What people actually do',
+            'Every time somebody did the thing, in every world counted.',
+          );
+          var db = bars(s.deeds || {}, DEEDS, 0, 'Deed');
+          d.appendChild(db || el('p', 'empty', 'Nobody has done anything yet.'));
+          body.appendChild(d);
+        }
 
-  function stamp(text) { document.getElementById('stamp').textContent = text; }
+        function stamp(text) {
+          document.getElementById('stamp').textContent = text;
+        }
 
-  fetch('/api/stats', { headers: { accept: 'application/json' } })
-    .then(function (r) { return r.json(); })
-    .then(function (s) {
-      render(s);
-      stamp('counted up to ' + s.generated + ' · nothing here belongs to anybody');
-    })
-    .catch(function () {
-      stamp('The numbers could not be fetched. This page needs the game’s own server.');
-    });
-})();
-</script>
-</body>
+        fetch('/api/stats', { headers: { accept: 'application/json' } })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (s) {
+            render(s);
+            stamp('counted up to ' + s.generated + ' · nothing here belongs to anybody');
+          })
+          .catch(function () {
+            stamp('The numbers could not be fetched. This page needs the game’s own server.');
+          });
+      })();
+    </script>
+  </body>
 </html>

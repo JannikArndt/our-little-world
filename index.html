@@ -1,69 +1,84 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Our World">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#f6efe2">
-<!-- the server writes the build it served in here; see server/serve.mjs -->
-<meta name="olw-build" content="dev">
-<meta name="description" content="Our Little World - a calm cooperative world for two people to grow together.">
-<title>Our Little World</title>
-<link rel="stylesheet" href="styles/main.css">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%237fb069'/%3E%3Cpath d='M4 20q12-8 24 0v8H4z' fill='%235d9150'/%3E%3Ccircle cx='11' cy='11' r='4' fill='%23f2c14e'/%3E%3C/svg%3E">
-<!-- Saved to a Home Screen this is the picture, and it is the game's own: a
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Our World" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#f6efe2" />
+    <!-- the server writes the build it served in here; see server/serve.mjs -->
+    <meta name="olw-build" content="dev" />
+    <meta
+      name="description"
+      content="Our Little World - a calm cooperative world for two people to grow together."
+    />
+    <title>Our Little World</title>
+    <link rel="stylesheet" href="styles/main.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%237fb069'/%3E%3Cpath d='M4 20q12-8 24 0v8H4z' fill='%235d9150'/%3E%3Ccircle cx='11' cy='11' r='4' fill='%23f2c14e'/%3E%3C/svg%3E"
+    />
+    <!-- Saved to a Home Screen this is the picture, and it is the game's own: a
      house by the river under the sun, drawn in code by tools/icons.mjs. The
      manifest deliberately has no start_url, so adding a world to the Home
      Screen keeps that world in the address it was added from. -->
-<link rel="apple-touch-icon" href="icons/app-180.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/app-192.png">
-<link rel="manifest" href="site.webmanifest">
-</head>
-<body>
+    <link rel="apple-touch-icon" href="icons/app-180.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/app-192.png" />
+    <link rel="manifest" href="site.webmanifest" />
+  </head>
+  <body>
+    <!-- ============ START SCREEN ============ -->
+    <div id="start" class="screen">
+      <div class="start-card">
+        <div class="lang-row" id="langRow"></div>
 
-<!-- ============ START SCREEN ============ -->
-<div id="start" class="screen">
-  <div class="start-card">
-    <div class="lang-row" id="langRow"></div>
+        <h1 class="title" data-t="app.title">Our Little World</h1>
+        <p class="subtitle" data-t="app.subtitle">A world for two people to look after together.</p>
 
-    <h1 class="title" data-t="app.title">Our Little World</h1>
-    <p class="subtitle" data-t="app.subtitle">A world for two people to look after together.</p>
+        <div id="startBody"></div>
 
-    <div id="startBody"></div>
+        <p class="start-foot">
+          <button id="versionBtn" class="link-btn" type="button">v0 · ✨</button>
+          <button id="reloadBtn" class="link-btn" type="button">↻</button>
+        </p>
+      </div>
+    </div>
 
-    <p class="start-foot">
-      <button id="versionBtn" class="link-btn" type="button">v0 · ✨</button>
-      <button id="reloadBtn" class="link-btn" type="button">↻</button>
-    </p>
-  </div>
-</div>
+    <!-- ============ GAME ============ -->
+    <div id="game" class="screen hidden">
+      <header id="topbar">
+        <div id="roleBar" class="rolebar"></div>
+        <button id="folkChip" class="chip folk-chip" type="button">
+          <span class="f-emoji">👥</span><span class="f-n">0</span>
+        </button>
+        <button id="dayBadge" class="day-badge" type="button" aria-live="polite">
+          <span id="dayIcon">🌅</span><span id="dayNum">1</span><span class="d-more">⋯</span>
+        </button>
+      </header>
 
-<!-- ============ GAME ============ -->
-<div id="game" class="screen hidden">
+      <main id="stage">
+        <canvas id="world" width="960" height="576"></canvas>
+        <div id="bubbleLayer"></div>
+        <div id="toastLayer"></div>
+      </main>
 
-  <header id="topbar">
-    <div id="roleBar" class="rolebar"></div>
-    <button id="folkChip" class="chip folk-chip" type="button"><span class="f-emoji">👥</span><span class="f-n">0</span></button>
-    <button id="dayBadge" class="day-badge" type="button" aria-live="polite"><span id="dayIcon">🌅</span><span id="dayNum">1</span><span class="d-more">⋯</span></button>
-  </header>
+      <footer id="bottombar">
+        <div id="resbar" class="resbar"></div>
+      </footer>
+    </div>
 
-  <main id="stage">
-    <canvas id="world" width="960" height="576"></canvas>
-    <div id="bubbleLayer"></div>
-    <div id="toastLayer"></div>
-  </main>
+    <div id="menuLayer" class="menu-layer hidden"></div>
+    <div id="overlay" class="overlay hidden"></div>
 
-  <footer id="bottombar">
-    <div id="resbar" class="resbar"></div>
-  </footer>
-</div>
-
-<div id="menuLayer" class="menu-layer hidden"></div>
-<div id="overlay" class="overlay hidden"></div>
-
-<script type="module" src="src/main.js"></script>
-<noscript><p style="padding:24px;font:16px system-ui">Our Little World needs JavaScript.</p></noscript>
-</body>
+    <script type="module" src="src/main.js"></script>
+    <noscript
+      ><p style="padding: 24px; font: 16px system-ui">
+        Our Little World needs JavaScript.
+      </p></noscript
+    >
+  </body>
 </html>

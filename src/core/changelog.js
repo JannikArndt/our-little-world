@@ -8,7 +8,8 @@ export const VERSION = '2.3';
 
 export const CHANGELOG = [
   {
-    v: '2.3', date: '2026-09-12',
+    v: '2.3',
+    date: '2026-09-12',
     en: [
       'Nothing in a house is bought with a tap any more. You make it: take a lamp off the shelf and the word LAMP comes up in big dotted letters to be written, one letter going green as you finish it. Then it is yours to put down wherever you like.',
       'Or draw it instead. One button switches between the letters and the picture — a candle, a bed, a window to trace the outline of — and it remembers which you chose. Neither is harder than the other; they are just two different afternoons.',
@@ -23,12 +24,13 @@ export const CHANGELOG = [
     ],
   },
   {
-    v: '2.2', date: '2026-09-12',
+    v: '2.2',
+    date: '2026-09-12',
     en: [
       'Put it on your Home Screen and it has its own picture now — a house by the river under the sun, drawn by the same code that draws the game.',
       'And putting it on your Home Screen actually works. An app saved to the Home Screen is a browser of its own with its own memory, so it arrived at your own village as a stranger and was told both seats were taken. Now it asks which of the two is yours and lets you carry on. Nobody is thrown out: if both are open you simply meet, the way any two players do.',
       'There is also a link behind your own chip — "Play this on another device" — which says which seat you are, so the next device opens straight into the world with no questions.',
-      'The front door is quieter once you have a village. Starting another world and joining somebody else\'s are still there, a size down, underneath the worlds waiting for you.',
+      "The front door is quieter once you have a village. Starting another world and joining somebody else's are still there, a size down, underneath the worlds waiting for you.",
     ],
     de: [
       'Auf dem Home-Bildschirm hat das Spiel jetzt ein eigenes Bild — ein Haus am Fluss unter der Sonne, gezeichnet von demselben Code, der auch das Spiel zeichnet.',
@@ -38,11 +40,12 @@ export const CHANGELOG = [
     ],
   },
   {
-    v: '2.1', date: '2026-09-12',
+    v: '2.1',
+    date: '2026-09-12',
     en: [
       'Building a house is a different thing now. Putting one up is one tap and cheap — four walls, a door, a window and a bed, so somebody can move in the same afternoon. No grid to fill in, and no rules to be told off about.',
       'Then you furnish it, for as long as you like. Tap any house and the front wall comes off: the room is in there with the people who live in it, and a shelf of things to put in — a bed, a chair, a table, a candle, a stove, a blanket, flowers, a loaf on a shelf. One thing, one small price, whenever you have it. Pick something off the shelf, then say where it goes.',
-      'Both of you can bring something. The planks are the Builder\'s; the wool, the wheat and the loaf are the Keeper\'s. A house the two of you furnished together is rather the point of the whole thing.',
+      "Both of you can bring something. The planks are the Builder's; the wool, the wheat and the loaf are the Keeper's. A house the two of you furnished together is rather the point of the whole thing.",
       'Everything does something as well as being nice to have. A bed is somebody sleeping there, a candle or a stove is what makes the windows glow from outside at dusk, and the more there is in a room the better everybody in it sleeps.',
       'Move things about whenever you like: pick a thing up, tap somewhere else, put it down. Moving what you already own is free.',
       'Houses you already have keep everything they had — the same beds, the same window, the same stove, already standing in the room.',
@@ -57,9 +60,10 @@ export const CHANGELOG = [
     ],
   },
   {
-    v: '2.0', date: '2026-09-12',
+    v: '2.0',
+    date: '2026-09-12',
     en: [
-      'Tap anything and it still tells you what it needs — but when it is the other player\'s job, it says so instead of offering to send them a message. Two people in the same room can just say it out loud, and that is rather the point of playing this together.',
+      "Tap anything and it still tells you what it needs — but when it is the other player's job, it says so instead of offering to send them a message. Two people in the same room can just say it out loud, and that is rather the point of playing this together.",
       'Pinching to zoom stays where you put it. Two fingers coming off a pinch looked exactly like the double tap that means "show me the whole world", so the zoom you had just chosen was thrown straight away — which is why it only worked sometimes. The world now also grows out of the spot between your fingers rather than the middle of the screen.',
       'Tapping the green past the edge of the map no longer offers to build a road out there. It puts away whatever was open, which is what that tap is usually for.',
       'The river is widest where it runs off the top and the bottom of the map, and narrowest where the bridge goes. It used to pinch tighter at the edges than at the crossing, so the one place you are told to build looked like the wrong one.',
@@ -74,7 +78,8 @@ export const CHANGELOG = [
     ],
   },
   {
-    v: '1.9', date: '2026-09-12',
+    v: '1.9',
+    date: '2026-09-12',
     en: [
       'Tap somebody and they answer. No card, no sentence to read: their name floats up over their head and they wave, wink, hop, or go bashful and trot a few tiles off.',
       'And there is more to catch them at. People dance, run, sit down, stop and natter in twos — and every so often two of them have a little squabble, which a tap breaks up with hearts over both of them.',
@@ -99,7 +104,8 @@ export const CHANGELOG = [
     ],
   },
   {
-    v: '1.8', date: '2026-09-10',
+    v: '1.8',
+    date: '2026-09-10',
     en: [
       'Felling a tree is a different job. No more wind and no more choosing a side: there is one big tree, and you cut the notch into it yourself. A mark shows where the axe should land and moves to the other lip of the notch after every swing, so each one has to be aimed.',
       'And the rule you can see: every clean bite is a log. They stack up on the grass beside you while you work, and that pile is what the tree gives — so a carefully cut tree is worth more than a hacked-at one.',
@@ -114,7 +120,8 @@ export const CHANGELOG = [
     ],
   },
   {
-    v: '1.7', date: '2026-09-10',
+    v: '1.7',
+    date: '2026-09-10',
     en: [
       'Nothing is laid over the village any more. What needs doing has moved behind your own chip, where a red number says how many things are waiting — so the tree you were about to fell is never hidden under a card that comes straight back when you tap it away.',
       'And it is the whole list now. Three things wrong means three lines, each one opening the card that explains it, instead of only the most pressing one.',
@@ -129,7 +136,8 @@ export const CHANGELOG = [
     ],
   },
   {
-    v: '1.6', date: '2026-09-10',
+    v: '1.6',
+    date: '2026-09-10',
     en: [
       'The top row is tidier. Your own chip now holds what needs doing and what you can do, one skill to a line, so you can see at a glance what this pair of hands is for.',
       'The language, what is new, fetching the game again and the ways out have moved behind the day, on the right — out of the way of playing, and still one tap away.',
@@ -142,7 +150,8 @@ export const CHANGELOG = [
     ],
   },
   {
-    v: '1.5', date: '2026-09-07',
+    v: '1.5',
+    date: '2026-09-07',
     en: [
       '“Start this world over” really does start it over, and puts you straight into the first morning. The server had been keeping its own copy of the village and handing it back, so the world you had just cleared turned up again a moment later.',
     ],
@@ -151,7 +160,8 @@ export const CHANGELOG = [
     ],
   },
   {
-    v: '1.4', date: '2026-09-07',
+    v: '1.4',
+    date: '2026-09-07',
     en: [
       'Worlds have names of their own now. Start one and it becomes Sunny Otter 🦦 — with a picture, so whoever cannot read yet still knows which one is theirs.',
       'Nobody types anything to find each other. One of you starts a world, the other taps “Join a world” and it is sitting at the top of the list with the free spot named. Once both spots are taken the world is not listed any more.',
@@ -166,7 +176,8 @@ export const CHANGELOG = [
     ],
   },
   {
-    v: '1.3', date: '2026-09-06',
+    v: '1.3',
+    date: '2026-09-06',
     en: [
       'The world says less. Notes that turned up on their own — arriving in the middle of a morning, being told to turn the phone sideways, the splash when a bridge gives way — are gone. What you are looking at already says it.',
       'Added to a Home Screen, the game can now fetch itself again: “↻ Fetch the game again” sits at the front door and in the 📜 history, and says so more loudly once a newer version is actually waiting. The village is saved before it goes.',
@@ -177,7 +188,8 @@ export const CHANGELOG = [
     ],
   },
   {
-    v: '1.2', date: '2026-09-05',
+    v: '1.2',
+    date: '2026-09-05',
     en: [
       'Clean water: dig a well in the middle of the village. Until there is one, everybody drinks from the river, and sooner or later somebody gets a poorly tummy — a slow walk home and a sit down, nothing worse.',
       'Build the little house at the bottom of the garden, and what used to end up in the river stops doing so: the water is safe again and the fishing is better for it.',
@@ -196,7 +208,8 @@ export const CHANGELOG = [
     ],
   },
   {
-    v: '1.1', date: '2026-09-05',
+    v: '1.1',
+    date: '2026-09-05',
     en: [
       'The guide now says what to do: “Build a house for Ted!” rather than “Ted has nowhere to sleep tonight.”',
       'Whoever the guide names is drawn on the card and ringed out in the world, so you can see who Ted actually is.',
@@ -217,7 +230,8 @@ export const CHANGELOG = [
     ],
   },
   {
-    v: '1.0', date: '2026-08-01',
+    v: '1.0',
+    date: '2026-08-01',
     en: [
       'The first little world: a river, a forest, a field, two people who know different things, and five minutes at a time.',
     ],

@@ -68,7 +68,7 @@ test('a device that comes back gets its own spot again, not a new one', () => {
   assert.equal(Object.keys(s.get(world.name).slots).length, 2);
 });
 
-test('a third player is turned away rather than given somebody else\'s role', () => {
+test("a third player is turned away rather than given somebody else's role", () => {
   const s = new Worlds({});
   const { world } = s.create({ device: 'kid', role: 'A' });
   s.join(world.name, { device: 'dad' });
@@ -83,7 +83,7 @@ test('a spot nobody has used for days can be taken over', () => {
   const { world } = s.create({ device: 'kid', role: 'A' });
   s.join(world.name, { device: 'old-phone' });
   t += 4 * DAY;
-  s.touch(world.name, { device: 'kid', role: 'A' });          // the child still plays
+  s.touch(world.name, { device: 'kid', role: 'A' }); // the child still plays
   const back = s.join(world.name, { device: 'new-phone' });
   assert.equal(back.role, 'B', 'the spot nobody has used is the one that goes');
   assert.equal(s.get(world.name).slots.A.device, 'kid', 'and the child keeps theirs');
@@ -153,7 +153,7 @@ test('a snapshot that is not a world is refused', () => {
   assert.equal(s.putSnapshot('nowhere', { tick: 1, world: '{}' }).ok, false);
 });
 
-test('a real world snapshot survives a restart of the server', async (t) => {
+test('a real world snapshot survives a restart of the server', async t => {
   const dir = await mkdtemp(join(tmpdir(), 'olw-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const { createWorld, serialize, deserialize } = await import('../src/core/world.js');
@@ -182,9 +182,14 @@ function listen() {
   const api = createApi(store);
   const server = createServer(async (req, res) => {
     if (await api(req, res)) return;
-    res.writeHead(404); res.end('no');
+    res.writeHead(404);
+    res.end('no');
   });
-  return new Promise((resolve) => server.listen(0, () => resolve({ server, store, base: 'http://localhost:' + server.address().port })));
+  return new Promise(resolve =>
+    server.listen(0, () =>
+      resolve({ server, store, base: 'http://localhost:' + server.address().port }),
+    ),
+  );
 }
 
 const get = async (base, path) => {
@@ -192,11 +197,15 @@ const get = async (base, path) => {
   return { status: r.status, body: await r.json() };
 };
 const post = async (base, path, body) => {
-  const r = await fetch(base + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) });
+  const r = await fetch(base + path, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  });
   return { status: r.status, body: await r.json() };
 };
 
-test('the whole matchmaking dance, over HTTP', async (t) => {
+test('the whole matchmaking dance, over HTTP', async t => {
   const { server, base } = await listen();
   t.after(() => server.close());
 
@@ -227,11 +236,19 @@ test('the whole matchmaking dance, over HTTP', async (t) => {
   const empty = await get(base, '/api/worlds/' + name + '/snapshot');
   assert.equal(empty.status, 200, 'a world nobody has played yet is not an error');
   assert.equal(empty.body.world, null);
-  const put = await post(base, '/api/worlds/' + name + '/snapshot', { device: 'kid-ipad', tick: 12, world: '{"tick":12}' });
+  const put = await post(base, '/api/worlds/' + name + '/snapshot', {
+    device: 'kid-ipad',
+    tick: 12,
+    world: '{"tick":12}',
+  });
   assert.equal(put.status, 200);
   const back = await get(base, '/api/worlds/' + name + '/snapshot');
   assert.equal(back.body.tick, 12);
-  const stale = await post(base, '/api/worlds/' + name + '/snapshot', { device: 'dad-phone', tick: 3, world: '{"tick":3}' });
+  const stale = await post(base, '/api/worlds/' + name + '/snapshot', {
+    device: 'dad-phone',
+    tick: 3,
+    world: '{"tick":3}',
+  });
   assert.equal(stale.status, 409);
   assert.equal(stale.body.snapshot.tick, 12);
 
@@ -240,7 +257,7 @@ test('the whole matchmaking dance, over HTTP', async (t) => {
   assert.equal((await post(base, '/api/worlds/quiet-fox/join', { device: 'x' })).status, 404);
 });
 
-test('a name from a link or an old bookmark starts the world if nobody has', async (t) => {
+test('a name from a link or an old bookmark starts the world if nobody has', async t => {
   const { server, base } = await listen();
   t.after(() => server.close());
 
@@ -249,20 +266,28 @@ test('a name from a link or an old bookmark starts the world if nobody has', asy
   assert.equal(cold.status, 404);
 
   // the same name, from somebody who followed a link
-  const started = await post(base, '/api/worlds/quiet-fox/join', { device: 'a', role: 'A', start: true });
+  const started = await post(base, '/api/worlds/quiet-fox/join', {
+    device: 'a',
+    role: 'A',
+    start: true,
+  });
   assert.equal(started.status, 201);
   assert.equal(started.body.world.name, 'quiet-fox', 'the world keeps the name it was given');
   assert.equal(started.body.role, 'A');
 
   // and the second link-follower joins it rather than starting a second one
-  const second = await post(base, '/api/worlds/quiet-fox/join', { device: 'b', role: 'B', start: true });
+  const second = await post(base, '/api/worlds/quiet-fox/join', {
+    device: 'b',
+    role: 'B',
+    start: true,
+  });
   assert.equal(second.status, 200);
   assert.equal(second.body.world.name, 'quiet-fox');
   assert.equal(second.body.role, 'B');
   assert.equal((await get(base, '/api/health')).body.worlds, 1);
 });
 
-test('a device asking for a world by name gets it whether or not it is listed', async (t) => {
+test('a device asking for a world by name gets it whether or not it is listed', async t => {
   const { server, base } = await listen();
   t.after(() => server.close());
   const made = await post(base, '/api/worlds', { device: 'kid', role: 'A' });
@@ -274,7 +299,7 @@ test('a device asking for a world by name gets it whether or not it is listed', 
   assert.equal(one.body.world.emoji.length > 0, true);
 });
 
-test('a full world stays joinable to the two devices already in it', async (t) => {
+test('a full world stays joinable to the two devices already in it', async t => {
   const { server, base } = await listen();
   t.after(() => server.close());
   const made = await post(base, '/api/worlds', { device: 'kid', role: 'A' });
@@ -293,32 +318,45 @@ test('a full world stays joinable to the two devices already in it', async (t) =
   assert.equal(third.body.full, true);
 });
 
-test('starting over, over HTTP: the old village does not come back', async (t) => {
+test('starting over, over HTTP: the old village does not come back', async t => {
   const { server, base } = await listen();
   t.after(() => server.close());
   const made = await post(base, '/api/worlds', { device: 'kid', role: 'A' });
   const name = made.body.world.name;
-  await post(base, '/api/worlds/' + name + '/snapshot', { device: 'kid', tick: 900, world: '{"tick":900}' });
+  await post(base, '/api/worlds/' + name + '/snapshot', {
+    device: 'kid',
+    tick: 900,
+    world: '{"tick":900}',
+  });
 
-  const stale = await post(base, '/api/worlds/' + name + '/snapshot', { device: 'kid', tick: 0, world: '{"tick":0}' });
+  const stale = await post(base, '/api/worlds/' + name + '/snapshot', {
+    device: 'kid',
+    tick: 0,
+    world: '{"tick":0}',
+  });
   assert.equal(stale.status, 409, 'a device with an old save is still put right');
 
-  const over = await post(base, '/api/worlds/' + name + '/snapshot', { device: 'kid', tick: 0, world: '{"tick":0}', reset: true });
+  const over = await post(base, '/api/worlds/' + name + '/snapshot', {
+    device: 'kid',
+    tick: 0,
+    world: '{"tick":0}',
+    reset: true,
+  });
   assert.equal(over.status, 200);
   const back = await get(base, '/api/worlds/' + name + '/snapshot');
   assert.equal(back.body.tick, 0, 'whoever opens the page next gets the fresh world');
 });
 
-test('the api does not answer for anything it does not own', async (t) => {
+test('the api does not answer for anything it does not own', async t => {
   const { server, base } = await listen();
   t.after(() => server.close());
-  assert.equal((await fetch(base + '/index.html')).status, 404);   // fell through to the file server
+  assert.equal((await fetch(base + '/index.html')).status, 404); // fell through to the file server
   assert.equal((await fetch(base + '/api/nonsense')).status, 404);
   const bad = await fetch(base + '/api/worlds', { method: 'POST', body: 'not json' });
   assert.equal(bad.status, 400);
 });
 
-test('nobody can fill the directory from one machine', async (t) => {
+test('nobody can fill the directory from one machine', async t => {
   const { server, base } = await listen();
   t.after(() => server.close());
   let refused = 0;

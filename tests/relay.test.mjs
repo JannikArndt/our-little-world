@@ -4,23 +4,31 @@ import { createServer } from 'node:http';
 import { attachRelay, forgetRooms } from '../server/relay.mjs';
 
 function listen() {
-  const server = createServer((req, res) => { res.writeHead(200); res.end('ok'); });
+  const server = createServer((req, res) => {
+    res.writeHead(200);
+    res.end('ok');
+  });
   attachRelay(server, '/relay');
-  return new Promise((resolve) => server.listen(0, () => resolve({ server, port: server.address().port })));
+  return new Promise(resolve =>
+    server.listen(0, () => resolve({ server, port: server.address().port })),
+  );
 }
 
 function open(port, room) {
   const ws = new WebSocket('ws://localhost:' + port + '/relay?room=' + room);
   return new Promise((resolve, reject) => {
     ws.onopen = () => resolve(ws);
-    ws.onerror = (e) => reject(new Error('could not connect'));
+    ws.onerror = () => reject(new Error('could not connect'));
     setTimeout(() => reject(new Error('timed out')), 3000);
   });
 }
 
-const next = (ws) => new Promise((resolve) => { ws.onmessage = (e) => resolve(e.data); });
+const next = ws =>
+  new Promise(resolve => {
+    ws.onmessage = e => resolve(e.data);
+  });
 
-test('the relay passes messages to the other player in the room', async (t) => {
+test('the relay passes messages to the other player in the room', async t => {
   const { server, port } = await listen();
   t.after(() => server.close());
 
@@ -29,24 +37,28 @@ test('the relay passes messages to the other player in the room', async (t) => {
   const heard = next(b);
   a.send(JSON.stringify({ t: 'act', action: { type: 'ping' } }));
   assert.equal(await heard, '{"t":"act","action":{"type":"ping"}}');
-  a.close(); b.close();
+  a.close();
+  b.close();
 });
 
-test('rooms do not leak into each other', async (t) => {
+test('rooms do not leak into each other', async t => {
   const { server, port } = await listen();
   t.after(() => server.close());
 
   const a = await open(port, 'ours');
   const c = await open(port, 'theirs');
   let leaked = false;
-  c.onmessage = () => { leaked = true; };
+  c.onmessage = () => {
+    leaked = true;
+  };
   a.send('hello');
   await new Promise(r => setTimeout(r, 200));
   assert.equal(leaked, false);
-  a.close(); c.close();
+  a.close();
+  c.close();
 });
 
-test('a whole world snapshot survives the trip', async (t) => {
+test('a whole world snapshot survives the trip', async t => {
   const { server, port } = await listen();
   t.after(() => server.close());
 
@@ -59,14 +71,15 @@ test('a whole world snapshot survives the trip', async (t) => {
   const heard = next(b);
   a.send(big);
   assert.equal(await heard, big);
-  a.close(); b.close();
+  a.close();
+  b.close();
 });
 
-test('the probe handshake used to detect a relay works', async (t) => {
+test('the probe handshake used to detect a relay works', async t => {
   const { server, port } = await listen();
   t.after(() => server.close());
   const ws = new WebSocket('ws://localhost:' + port + '/relay?probe=1');
-  const opened = await new Promise((resolve) => {
+  const opened = await new Promise(resolve => {
     ws.onopen = () => resolve(true);
     ws.onerror = () => resolve(false);
     setTimeout(() => resolve(false), 2000);
@@ -74,9 +87,12 @@ test('the probe handshake used to detect a relay works', async (t) => {
   assert.equal(opened, true);
 });
 
-test('the relay hands the last world it saw to whoever joins next', async (t) => {
+test('the relay hands the last world it saw to whoever joins next', async t => {
   const { server, port } = await listen();
-  t.after(() => { forgetRooms(); server.close(); });
+  t.after(() => {
+    forgetRooms();
+    server.close();
+  });
 
   const host = await open(port, 'kept');
   host.send(JSON.stringify({ t: 'snap', peer: 'p1', world: '{"schema":7,"tick":42}' }));
@@ -92,9 +108,12 @@ test('the relay hands the last world it saw to whoever joins next', async (t) =>
   late.close();
 });
 
-test('what one room is holding never reaches another', async (t) => {
+test('what one room is holding never reaches another', async t => {
   const { server, port } = await listen();
-  t.after(() => { forgetRooms(); server.close(); });
+  t.after(() => {
+    forgetRooms();
+    server.close();
+  });
 
   const a = await open(port, 'ourroom');
   a.send(JSON.stringify({ t: 'snap', peer: 'p1', world: '{"schema":7,"tick":9}' }));
@@ -102,8 +121,11 @@ test('what one room is holding never reaches another', async (t) => {
 
   const b = await open(port, 'someone-elses');
   let heard = null;
-  b.onmessage = (e) => { heard = e.data; };
+  b.onmessage = e => {
+    heard = e.data;
+  };
   await new Promise(r => setTimeout(r, 120));
   assert.equal(heard, null, 'a different room starts empty');
-  a.close(); b.close();
+  a.close();
+  b.close();
 });

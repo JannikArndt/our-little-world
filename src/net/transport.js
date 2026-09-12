@@ -11,26 +11,42 @@
 */
 
 export class Transport {
-  constructor() { this.onMessage = null; this.onStatus = null; }
-  connect() { throw new Error('not implemented'); }
-  send() { throw new Error('not implemented'); }
+  constructor() {
+    this.onMessage = null;
+    this.onStatus = null;
+  }
+  connect() {
+    throw new Error('not implemented');
+  }
+  send() {
+    throw new Error('not implemented');
+  }
   close() {}
 }
 
 /** Two tabs, two windows, or two apps on the same device and browser. */
 export class LocalTransport extends Transport {
-  constructor(room) { super(); this.room = room; this.key = 'olw.msg.' + room; this.bc = null; }
+  constructor(room) {
+    super();
+    this.room = room;
+    this.key = 'olw.msg.' + room;
+    this.bc = null;
+  }
 
   connect(onMessage) {
     this.onMessage = onMessage;
     if (typeof BroadcastChannel !== 'undefined') {
       this.bc = new BroadcastChannel('olw.' + this.room);
-      this.bc.onmessage = (e) => this.onMessage(e.data);
+      this.bc.onmessage = e => this.onMessage(e.data);
     }
     // Safari 12 has no BroadcastChannel, but storage events work everywhere.
-    this._onStorage = (e) => {
+    this._onStorage = e => {
       if (e.key !== this.key || !e.newValue) return;
-      try { this.onMessage(JSON.parse(e.newValue).m); } catch (err) { /* ignore */ }
+      try {
+        this.onMessage(JSON.parse(e.newValue).m);
+      } catch {
+        /* ignore */
+      }
     };
     window.addEventListener('storage', this._onStorage);
     if (this.onStatus) this.onStatus('local');
@@ -38,9 +54,19 @@ export class LocalTransport extends Transport {
   }
 
   send(msg) {
-    if (this.bc) { try { this.bc.postMessage(msg); return; } catch (e) { /* fall through */ } }
-    try { localStorage.setItem(this.key, JSON.stringify({ n: Math.random(), m: msg })); }
-    catch (e) { /* a full or private-mode store just means no second window */ }
+    if (this.bc) {
+      try {
+        this.bc.postMessage(msg);
+        return;
+      } catch {
+        /* fall through */
+      }
+    }
+    try {
+      localStorage.setItem(this.key, JSON.stringify({ n: Math.random(), m: msg }));
+    } catch {
+      /* a full or private-mode store just means no second window */
+    }
   }
 
   close() {
@@ -51,11 +77,16 @@ export class LocalTransport extends Transport {
 
 /** Two devices, through the little relay in server/relay.mjs. */
 export class WsTransport extends Transport {
-  constructor(url, room) { super(); this.url = url; this.room = room; this.queue = []; }
+  constructor(url, room) {
+    super();
+    this.url = url;
+    this.room = room;
+    this.queue = [];
+  }
 
   connect(onMessage) {
     this.onMessage = onMessage;
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const open = () => {
         const sep = this.url.indexOf('?') === -1 ? '?' : '&';
         this.ws = new WebSocket(this.url + sep + 'room=' + encodeURIComponent(this.room));
@@ -64,17 +95,27 @@ export class WsTransport extends Transport {
           while (this.queue.length) this.ws.send(this.queue.shift());
           resolve();
         };
-        this.ws.onmessage = (e) => {
-          try { this.onMessage(JSON.parse(e.data)); } catch (err) { /* ignore */ }
+        this.ws.onmessage = e => {
+          try {
+            this.onMessage(JSON.parse(e.data));
+          } catch {
+            /* ignore */
+          }
         };
         this.ws.onclose = () => {
           if (this.onStatus) this.onStatus('reconnecting');
           this.retry = setTimeout(open, 2000);
         };
-        this.ws.onerror = () => { try { this.ws.close(); } catch (e) { /* ignore */ } };
+        this.ws.onerror = () => {
+          try {
+            this.ws.close();
+          } catch {
+            /* ignore */
+          }
+        };
       };
       open();
-      setTimeout(resolve, 2500);            // never block the game on the network
+      setTimeout(resolve, 2500); // never block the game on the network
     });
   }
 
@@ -84,11 +125,21 @@ export class WsTransport extends Transport {
     else if (this.queue.length < 40) this.queue.push(text);
   }
 
-  close() { clearTimeout(this.retry); if (this.ws) { this.ws.onclose = null; this.ws.close(); } }
+  close() {
+    clearTimeout(this.retry);
+    if (this.ws) {
+      this.ws.onclose = null;
+      this.ws.close();
+    }
+  }
 }
 
 /** Playing alone, or two people on one iPad. */
 export class SoloTransport extends Transport {
-  connect(onMessage) { this.onMessage = onMessage; if (this.onStatus) this.onStatus('solo'); return Promise.resolve(); }
+  connect(onMessage) {
+    this.onMessage = onMessage;
+    if (this.onStatus) this.onStatus('solo');
+    return Promise.resolve();
+  }
   send() {}
 }

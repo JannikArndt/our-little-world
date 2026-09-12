@@ -11,7 +11,7 @@ const PIER_STONE = 2;
 export function openBridge(game) {
   const w = game.world;
   const site = w.bridge.site;
-  const N = site.span;                    // water columns to cross
+  const N = site.span; // water columns to cross
   const p = openPanel({
     title: tr(w.bridge.built ? 'bridge.titleOld' : 'bridge.titleNew'),
     lead: tr('bridge.lead'),
@@ -20,23 +20,30 @@ export function openBridge(game) {
   const cv = makeCanvas(480, 206);
   p.body.appendChild(cv.canvas);
 
-  const piers = {};                       // column -> true
-  let test = null;                        // {t, walker, verdict, broke}
+  const piers = {}; // column -> true
+  let test = null; // {t, walker, verdict, broke}
   let built = false;
 
-  const X0 = 62, X1 = 418, DECK = 74;
-  const px = (i) => X0 + ((X1 - X0) / (N + 1)) * i;
+  const X0 = 62,
+    X1 = 418,
+    DECK = 74;
+  const px = i => X0 + ((X1 - X0) / (N + 1)) * i;
 
   onPointer(cv.canvas, 480, 206, {
     down(pt) {
       if (built) return;
-      let best = -1, bd = 1e9;
+      let best = -1,
+        bd = 1e9;
       for (let i = 1; i <= N; i++) {
         const d = Math.abs(pt.x - px(i));
-        if (d < bd) { bd = d; best = i; }
+        if (d < bd) {
+          bd = d;
+          best = i;
+        }
       }
       if (bd > 34) return;
-      if (piers[best]) delete piers[best]; else piers[best] = true;
+      if (piers[best]) delete piers[best];
+      else piers[best] = true;
       test = null;
       update();
     },
@@ -49,7 +56,8 @@ export function openBridge(game) {
     return s;
   }
   function spans() {
-    const s = supports(), out = [];
+    const s = supports(),
+      out = [];
     for (let i = 1; i < s.length; i++) out.push({ a: s[i - 1], b: s[i], d: s[i] - s[i - 1] });
     return out;
   }
@@ -70,28 +78,40 @@ export function openBridge(game) {
     test = { t: 0, verdict: verdict(), broke: null };
   });
   const buildBtn = p.button(tr('bridge.build'), 'go', () => {
-    const c = cost(), v = verdict();
+    const c = cost(),
+      v = verdict();
     if (v === 'breaks' || built) return;
     const me = w.players[game.role].res;
-    if (me.plank < c.plank || me.stone < c.stone) { p.readout(tr('bridge.notEnough')); return; }
+    if (me.plank < c.plank || me.stone < c.stone) {
+      p.readout(tr('bridge.notEnough'));
+      return;
+    }
     built = true;
     game.dispatch({
-      type: 'bridge.build', role: game.role,
-      planks: c.plank, stone: c.stone,
+      type: 'bridge.build',
+      role: game.role,
+      planks: c.plank,
+      stone: c.stone,
       quality: v === 'strong' ? 3 : 2,
     });
-    stop(); p.close();
+    stop();
+    p.close();
     message(tr(v === 'strong' ? 'msg.bridgeStrong' : 'msg.bridgeCreaky'));
     game.look(site.x0 + site.span / 2, site.row + 1);
   });
   row.appendChild(testBtn);
   row.appendChild(buildBtn);
-  const back = p.button(tr('ui.later'), 'soft', () => { stop(); p.close(); });
+  const back = p.button(tr('ui.later'), 'soft', () => {
+    stop();
+    p.close();
+  });
   back.style.flex = '0 0 auto';
   row.appendChild(back);
 
   function update() {
-    const c = cost(), v = verdict(), sp = spans();
+    const c = cost(),
+      v = verdict(),
+      sp = spans();
     const me = w.players[game.role].res;
     const lens = sp.map(s => s.d).join(' + ');
     let msg = tr('bridge.beams', { lens: lens });
@@ -119,22 +139,42 @@ export function openBridge(game) {
   function draw(t) {
     const ctx = cv.ctx;
     ctx.clearRect(0, 0, 480, 206);
-    ctx.fillStyle = '#cfe6f2'; ctx.fillRect(0, 0, 480, 88);
-    ctx.fillStyle = C.water; ctx.fillRect(0, 88, 480, 118);
-    ctx.strokeStyle = 'rgba(255,255,255,.32)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.fillStyle = '#cfe6f2';
+    ctx.fillRect(0, 0, 480, 88);
+    ctx.fillStyle = C.water;
+    ctx.fillRect(0, 88, 480, 118);
+    ctx.strokeStyle = 'rgba(255,255,255,.32)';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
     for (let i = 0; i < 6; i++) {
-      const y = 108 + i * 15, ph = t * 0.0012 + i;
+      const y = 108 + i * 15,
+        ph = t * 0.0012 + i;
       ctx.beginPath();
-      ctx.moveTo(40 + Math.sin(ph) * 10, y); ctx.lineTo(76 + Math.sin(ph) * 10, y);
-      ctx.moveTo(300 + Math.cos(ph) * 10, y + 6); ctx.lineTo(340 + Math.cos(ph) * 10, y + 6);
+      ctx.moveTo(40 + Math.sin(ph) * 10, y);
+      ctx.lineTo(76 + Math.sin(ph) * 10, y);
+      ctx.moveTo(300 + Math.cos(ph) * 10, y + 6);
+      ctx.lineTo(340 + Math.cos(ph) * 10, y + 6);
       ctx.stroke();
     }
     // banks
     ctx.fillStyle = C.sand;
-    ctx.beginPath(); ctx.moveTo(0, 66); ctx.lineTo(X0 + 4, 72); ctx.lineTo(X0 + 4, 206); ctx.lineTo(0, 206); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(480, 66); ctx.lineTo(X1 - 4, 72); ctx.lineTo(X1 - 4, 206); ctx.lineTo(480, 206); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(0, 66);
+    ctx.lineTo(X0 + 4, 72);
+    ctx.lineTo(X0 + 4, 206);
+    ctx.lineTo(0, 206);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(480, 66);
+    ctx.lineTo(X1 - 4, 72);
+    ctx.lineTo(X1 - 4, 206);
+    ctx.lineTo(480, 206);
+    ctx.closePath();
+    ctx.fill();
     ctx.fillStyle = C.grass;
-    ctx.fillRect(0, 54, X0 + 4, 14); ctx.fillRect(X1 - 4, 54, 480 - X1 + 4, 14);
+    ctx.fillRect(0, 54, X0 + 4, 14);
+    ctx.fillRect(X1 - 4, 54, 480 - X1 + 4, 14);
 
     const load = test ? Math.min(1, test.t * 1.4) : 0.25;
 
@@ -143,29 +183,34 @@ export function openBridge(game) {
       if (!piers[i]) {
         ctx.globalAlpha = 0.25 + 0.1 * Math.sin(t * 0.004 + i);
         ctx.fillStyle = '#fff';
-        rr(ctx, px(i) - 11, DECK + 6, 22, 46, 6); ctx.fill();
+        rr(ctx, px(i) - 11, DECK + 6, 22, 46, 6);
+        ctx.fill();
         ctx.globalAlpha = 1;
         continue;
       }
       ctx.fillStyle = C.stone;
-      rr(ctx, px(i) - 12, DECK + 4, 24, 62, 5); ctx.fill();
+      rr(ctx, px(i) - 12, DECK + 4, 24, 62, 5);
+      ctx.fill();
       ctx.fillStyle = C.stoneDark;
-      for (let r = 0; r < 4; r++) rr(ctx, px(i) - 11, DECK + 8 + r * 15, 22, 4, 2), ctx.fill();
+      for (let r = 0; r < 4; r++) (rr(ctx, px(i) - 11, DECK + 8 + r * 15, 22, 4, 2), ctx.fill());
     }
 
     // deck
     const sp = spans();
     for (const s of sp) {
-      const ax = px(s.a), bx = px(s.b);
+      const ax = px(s.a),
+        bx = px(s.b);
       const broke = test && test.broke === s.a;
       const sag = broke ? 60 * Math.min(1, (test.t - 0.5) * 2) : sagOf(s.d, load);
       ctx.strokeStyle = broke ? '#8a5c30' : C.wood;
-      ctx.lineWidth = 10; ctx.lineCap = 'round';
+      ctx.lineWidth = 10;
+      ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(ax, DECK);
       ctx.quadraticCurveTo((ax + bx) / 2, DECK + sag * 2, bx, DECK);
       ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255,255,255,.18)';
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(ax, DECK - 2);
       ctx.quadraticCurveTo((ax + bx) / 2, DECK + sag * 2 - 2, bx, DECK - 2);
@@ -173,41 +218,50 @@ export function openBridge(game) {
       if (!test) {
         ctx.fillStyle = s.d >= 4 ? '#c05b4d' : s.d === 3 ? '#c88a2f' : 'rgba(67,55,42,.55)';
         ctx.font = '700 12px -apple-system, system-ui, sans-serif';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         ctx.fillText(String(s.d), (ax + bx) / 2, DECK - 16);
       }
     }
 
     // the abutment posts
     ctx.fillStyle = C.woodDark;
-    rr(ctx, X0 - 8, DECK - 4, 12, 26, 3); ctx.fill();
-    rr(ctx, X1 - 4, DECK - 4, 12, 26, 3); ctx.fill();
+    rr(ctx, X0 - 8, DECK - 4, 12, 26, 3);
+    ctx.fill();
+    rr(ctx, X1 - 4, DECK - 4, 12, 26, 3);
+    ctx.fill();
 
     // the volunteer
     if (test) {
       const seg = sp.find(s => px(s.a) <= test.walker && px(s.b) >= test.walker) || sp[0];
       const u = seg ? (test.walker - px(seg.a)) / (px(seg.b) - px(seg.a)) : 0;
-      const sag = test.broke === seg.a
-        ? 60 * Math.min(1, Math.max(0, (test.t - 0.5) * 2))
-        : sagOf(seg.d, Math.sin(u * Math.PI));
+      const sag =
+        test.broke === seg.a
+          ? 60 * Math.min(1, Math.max(0, (test.t - 0.5) * 2))
+          : sagOf(seg.d, Math.sin(u * Math.PI));
       const wy = DECK + sag * 2 * (u * (1 - u) * 4) - 2;
       const fall = test.broke === seg.a && test.t > 0.62 ? (test.t - 0.62) * 320 : 0;
       ctx.font = '26px system-ui, "Apple Color Emoji", sans-serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
       ctx.save();
       ctx.translate(test.walker, wy + fall);
       if (fall) ctx.rotate(fall * 0.02);
       ctx.fillText('🧍', 0, 0);
       ctx.restore();
       if (fall > 40) {
-        ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.ellipse(test.walker, 130, 14 + fall * 0.2, 6 + fall * 0.06, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,.8)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.ellipse(test.walker, 130, 14 + fall * 0.2, 6 + fall * 0.06, 0, 0, Math.PI * 2);
+        ctx.stroke();
       }
     }
 
     ctx.fillStyle = 'rgba(67,55,42,.5)';
     ctx.font = '600 11px -apple-system, system-ui, sans-serif';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
     ctx.fillText(tr('chop.tapHint'), 8, 8);
   }
 
@@ -244,11 +298,13 @@ export function openRepair(game) {
   const have = game.world.players[game.role].res.plank;
   const r = p.row();
   if (have >= 1) {
-    r.appendChild(p.button(tr('bridge.mendGo'), 'go', () => {
-      game.dispatch({ type: 'bridge.repair', role: game.role });
-      p.close();
-      message(tr('msg.mended'));
-    }));
+    r.appendChild(
+      p.button(tr('bridge.mendGo'), 'go', () => {
+        game.dispatch({ type: 'bridge.repair', role: game.role });
+        p.close();
+        message(tr('msg.mended'));
+      }),
+    );
   } else {
     p.body.appendChild(el('p', 'lead center', tr('bridge.mendNoPlank')));
   }

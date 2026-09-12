@@ -18,14 +18,16 @@ const QUICK = process.env.QUICK === '1';
 // The three shapes it has to work in. The iPad is the 11" Pro in landscape,
 // which is what this is actually played on; the phone is an iPhone in portrait.
 const DEVICES = {
-  'ipad':      { width: 1194, height: 834, dpr: 2, touch: true },
-  'iphone':    { width: 393,  height: 852, dpr: 3, touch: true },
-  'mac':       { width: 1280, height: 800, dpr: 2, touch: false },
+  ipad: { width: 1194, height: 834, dpr: 2, touch: true },
+  iphone: { width: 393, height: 852, dpr: 3, touch: true },
+  mac: { width: 1280, height: 800, dpr: 2, touch: false },
 };
 
 function watch(page, tag) {
   page.on('pageerror', e => errors.push(tag + ' pageerror: ' + e.message));
-  page.on('console', m => { if (m.type() === 'error') errors.push(tag + ' console: ' + m.text()); });
+  page.on('console', m => {
+    if (m.type() === 'error') errors.push(tag + ' console: ' + m.text());
+  });
   page.on('requestfailed', r => errors.push(tag + ' request failed: ' + r.url()));
 }
 
@@ -40,7 +42,9 @@ async function main() {
   /* ---------- 1. the whole flow on an iPad ---------- */
   const ipad = await browser.newContext({
     viewport: { width: DEVICES['ipad'].width, height: DEVICES['ipad'].height },
-    deviceScaleFactor: 2, hasTouch: true, isMobile: true,
+    deviceScaleFactor: 2,
+    hasTouch: true,
+    isMobile: true,
   });
   const page = await ipad.newPage();
   watch(page, 'ipad');
@@ -54,7 +58,8 @@ async function main() {
   await page.click('#versionBtn');
   await page.waitForTimeout(400);
   const startLog = await page.textContent('.panel');
-  if (!/What is new/.test(startLog)) throw new Error('the changelog does not open from the start screen');
+  if (!/What is new/.test(startLog))
+    throw new Error('the changelog does not open from the start screen');
   await page.click('text=Close');
   await page.waitForTimeout(300);
 
@@ -63,7 +68,8 @@ async function main() {
   const build = await page.getAttribute('meta[name="olw-build"]', 'content');
   const served = await (await fetch(BASE + '/version')).json();
   console.log('the page knows which build it is:', build, '· the server serves:', served.build);
-  if (build !== served.build) throw new Error('the page was not stamped with the build it came from');
+  if (build !== served.build)
+    throw new Error('the page was not stamped with the build it came from');
   const reload = (await page.textContent('#reloadBtn')).trim();
   console.log('the front door offers:', reload);
 
@@ -74,23 +80,32 @@ async function main() {
     const link = document.querySelector('link[rel="apple-touch-icon"]');
     const man = document.querySelector('link[rel="manifest"]');
     if (!link || !man) return { link: !!link, man: !!man };
-    const i = await fetch(link.href), m = await fetch(man.href);
+    const i = await fetch(link.href),
+      m = await fetch(man.href);
     const j = m.ok ? await m.json() : null;
     return {
-      link: true, man: true, iconOk: i.ok, type: i.headers.get('content-type'),
-      manOk: m.ok, icons: j && j.icons ? j.icons.length : 0,
-      name: j && j.short_name, startUrl: (j && j.start_url) || null,
+      link: true,
+      man: true,
+      iconOk: i.ok,
+      type: i.headers.get('content-type'),
+      manOk: m.ok,
+      icons: j && j.icons ? j.icons.length : 0,
+      name: j && j.short_name,
+      startUrl: (j && j.start_url) || null,
     };
   });
   console.log('the Home Screen icon:', JSON.stringify(icon));
   if (!icon.link || !icon.man) throw new Error('the page does not point at an icon and a manifest');
-  if (!icon.iconOk || String(icon.type).indexOf('image/png') !== 0) throw new Error('the Home Screen icon is not being served');
+  if (!icon.iconOk || String(icon.type).indexOf('image/png') !== 0)
+    throw new Error('the Home Screen icon is not being served');
   if (!icon.manOk || !icon.icons) throw new Error('the manifest is not being served');
   if (icon.startUrl) throw new Error('a start_url would drop the world out of a Home Screen link');
   if (!reload || reload === '↻') throw new Error('no reload door on the start screen');
 
   // and asking twice costs nothing: the second answer comes out of the cupboard
-  const again = await fetch(BASE + '/', { headers: { 'if-none-match': (await fetch(BASE + '/')).headers.get('etag') } });
+  const again = await fetch(BASE + '/', {
+    headers: { 'if-none-match': (await fetch(BASE + '/')).headers.get('etag') },
+  });
   console.log('asking for the page again:', again.status, '(304 means it only had to check)');
   if (again.status !== 304) throw new Error('the page has no working tag to revalidate with');
 
@@ -109,13 +124,16 @@ async function main() {
   const myMenu = await page.textContent('.menu');
   if (!/What needs doing/.test(myMenu)) throw new Error('the jobs are not behind your own chip');
   if (!/What you have done/.test(myMenu)) throw new Error('the tally is not behind your own chip');
-  const jobs = await page.$$eval('.menu .menu-item:not(.off) .mi-label', ns => ns.map(n => n.textContent));
+  const jobs = await page.$$eval('.menu .menu-item:not(.off) .mi-label', ns =>
+    ns.map(n => n.textContent),
+  );
   console.log('waiting for you:', JSON.stringify(jobs.slice(0, 4)));
   await page.click('.menu .menu-item:not(.off) >> nth=0');
   await step(page, '02c-guide', 900);
   const guide = await page.textContent('.panel');
   console.log('opening card says:', guide.replace(/\s+/g, ' ').trim().slice(0, 150));
-  if (!/Build a house for|Build a bridge|Mend the bridge/.test(guide)) throw new Error('the card does not say what to do');
+  if (!/Build a house for|Build a bridge|Mend the bridge/.test(guide))
+    throw new Error('the card does not say what to do');
   if ((await page.$$eval('.step', ns => ns.length)) < 2) throw new Error('the card has no steps');
   // a named person is drawn on the card and ringed out in the world
   const named = await page.evaluate(() => {
@@ -127,7 +145,8 @@ async function main() {
   // and every counted step reads "have/need"
   const counts = await page.$$eval('.step .s-count', ns => ns.map(n => n.textContent.trim()));
   console.log('counted steps:', counts.join(', '));
-  if (!counts.length || !counts.every(c => /^\d+\/\d+/.test(c))) throw new Error('steps carry no counts');
+  if (!counts.length || !counts.every(c => /^\d+\/\d+/.test(c)))
+    throw new Error('steps carry no counts');
   await page.click('text=Right, got it');
   await step(page, '03-world', 1200);
 
@@ -138,7 +157,8 @@ async function main() {
   const someone = await page.evaluate(() => window.OLW.world.villagers[0]);
   console.log('the village list starts:', folk.replace(/\s+/g, ' ').trim().slice(0, 160));
   if (folk.indexOf(someone.name) < 0) throw new Error('the villagers menu does not name anybody');
-  if (!/Lives in|Nowhere to sleep/.test(folk)) throw new Error('the villagers menu does not say where they live');
+  if (!/Lives in|Nowhere to sleep/.test(folk))
+    throw new Error('the villagers menu does not say where they live');
   if (folk.indexOf('Cloud') < 0) throw new Error('the sheep are not in the village list');
   // tapping a row takes the world to them, and rings them while you look
   await page.click('.menu .menu-item:not(.off) >> nth=0');
@@ -148,31 +168,45 @@ async function main() {
   if (!ringed) throw new Error('tapping a villager in the list does not show them');
 
   // 🧺 — the basket, said as a sum rather than a number
-  await page.evaluate(() => { window.OLW.world.larder.food = 7; });
+  await page.evaluate(() => {
+    window.OLW.world.larder.food = 7;
+  });
   // "the hungry come here on their own" is the whole point of the basket, so
   // somebody is often standing right on it — and a person answers a tap
   // before the basket does. Wait for the spot to clear rather than poke them.
   let basketShown = false;
   for (let go = 0; go < 20 && !basketShown; go++) {
     const basketPt = await page.evaluate(() => {
-      const g = window.OLW, w = g.world;
+      const g = window.OLW,
+        w = g.world;
       const canvas = document.getElementById('world');
       const r = canvas.getBoundingClientRect();
       g.look(w.larder.x, w.larder.y, 2.4);
       const p = g.renderer.toScreen(w.larder.x * 24, w.larder.y * 24);
-      const busy = w.villagers.some(v => Math.abs(v.x - w.larder.x) < 1 && Math.abs(v.y - w.larder.y) < 1);
+      const busy = w.villagers.some(
+        v => Math.abs(v.x - w.larder.x) < 1 && Math.abs(v.y - w.larder.y) < 1,
+      );
       return { x: r.left + p.x, y: r.top + p.y, busy };
     });
-    if (basketPt.busy) { await page.waitForTimeout(300); continue; }
+    if (basketPt.busy) {
+      await page.waitForTimeout(300);
+      continue;
+    }
     await page.mouse.click(basketPt.x, basketPt.y);
-    basketShown = await page.waitForSelector('.panel', { timeout: 500 }).then(() => true).catch(() => false);
+    basketShown = await page
+      .waitForSelector('.panel', { timeout: 500 })
+      .then(() => true)
+      .catch(() => false);
   }
   if (!basketShown) throw new Error('tapping the basket never opened its panel');
   const basket = (await page.textContent('.panel')).replace(/\s+/g, ' ').trim();
   console.log('the basket says:', basket.slice(0, 200));
-  if (!/loaves in the basket/.test(basket)) throw new Error('the basket does not say how much is inside');
-  if (!/people eat about/.test(basket)) throw new Error('the basket does not say what the village eats in a day');
-  if (!/days of meals/.test(basket)) throw new Error('the basket does not say how many days that lasts');
+  if (!/loaves in the basket/.test(basket))
+    throw new Error('the basket does not say how much is inside');
+  if (!/people eat about/.test(basket))
+    throw new Error('the basket does not say what the village eats in a day');
+  if (!/days of meals/.test(basket))
+    throw new Error('the basket does not say how many days that lasts');
   await page.click('.panel-foot >> text=Close');
   await page.waitForTimeout(300);
 
@@ -184,25 +218,31 @@ async function main() {
    * flaky in a test.
    */
   const tapTile = async (cands, lookAt) => {
-    const pt = await api((arg) => {
-      const g = window.OLW, w = g.world;
-      const canvas = document.getElementById('world');
-      const r = canvas.getBoundingClientRect();
-      g.look(arg.at[0], arg.at[1], 2);
-      const busy = (c) => w.villagers.some(v => Math.abs(v.x - c[0]) < 1.3 && Math.abs(v.y - c[1]) < 1.3) ||
-                          w.sheep.some(sh => Math.abs(sh.x - c[0]) < 1.3 && Math.abs(sh.y - c[1]) < 1.3);
-      // a spot nobody is standing on, that nothing on top of the world covers
-      for (const c of arg.cands) {
-        if (busy(c)) continue;
-        const p = g.renderer.toScreen(c[0] * 24, c[1] * 24);
-        const x = r.left + p.x, y = r.top + p.y;
-        if (x < r.left + 4 || x > r.right - 4 || y < r.top + 4 || y > r.bottom - 4) continue;
-        if (document.elementFromPoint(x, y) !== canvas) continue;
-        return { x, y };
-      }
-      const p = g.renderer.toScreen(arg.cands[0][0] * 24, arg.cands[0][1] * 24);
-      return { x: r.left + p.x, y: r.top + p.y };
-    }, { cands, at: lookAt || cands[0] });
+    const pt = await api(
+      arg => {
+        const g = window.OLW,
+          w = g.world;
+        const canvas = document.getElementById('world');
+        const r = canvas.getBoundingClientRect();
+        g.look(arg.at[0], arg.at[1], 2);
+        const busy = c =>
+          w.villagers.some(v => Math.abs(v.x - c[0]) < 1.3 && Math.abs(v.y - c[1]) < 1.3) ||
+          w.sheep.some(sh => Math.abs(sh.x - c[0]) < 1.3 && Math.abs(sh.y - c[1]) < 1.3);
+        // a spot nobody is standing on, that nothing on top of the world covers
+        for (const c of arg.cands) {
+          if (busy(c)) continue;
+          const p = g.renderer.toScreen(c[0] * 24, c[1] * 24);
+          const x = r.left + p.x,
+            y = r.top + p.y;
+          if (x < r.left + 4 || x > r.right - 4 || y < r.top + 4 || y > r.bottom - 4) continue;
+          if (document.elementFromPoint(x, y) !== canvas) continue;
+          return { x, y };
+        }
+        const p = g.renderer.toScreen(arg.cands[0][0] * 24, arg.cands[0][1] * 24);
+        return { x: r.left + p.x, y: r.top + p.y };
+      },
+      { cands, at: lookAt || cands[0] },
+    );
     await page.waitForTimeout(300);
     await page.mouse.click(pt.x, pt.y);
     return pt;
@@ -220,7 +260,9 @@ async function main() {
       try {
         await page.waitForSelector('text=' + words, { timeout: 2500 });
         return;
-      } catch (e) { await page.waitForTimeout(500); }
+      } catch {
+        await page.waitForTimeout(500);
+      }
     }
     throw new Error('six taps and nothing offered "' + words + '"');
   };
@@ -228,16 +270,23 @@ async function main() {
   // world sanity
   const info = await api(() => {
     const w = window.OLW.world;
-    return { tick: w.tick, block: w.block.active, villagers: w.villagers.length, sheep: w.sheep.length, trees: w.trees.length };
+    return {
+      tick: w.tick,
+      block: w.block.active,
+      villagers: w.villagers.length,
+      sheep: w.sheep.length,
+      trees: w.trees.length,
+    };
   });
   console.log('world:', JSON.stringify(info));
   if (!info.block) throw new Error('the play block did not start');
 
   // tap a tree -> the felling game
   const treePt = await api(() => {
-    const g = window.OLW, w = g.world;
+    const g = window.OLW,
+      w = g.world;
     const t = w.trees.find(t => t.state === 'standing');
-    g.look(t.x, t.y, 1.8);                     // the opening card left us looking at Ted
+    g.look(t.x, t.y, 1.8); // the opening card left us looking at Ted
     const p = g.renderer.toScreen(t.x * 24 + 12, t.y * 24 + 12);
     const r = document.getElementById('world').getBoundingClientRect();
     return { x: r.left + p.x, y: r.top + p.y, id: t.id };
@@ -277,11 +326,15 @@ async function main() {
     let n = 0;
     for (const l of w.logs) n += l.wood;
     for (const v of w.villagers) if (v.carrying) n += v.carrying.wood;
-    return { wood: w.players.A.res.wood, loose: n, felled: w.trees.filter(t => t.state !== 'standing').length };
+    return {
+      wood: w.players.A.res.wood,
+      loose: n,
+      felled: w.trees.filter(t => t.state !== 'standing').length,
+    };
   });
   console.log('after felling:', JSON.stringify(got));
   if (!got.felled) throw new Error('the tree is still standing');
-  const gained = (got.wood - before) + got.loose;
+  const gained = got.wood - before + got.loose;
   if (gained < 7) throw new Error('a clean fell should give 2 wood and 5 logs, got ' + gained);
 
   // The day can end in the middle of a swing — the day's card wipes the
@@ -289,7 +342,8 @@ async function main() {
   // than draw on into a canvas nobody can see and close somebody else's card
   // a second later. Taking the overlay away is exactly what that looks like.
   const nextTree = await api(() => {
-    const g = window.OLW, w = g.world;
+    const g = window.OLW,
+      w = g.world;
     const t = w.trees.find(t => t.state === 'standing');
     g.look(t.x, t.y, 2);
     const p = g.renderer.toScreen(t.x * 24 + 12, t.y * 24 + 12);
@@ -309,7 +363,9 @@ async function main() {
     // overlay goes, because that is the case that used to bite — the settle
     // ran on and then closed whatever card had taken its place.
     const pic2 = page.locator('.panel canvas');
-    const standing = await api(() => window.OLW.world.trees.filter(t => t.state === 'standing').length);
+    const standing = await api(
+      () => window.OLW.world.trees.filter(t => t.state === 'standing').length,
+    );
     for (let i = 0; i < 12; i++) {
       const aim = await api(() => window.OLW._chop);
       if (!aim) break;
@@ -317,27 +373,46 @@ async function main() {
       await pic2.click({ position: { x: b.width * 0.5, y: b.height * (aim.y / aim.H) } });
       await page.waitForTimeout(150);
     }
-    await api(() => window.OLW.startDay(false));           // the day turns as it falls
-    await page.waitForFunction(() => window.OLW._chop === null, null, { timeout: 4000 })
-      .catch(() => { throw new Error('the felling game held on after the overlay went'); });
-    await page.waitForTimeout(2200);                        // longer than its fall and settle
-    const stillCut = await api((n) => window.OLW.world.trees.filter(t => t.state === 'standing').length < n, standing);
+    await api(() => window.OLW.startDay(false)); // the day turns as it falls
+    await page
+      .waitForFunction(() => window.OLW._chop === null, null, { timeout: 4000 })
+      .catch(() => {
+        throw new Error('the felling game held on after the overlay went');
+      });
+    await page.waitForTimeout(2200); // longer than its fall and settle
+    const stillCut = await api(
+      n => window.OLW.world.trees.filter(t => t.state === 'standing').length < n,
+      standing,
+    );
     if (!stillCut) throw new Error('a tree cut right through was not felled when the day ended');
-    const shut = await page.evaluate(() => document.getElementById('overlay').classList.contains('hidden'));
+    const shut = await page.evaluate(() =>
+      document.getElementById('overlay').classList.contains('hidden'),
+    );
     console.log('the overlay after a swing was interrupted, hidden:', shut);
     if (!shut) throw new Error('the felling game left a card open behind the new morning');
     await page.waitForTimeout(500);
   }
 
   // sawmill
-  await api(() => { window.OLW.world.players.A.res.wood = 6; });
+  await api(() => {
+    window.OLW.world.players.A.res.wood = 6;
+  });
   const wsPt = await api(() => {
-    const g = window.OLW, w = g.world, b = w.buildings.find(b => b.type === 'workshop');
+    const g = window.OLW,
+      w = g.world,
+      b = w.buildings.find(b => b.type === 'workshop');
     g.look(b.x + b.w / 2, b.y + b.h / 2, 1.8);
     // somebody standing in the doorway would answer the tap instead of the
     // workshop, so aim at whichever corner nobody is loitering in
-    const cands = [[b.x + 0.5, b.y + 0.3], [b.x + b.w - 0.5, b.y + 0.3], [b.x + 0.5, b.y + 1.3]];
-    const clear = cands.find(c => !w.villagers.some(v => Math.abs(v.x - c[0]) < 1.2 && Math.abs(v.y - c[1]) < 1.2)) || cands[0];
+    const cands = [
+      [b.x + 0.5, b.y + 0.3],
+      [b.x + b.w - 0.5, b.y + 0.3],
+      [b.x + 0.5, b.y + 1.3],
+    ];
+    const clear =
+      cands.find(
+        c => !w.villagers.some(v => Math.abs(v.x - c[0]) < 1.2 && Math.abs(v.y - c[1]) < 1.2),
+      ) || cands[0];
     const p = g.renderer.toScreen(clear[0] * 24, clear[1] * 24);
     const r = document.getElementById('world').getBoundingClientRect();
     return { x: r.left + p.x, y: r.top + p.y };
@@ -353,7 +428,10 @@ async function main() {
   console.log('the order:', order.pieces + ' x ' + order.size);
   const cv = await page.$('.panel canvas');
   const box = await cv.boundingBox();
-  const at = (u) => ({ x: box.x + box.width * ((96 + 24 * u) / 480), y: box.y + box.height * (128 / 236) });
+  const at = u => ({
+    x: box.x + box.width * ((96 + 24 * u) / 480),
+    y: box.y + box.height * (128 / 236),
+  });
   for (let i = 1; i < order.pieces; i++) {
     const pt = at(i * order.size);
     await page.mouse.click(pt.x, pt.y);
@@ -361,7 +439,7 @@ async function main() {
   await step(page, '09-cuts', 300);
   await page.click('text=Saw it');
   await step(page, '10-sawn', 1800);
-  const planks = await api(() => window.OLW.world.players.A.res.plank) - planksBefore;
+  const planks = (await api(() => window.OLW.world.players.A.res.plank)) - planksBefore;
   console.log('planks from this log:', planks, '(the order was', order.pieces + ')');
   if (planks !== order.pieces) throw new Error('cutting to the order did not fill it');
   // a second log has to be measured again: no "same again" shortcut
@@ -371,9 +449,14 @@ async function main() {
   await page.locator('.panel .row .btn.soft').last().click();
 
   // bridge
-  await api(() => { const w = window.OLW.world; w.players.A.res.plank = 9; w.players.A.res.stone = 9; });
+  await api(() => {
+    const w = window.OLW.world;
+    w.players.A.res.plank = 9;
+    w.players.A.res.stone = 9;
+  });
   const crossPt = await api(() => {
-    const g = window.OLW, s = g.world.bridge.site;
+    const g = window.OLW,
+      s = g.world.bridge.site;
     g.look((s.x0 + s.x1 + 1) / 2, s.row + 1, 1.8);
     const p = g.renderer.toScreen((s.x0 + s.x1 + 1) * 12, (s.row + 1) * 24);
     const r = document.getElementById('world').getBoundingClientRect();
@@ -386,7 +469,10 @@ async function main() {
   await step(page, '12-bridge-design', 600);
   const bcv = await page.$('.panel canvas');
   const bbox = await bcv.boundingBox();
-  const bx = (i) => ({ x: bbox.x + bbox.width * ((62 + (356 / 5) * i) / 480), y: bbox.y + bbox.height * (150 / 250) });
+  const bx = i => ({
+    x: bbox.x + bbox.width * ((62 + (356 / 5) * i) / 480),
+    y: bbox.y + bbox.height * (150 / 250),
+  });
   await page.mouse.click(bx(2).x, bx(2).y);
   await page.mouse.click(bx(4).x, bx(4).y);
   await step(page, '13-piers', 400);
@@ -410,25 +496,34 @@ async function main() {
   // their own, and then "Look after her" is nowhere. Keep going until it is
   // hers, putting the wrong one away each time.
   for (let attempt = 0; attempt < 8 && !(await page.$('text=Look after her')); attempt++) {
-    const pt = await api((dys) => {
-      const g = window.OLW, s = g.world.sheep[0];
-      g.setMode(null);                      // whatever came up last time, away
-      const canvas = document.getElementById('world');
-      for (const dy of dys) {
-        g.look(s.x, s.y + dy, 2);
-        const p = g.renderer.toScreen(s.x * 24, s.y * 24);
-        const r = canvas.getBoundingClientRect();
-        const x = r.left + p.x, y = r.top + p.y;
-        if (x < r.left + 20 || x > r.right - 20 || y < r.top + 20 || y > r.bottom - 20) continue;
-        if (document.elementFromPoint(x, y) !== canvas) continue;
-        // somebody standing on her would answer first; wait for them to move on
-        if (g.world.villagers.some(v => Math.abs(v.x - s.x) < 1.1 && Math.abs(v.y - s.y) < 1.1)) continue;
-        return { x, y };
-      }
-      return null;
-    }, [-2, 0, -4, 2, -6]);
-    if (!pt) { await page.waitForTimeout(400); continue; }
-    await page.mouse.click(pt.x, pt.y);     // straight away: a notice can arrive
+    const pt = await api(
+      dys => {
+        const g = window.OLW,
+          s = g.world.sheep[0];
+        g.setMode(null); // whatever came up last time, away
+        const canvas = document.getElementById('world');
+        for (const dy of dys) {
+          g.look(s.x, s.y + dy, 2);
+          const p = g.renderer.toScreen(s.x * 24, s.y * 24);
+          const r = canvas.getBoundingClientRect();
+          const x = r.left + p.x,
+            y = r.top + p.y;
+          if (x < r.left + 20 || x > r.right - 20 || y < r.top + 20 || y > r.bottom - 20) continue;
+          if (document.elementFromPoint(x, y) !== canvas) continue;
+          // somebody standing on her would answer first; wait for them to move on
+          if (g.world.villagers.some(v => Math.abs(v.x - s.x) < 1.1 && Math.abs(v.y - s.y) < 1.1))
+            continue;
+          return { x, y };
+        }
+        return null;
+      },
+      [-2, 0, -4, 2, -6],
+    );
+    if (!pt) {
+      await page.waitForTimeout(400);
+      continue;
+    }
+    await page.mouse.click(pt.x, pt.y); // straight away: a notice can arrive
     await page.waitForTimeout(400);
   }
   await step(page, '17-sheep-bubble', 400);
@@ -436,9 +531,12 @@ async function main() {
   await step(page, '18-care', 700);
   // tapping an item is enough — no dragging required
   const cbox = await (await page.$('.panel canvas')).boundingBox();
-  const item = (i) => ({ x: cbox.x + cbox.width * ((60 + i * 100) / 420), y: cbox.y + cbox.height * (258 / 300) });
+  const item = i => ({
+    x: cbox.x + cbox.width * ((60 + i * 100) / 420),
+    y: cbox.y + cbox.height * (258 / 300),
+  });
   const fluffBefore = await api(() => window.OLW.world.sheep[0].fluff);
-  await page.mouse.click(item(2).x, item(2).y);          // the shears
+  await page.mouse.click(item(2).x, item(2).y); // the shears
   await page.waitForTimeout(1100);
   const fluffAfter = await api(() => window.OLW.world.sheep[0].fluff);
   console.log('shearing by tapping: fluff', fluffBefore, '->', fluffAfter);
@@ -455,7 +553,8 @@ async function main() {
 
   // farming: sow and water
   await api(() => {
-    const g = window.OLW, w = g.world;
+    const g = window.OLW,
+      w = g.world;
     for (const p of w.plots) g.dispatch({ type: 'plot.plant', role: 'B', plotId: p.id });
     for (const p of w.plots) g.dispatch({ type: 'plot.water', role: 'B', plotId: p.id });
     g.look(29, 17, 1.6);
@@ -466,7 +565,8 @@ async function main() {
   await api(() => {
     const g = window.OLW;
     g.world.players.B.res.stone = 8;
-    const tiles = []; for (let x = 20; x < 26; x++) tiles.push({ x, y: 13 });
+    const tiles = [];
+    for (let x = 20; x < 26; x++) tiles.push({ x, y: 13 });
     g.dispatch({ type: 'road.build', role: 'B', tiles });
     g.look(23, 13, 1.6);
   });
@@ -474,16 +574,20 @@ async function main() {
 
   // a house
   await api(() => {
-    const g = window.OLW, w = g.world;
-    w.players.A.res.plank = 9; w.players.A.res.stone = 9;
-    g.role = 'A'; g.other = 'B';
+    const g = window.OLW,
+      w = g.world;
+    w.players.A.res.plank = 9;
+    w.players.A.res.stone = 9;
+    g.role = 'A';
+    g.other = 'B';
     const site = w.buildings.find(b => b.state === 'site');
     g.look(site.x + 1.5, site.y + 1, 1.8);
     return site.id;
   });
   await page.waitForTimeout(300);
   const sitePt = await api(() => {
-    const g = window.OLW, site = g.world.buildings.find(b => b.state === 'site');
+    const g = window.OLW,
+      site = g.world.buildings.find(b => b.state === 'site');
     const p = g.renderer.toScreen((site.x + site.w / 2) * 24, (site.y + site.h / 2) * 24);
     const r = document.getElementById('world').getBoundingClientRect();
     return { x: r.left + p.x, y: r.top + p.y };
@@ -494,55 +598,79 @@ async function main() {
   await step(page, '22-house-plan', 600);
   await page.click('text=Put it up');
   await page.waitForTimeout(900);
-  const houses = await api(() => window.OLW.world.buildings.filter(b => b.type === 'house' && b.state === 'built').length);
+  const houses = await api(
+    () => window.OLW.world.buildings.filter(b => b.type === 'house' && b.state === 'built').length,
+  );
   console.log('houses:', houses);
   if (houses < 3) throw new Error('the house was not built');
 
   // It opens on the inside by itself, because the inside is the point: a house
   // is raised in one tap and then furnished for ever, a piece at a time.
   await page.waitForSelector('.tools .tool', { timeout: 5000 });
-  const newHouse = () => api(() => {
-    const b = window.OLW.world.buildings.filter(x => x.type === 'house' && x.builtTick != null)[0];
-    return { id: b.id, stuff: b.stuff.length, comfort: b.comfort, beds: b.beds, flame: !!b.flame };
-  });
+  const newHouse = () =>
+    api(() => {
+      const b = window.OLW.world.buildings.filter(
+        x => x.type === 'house' && x.builtTick != null,
+      )[0];
+      return {
+        id: b.id,
+        stuff: b.stuff.length,
+        comfort: b.comfort,
+        beds: b.beds,
+        flame: !!b.flame,
+      };
+    });
   const roomWas = await newHouse();
   console.log('a new house starts with:', JSON.stringify(roomWas));
-  if (roomWas.stuff !== 2 || roomWas.beds !== 1) throw new Error('a new house is not a window and a bed');
+  if (roomWas.stuff !== 2 || roomWas.beds !== 1)
+    throw new Error('a new house is not a window and a bed');
 
   const hcv = await page.$('.panel canvas');
   const hbox = await hcv.boundingBox();
-  const spot = (lx, ly) => ({ x: hbox.x + hbox.width * (lx / 514), y: hbox.y + hbox.height * (ly / 300) });
+  const spot = (lx, ly) => ({
+    x: hbox.x + hbox.width * (lx / 514),
+    y: hbox.y + hbox.height * (ly / 300),
+  });
 
   /**
    * Nothing is bought with a tap: a thing is written or drawn into being
    * first. So follow the line it puts up — the only way to know its shape is
    * to ask the tracer, which is what `OLW.tracing` is there for.
    */
-  const startTrace = async (label) => {
+  const startTrace = async label => {
     await page.click('.tools .tool:has-text("' + label + '")');
     await page.waitForFunction(() => window.OLW.tracing, null, { timeout: 5000 });
   };
   const followTrace = async () => {
-    const strokes = await api(() => window.OLW.tracing.strokes.map(s => s.pts.map(p => [p.x, p.y])));
+    const strokes = await api(() =>
+      window.OLW.tracing.strokes.map(s => s.pts.map(p => [p.x, p.y])),
+    );
     for (const pts of strokes) {
       const first = spot(pts[0][0], pts[0][1]);
       await page.mouse.move(first.x, first.y);
       await page.mouse.down();
-      for (const [lx, ly] of pts) { const q = spot(lx, ly); await page.mouse.move(q.x, q.y); }
+      for (const [lx, ly] of pts) {
+        const q = spot(lx, ly);
+        await page.mouse.move(q.x, q.y);
+      }
       await page.mouse.up();
     }
     await page.waitForFunction(() => !window.OLW.tracing, null, { timeout: 5000 });
     return { strokes: strokes.length, points: strokes.reduce((k, p) => k + p.length, 0) };
   };
-  const traceIt = async (label) => { await startTrace(label); return followTrace(); };
+  const traceIt = async label => {
+    await startTrace(label);
+    return followTrace();
+  };
 
   // something on the floor: write it, then say where it goes
   const wrote = await traceIt('chair');
   console.log('writing CHAIR:', JSON.stringify(wrote));
   const asking = await page.textContent('.readout');
   console.log('and then it asks:', asking.replace(/\s+/g, ' ').trim().slice(0, 60));
-  if (!/Where shall the chair go/.test(asking)) throw new Error('writing it did not put it in your hand');
-  await page.mouse.click(spot(216, 246).x, spot(216, 246).y);      // a front-row floor slot
+  if (!/Where shall the chair go/.test(asking))
+    throw new Error('writing it did not put it in your hand');
+  await page.mouse.click(spot(216, 246).x, spot(216, 246).y); // a front-row floor slot
   await page.waitForTimeout(400);
 
   // and one drawn rather than written, which is the other way to earn it
@@ -551,7 +679,7 @@ async function main() {
   await page.waitForTimeout(200);
   const drew = await followTrace();
   console.log('drawing a lamp instead of writing it:', JSON.stringify(drew));
-  await page.mouse.click(spot(140, 88).x, spot(140, 88).y);        // a wall slot
+  await page.mouse.click(spot(140, 88).x, spot(140, 88).y); // a wall slot
   await page.waitForTimeout(400);
   await step(page, '23-house-designed', 400);
 
@@ -563,10 +691,10 @@ async function main() {
 
   // a thing cannot go where it does not belong, and says so rather than sulking
   await startTrace('bed');
-  await page.click('.p-rows button:has-text("Letters")');          // back to writing
+  await page.click('.p-rows button:has-text("Letters")'); // back to writing
   await page.waitForTimeout(200);
   await followTrace();
-  await page.mouse.click(spot(220, 88).x, spot(220, 88).y);        // a bed, at the wall
+  await page.mouse.click(spot(220, 88).x, spot(220, 88).y); // a bed, at the wall
   await page.waitForTimeout(300);
   const told = await page.textContent('.readout');
   if (!/stands on the floor/.test(told)) throw new Error('putting a bed on the wall said nothing');
@@ -579,7 +707,8 @@ async function main() {
 
   // and tapping the house again goes back in, because it is a place now
   const housePt = await api(() => {
-    const g = window.OLW, b = g.world.buildings.filter(x => x.type === 'house' && x.builtTick != null)[0];
+    const g = window.OLW,
+      b = g.world.buildings.filter(x => x.type === 'house' && x.builtTick != null)[0];
     g.look(b.x + b.w / 2, b.y + b.h / 2, 2.2);
     const p = g.renderer.toScreen((b.x + b.w / 2) * 24, (b.y + b.h / 2) * 24);
     const r = document.getElementById('world').getBoundingClientRect();
@@ -595,8 +724,10 @@ async function main() {
   // the Keeper cannot fell trees: the tree still says what it is, and says
   // whose job it is, and offers no button that would only send a message
   const standingPt = await api(() => {
-    const g = window.OLW, w = g.world;
-    g.role = 'B'; g.other = 'A';
+    const g = window.OLW,
+      w = g.world;
+    g.role = 'B';
+    g.other = 'A';
     const t = w.trees.find(t => t.state === 'standing');
     g.look(t.x, t.y, 2);
     const p = g.renderer.toScreen(t.x * 24 + 12, t.y * 24 + 12);
@@ -613,18 +744,24 @@ async function main() {
   if (await page.$('text=Ask the Builder to fell that tree'))
     throw new Error('asking the other player is supposed to be gone');
   await step(page, '25a-theirs', 300);
-  await page.click('.bubble button.ghost');            // its own Close, so nothing is left open
+  await page.click('.bubble button.ghost'); // its own Close, so nothing is left open
   await page.waitForTimeout(300);
-  await api(() => { window.OLW.role = 'A'; window.OLW.other = 'B'; });
+  await api(() => {
+    window.OLW.role = 'A';
+    window.OLW.other = 'B';
+  });
   await page.waitForTimeout(700);
 
   // the red number on your own chip is jobs from the village, and nothing else
   const counted = await page.textContent('#roleBar button.me .r-todo');
-  if (!(Number(counted.replace('+', '')) > 0)) throw new Error('the chip does not count what is waiting');
+  if (!(Number(counted.replace('+', '')) > 0))
+    throw new Error('the chip does not count what is waiting');
 
   // teaching: having done it a few times, you can show the other player how.
   // This lives behind the OTHER role's chip now (yours is your own tools).
-  await api(() => { window.OLW.world.players.A.done.fell = 3; });
+  await api(() => {
+    window.OLW.world.players.A.done.fell = 3;
+  });
   await page.click('#roleBar button[data-role="B"]');
   await step(page, '25b-role-card', 500);
   const teach = await page.$('text=Teach them felling trees');
@@ -651,9 +788,14 @@ async function main() {
   await page.click('text=Close');
 
   // planting a sapling on a stump
-  await api(() => { const g = window.OLW; g.role = 'B'; g.other = 'A'; });
+  await api(() => {
+    const g = window.OLW;
+    g.role = 'B';
+    g.other = 'A';
+  });
   const stumpPt = await api(() => {
-    const g = window.OLW, t = g.world.trees.find(t => t.state === 'stump');
+    const g = window.OLW,
+      t = g.world.trees.find(t => t.state === 'stump');
     g.look(t.x, t.y, 2);
     const p = g.renderer.toScreen(t.x * 24 + 12, t.y * 24 + 12);
     const r = document.getElementById('world').getBoundingClientRect();
@@ -671,23 +813,36 @@ async function main() {
 
   // the fishing boat: build it, then go out in it
   await api(() => {
-    const g = window.OLW, w = g.world;
-    g.role = 'A'; g.other = 'B';
-    w.players.A.res.plank = 9; w.players.A.res.stone = 9;
+    const g = window.OLW,
+      w = g.world;
+    g.role = 'A';
+    g.other = 'B';
+    w.players.A.res.plank = 9;
+    w.players.A.res.stone = 9;
   });
   const landing = await api(() => {
     const b = window.OLW.world.buildings.find(b => b.type === 'boat');
-    return [[b.x + 0.5, b.y + 0.5], [b.x + 1.5, b.y + 0.5], [b.x + 2.5, b.y + 0.5]];
+    return [
+      [b.x + 0.5, b.y + 0.5],
+      [b.x + 1.5, b.y + 0.5],
+      [b.x + 2.5, b.y + 0.5],
+    ];
   });
   await tapFor(landing, null, 'Build a fishing boat');
   await step(page, '25f-landing-bubble', 400);
   await page.click('text=Build a fishing boat');
   await step(page, '25g-boat', 900);
-  const boatUp = await api(() => window.OLW.world.buildings.some(b => b.type === 'boat' && b.state === 'built'));
+  const boatUp = await api(() =>
+    window.OLW.world.buildings.some(b => b.type === 'boat' && b.state === 'built'),
+  );
   console.log('fishing boat built:', boatUp);
   if (!boatUp) throw new Error('the boat was not built');
 
-  await api(() => { const g = window.OLW; g.role = 'B'; g.other = 'A'; });
+  await api(() => {
+    const g = window.OLW;
+    g.role = 'B';
+    g.other = 'A';
+  });
   await tapFor(landing, null, 'Go fishing');
   await page.click('text=Go fishing');
   await step(page, '25h-fishing', 600);
@@ -696,10 +851,16 @@ async function main() {
   const water = { x: fcv.x + fcv.width * 0.62, y: fcv.y + fcv.height * 0.7 };
   for (let cast = 0; cast < 3; cast++) {
     await page.mouse.click(water.x, water.y);
-    const bit = await page.waitForFunction(() => {
-      const p = document.querySelector('.readout');
-      return p && !/…$/.test(p.textContent.trim());
-    }, null, { timeout: 6000 }).catch(() => null);
+    const bit = await page
+      .waitForFunction(
+        () => {
+          const p = document.querySelector('.readout');
+          return p && !/…$/.test(p.textContent.trim());
+        },
+        null,
+        { timeout: 6000 },
+      )
+      .catch(() => null);
     if (!bit) break;
     await page.waitForTimeout(200);
   }
@@ -710,19 +871,23 @@ async function main() {
   // the playground, the well, the little house and the fence: every project
   // is built the same way, so this walks all of them
   const projects = [
-    { type: 'play',  label: 'Build a playground', role: 'A', shot: '25k-playground' },
-    { type: 'well',  label: 'Dig a well',         role: 'B', shot: '25m-well' },
+    { type: 'play', label: 'Build a playground', role: 'A', shot: '25k-playground' },
+    { type: 'well', label: 'Dig a well', role: 'B', shot: '25m-well' },
     { type: 'privy', label: 'Build the little house', role: 'A', shot: '25n-privy' },
-    { type: 'fence', label: 'Fence the field',    role: 'A', shot: '25o-fence' },
+    { type: 'fence', label: 'Fence the field', role: 'A', shot: '25o-fence' },
   ];
   for (const pr of projects) {
-    await api((arg) => {
-      const g = window.OLW, w = g.world;
-      g.role = arg.role; g.other = arg.role === 'A' ? 'B' : 'A';
-      w.players.A.res.plank = 9; w.players.A.res.stone = 9;
-      w.players.B.res.plank = 9; w.players.B.res.stone = 9;
+    await api(arg => {
+      const g = window.OLW,
+        w = g.world;
+      g.role = arg.role;
+      g.other = arg.role === 'A' ? 'B' : 'A';
+      w.players.A.res.plank = 9;
+      w.players.A.res.stone = 9;
+      w.players.B.res.plank = 9;
+      w.players.B.res.stone = 9;
     }, pr);
-    const spots = await api((arg) => {
+    const spots = await api(arg => {
       const b = window.OLW.world.buildings.find(b => b.type === arg.type);
       const out = [];
       for (let dy = 0; dy < b.h; dy++)
@@ -732,14 +897,18 @@ async function main() {
     await tapFor(spots, spots[Math.floor(spots.length / 2)], pr.label);
     await page.click('text=' + pr.label);
     await step(page, pr.shot, 800);
-    const up = await api((arg) => window.OLW.world.buildings.some(b => b.type === arg.type && b.state === 'built'), pr);
+    const up = await api(
+      arg => window.OLW.world.buildings.some(b => b.type === arg.type && b.state === 'built'),
+      pr,
+    );
     console.log(pr.type + ' built:', up);
     if (!up) throw new Error('the ' + pr.type + ' was not built');
   }
 
   // a poorly tummy is impossible once there is clean water
   const noPoorly = await api(() => {
-    const g = window.OLW, w = g.world;
+    const g = window.OLW,
+      w = g.world;
     w.villagers[0].poorly = 100;
     for (let i = 0; i < 400; i++) window.OLW.session.update(100);
     return w.villagers.filter(v => v.poorly > 0).length;
@@ -756,7 +925,11 @@ async function main() {
     let head = null;
     for (const row of Array.prototype.slice.call(document.querySelectorAll('.menu-item'))) {
       const label = row.querySelector('.mi-label').textContent;
-      if (!row.classList.contains('sub')) { head = label; out[head] = []; continue; }
+      if (!row.classList.contains('sub')) {
+        head = label;
+        out[head] = [];
+        continue;
+      }
       if (head) out[head].push(label);
     }
     return out;
@@ -770,9 +943,12 @@ async function main() {
     const g = window.OLW;
     return Object.keys(g.world.players[g.role].done).length;
   });
-  if (tallied > 0 && youDid.length < 1) throw new Error('your own menu keeps no tally of what you did');
+  if (tallied > 0 && youDid.length < 1)
+    throw new Error('your own menu keeps no tally of what you did');
   // shut it the way a finger does — a tap anywhere that is not the menu
-  await page.evaluate(() => document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
+  await page.evaluate(() =>
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })),
+  );
   await page.waitForTimeout(300);
 
   // the changelog, tucked behind the day now
@@ -781,7 +957,8 @@ async function main() {
   await page.click('.menu-item:has-text("What is new")');
   await step(page, '25l-changelog', 500);
   const log = await page.textContent('.panel');
-  if (!/What is new/.test(log)) throw new Error('the changelog is not reachable from the world menu');
+  if (!/What is new/.test(log))
+    throw new Error('the changelog is not reachable from the world menu');
   await page.click('text=Close');
   await page.waitForTimeout(200);
 
@@ -792,11 +969,17 @@ async function main() {
     const w = window.OLW.world;
     w.block.startTick = w.tick - w.block.length + 30;
   });
-  await page.waitForFunction((d) => window.OLW.world.block.active && window.OLW.world.day > d,
-    dayBefore, { timeout: 15000 })
-    .catch(() => { throw new Error('the next day did not begin on its own'); });
+  await page
+    .waitForFunction(d => window.OLW.world.block.active && window.OLW.world.day > d, dayBefore, {
+      timeout: 15000,
+    })
+    .catch(() => {
+      throw new Error('the next day did not begin on its own');
+    });
   await step(page, '26-new-day', 1200);
-  const quiet = await page.evaluate(() => document.getElementById('overlay').classList.contains('hidden'));
+  const quiet = await page.evaluate(() =>
+    document.getElementById('overlay').classList.contains('hidden'),
+  );
   console.log('nothing was said at the end of the day, overlay hidden:', quiet);
   if (!quiet) throw new Error('something was put on screen at the end of the day');
 
@@ -839,8 +1022,11 @@ async function main() {
     await po.click('.menu-item:has-text("Start this world over")');
     await po.waitForTimeout(300);
     await po.click('text=Yes, start over');
-    await po.waitForFunction(() => window.OLW.world.players.A.res.wood !== 42, null, { timeout: 15000 })
-      .catch(() => { throw new Error('starting over left the old world on screen'); });
+    await po
+      .waitForFunction(() => window.OLW.world.players.A.res.wood !== 42, null, { timeout: 15000 })
+      .catch(() => {
+        throw new Error('starting over left the old world on screen');
+      });
     await po.waitForTimeout(800);
     const after = await po.evaluate(() => ({
       wood: window.OLW.world.players.A.res.wood,
@@ -870,67 +1056,89 @@ async function main() {
 
   /* ---------- 2. two browsers, one world ---------- */
   if (!QUICK) {
-  const ctxA = await browser.newContext({ viewport: { width: 900, height: 700 } });
-  const ctxB = await browser.newContext({ viewport: { width: 900, height: 700 } });
-  const pa = await ctxA.newPage(), pb = await ctxB.newPage();
-  watch(pa, 'A'); watch(pb, 'B');
-  await pa.goto(BASE + '/?room=duo&role=A');
-  await pa.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
-  // the day starts on its own now, nothing to click through
-  await pb.goto(BASE + '/?room=duo&role=B');
-  await pb.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
-  await pb.waitForTimeout(2500);
-  const how = await pa.evaluate(() => window.OLW.session.transport.constructor.name);
-  console.log('transport when the relay is running:', how);
-  if (how !== 'WsTransport') throw new Error('the relay was not used');
+    const ctxA = await browser.newContext({ viewport: { width: 900, height: 700 } });
+    const ctxB = await browser.newContext({ viewport: { width: 900, height: 700 } });
+    const pa = await ctxA.newPage(),
+      pb = await ctxB.newPage();
+    watch(pa, 'A');
+    watch(pb, 'B');
+    await pa.goto(BASE + '/?room=duo&role=A');
+    await pa.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+    // the day starts on its own now, nothing to click through
+    await pb.goto(BASE + '/?room=duo&role=B');
+    await pb.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+    await pb.waitForTimeout(2500);
+    const how = await pa.evaluate(() => window.OLW.session.transport.constructor.name);
+    console.log('transport when the relay is running:', how);
+    if (how !== 'WsTransport') throw new Error('the relay was not used');
 
-  await pa.evaluate(() => {
-    window.OLW.world.players.A.res.wood = 5;
-    window.OLW.dispatch({ type: 'give', from: 'A', to: 'B', res: 'wood', n: 4 });
-  });
-  await pb.waitForFunction(() => window.OLW.world.players.B.res.wood >= 4, null, { timeout: 8000 })
-    .catch(() => { throw new Error('the gift never arrived on the other screen'); });
-  console.log('two browsers share one world: yes');
+    await pa.evaluate(() => {
+      window.OLW.world.players.A.res.wood = 5;
+      window.OLW.dispatch({ type: 'give', from: 'A', to: 'B', res: 'wood', n: 4 });
+    });
+    await pb
+      .waitForFunction(() => window.OLW.world.players.B.res.wood >= 4, null, { timeout: 8000 })
+      .catch(() => {
+        throw new Error('the gift never arrived on the other screen');
+      });
+    console.log('two browsers share one world: yes');
 
-  await pb.evaluate(() => {
-    const w = window.OLW.world;
-    w.players.B.res.stone = 9;
-    const tiles = []; for (let x = 22; x < 28; x++) tiles.push({ x, y: 10 });
-    window.OLW.dispatch({ type: 'road.build', role: 'B', tiles });
-  });
-  await pa.waitForFunction(() => {
-    const w = window.OLW.world;
-    return w.terrain[10 * 40 + 25] === 3;
-  }, null, { timeout: 8000 }).catch(() => { throw new Error('the road did not appear on the other screen'); });
-  console.log('building is visible to the other player: yes');
+    await pb.evaluate(() => {
+      const w = window.OLW.world;
+      w.players.B.res.stone = 9;
+      const tiles = [];
+      for (let x = 22; x < 28; x++) tiles.push({ x, y: 10 });
+      window.OLW.dispatch({ type: 'road.build', role: 'B', tiles });
+    });
+    await pa
+      .waitForFunction(
+        () => {
+          const w = window.OLW.world;
+          return w.terrain[10 * 40 + 25] === 3;
+        },
+        null,
+        { timeout: 8000 },
+      )
+      .catch(() => {
+        throw new Error('the road did not appear on the other screen');
+      });
+    console.log('building is visible to the other player: yes');
 
-  // Appearing once used to be no guarantee: a snapshot that predated the road
-  // could reach the builder and reconcile() would swap in the whole world it
-  // carried, quietly taking the road back out from under the very player who
-  // just laid it. A few seconds on, it has to still be standing on both screens.
-  await pb.waitForTimeout(2500);
-  const roadTiles = () => {
-    const w = window.OLW.world;
-    let n = 0;
-    for (let x = 22; x < 28; x++) if (w.terrain[10 * 40 + x] === 3) n++;
-    return n;
-  };
-  const onBuilder = await pb.evaluate(roadTiles);
-  const onOther = await pa.evaluate(roadTiles);
-  console.log('the road a couple of seconds later — builder sees:', onBuilder, 'tiles, the other player sees:', onOther);
-  if (onBuilder < 6) throw new Error('the road vanished on the screen that built it');
-  if (onOther < 6) throw new Error('the road vanished on the other screen');
+    // Appearing once used to be no guarantee: a snapshot that predated the road
+    // could reach the builder and reconcile() would swap in the whole world it
+    // carried, quietly taking the road back out from under the very player who
+    // just laid it. A few seconds on, it has to still be standing on both screens.
+    await pb.waitForTimeout(2500);
+    const roadTiles = () => {
+      const w = window.OLW.world;
+      let n = 0;
+      for (let x = 22; x < 28; x++) if (w.terrain[10 * 40 + x] === 3) n++;
+      return n;
+    };
+    const onBuilder = await pb.evaluate(roadTiles);
+    const onOther = await pa.evaluate(roadTiles);
+    console.log(
+      'the road a couple of seconds later — builder sees:',
+      onBuilder,
+      'tiles, the other player sees:',
+      onOther,
+    );
+    if (onBuilder < 6) throw new Error('the road vanished on the screen that built it');
+    if (onOther < 6) throw new Error('the road vanished on the other screen');
 
-  await pa.screenshot({ path: SHOTS + '28-player-a.png' });
-  await pb.screenshot({ path: SHOTS + '29-player-b.png' });
-  await ctxA.close(); await ctxB.close();
+    await pa.screenshot({ path: SHOTS + '28-player-a.png' });
+    await pb.screenshot({ path: SHOTS + '29-player-b.png' });
+    await ctxA.close();
+    await ctxB.close();
   }
 
   /* ---------- 3. other screens ---------- */
-  for (const [name, d] of (QUICK ? [] : Object.entries(DEVICES))) {
+  for (const [name, d] of QUICK ? [] : Object.entries(DEVICES)) {
     const c = await browser.newContext({
       viewport: { width: d.width, height: d.height },
-      deviceScaleFactor: d.dpr, hasTouch: d.touch, isMobile: d.touch,
+      deviceScaleFactor: d.dpr,
+      hasTouch: d.touch,
+      isMobile: d.touch,
     });
     const pg = await c.newPage();
     watch(pg, name);
@@ -938,7 +1146,9 @@ async function main() {
     await pg.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
     await pg.waitForTimeout(1200);
     await pg.screenshot({ path: SHOTS + '30-' + name + '.png' });
-    const overflow = await pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    const overflow = await pg.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
     console.log(name + ' horizontal overflow:', overflow);
     if (overflow > 1) throw new Error(name + ' overflows sideways');
 
@@ -946,27 +1156,42 @@ async function main() {
     // shape too — an axis that happens to fit exactly used to be pinned there.
     const reach = await pg.evaluate(() => {
       const r = window.OLW.renderer;
-      const got = (x, y) => { r.cam.x = x; r.cam.y = y; r.clampCamera(); return [r.cam.x, r.cam.y]; };
+      const got = (x, y) => {
+        r.cam.x = x;
+        r.cam.y = y;
+        r.clampCamera();
+        return [r.cam.x, r.cam.y];
+      };
       const before = [r.cam.x, r.cam.y];
-      const nw = got(-999, -999), se = got(9999, 9999);
+      const nw = got(-999, -999),
+        se = got(9999, 9999);
       const zoom = { now: r.cam.zoom, max: r.maxZoom() };
       got(before[0], before[1]);
       return { nw, se, zoom };
     });
     console.log(name + ' reaches:', JSON.stringify(reach));
-    if (reach.nw[0] !== 0 || reach.nw[1] !== 0) throw new Error(name + ' cannot reach the top left corner');
-    if (reach.se[0] !== 960 || reach.se[1] !== 576) throw new Error(name + ' cannot reach the bottom right corner');
-    if (!(reach.zoom.max > reach.zoom.now + 0.5)) throw new Error(name + ' has nowhere left to zoom in');
+    if (reach.nw[0] !== 0 || reach.nw[1] !== 0)
+      throw new Error(name + ' cannot reach the top left corner');
+    if (reach.se[0] !== 960 || reach.se[1] !== 576)
+      throw new Error(name + ' cannot reach the bottom right corner');
+    if (!(reach.zoom.max > reach.zoom.now + 0.5))
+      throw new Error(name + ' has nowhere left to zoom in');
     await c.close();
   }
 
   /* ---------- 4. a phone with a notch and a toolbar ---------- */
   // The safe-area insets are CSS variables with env() defaults, so a desktop
   // browser can be told to pretend it is an iPhone.
-  const SAFE_T = 59, SAFE_B = 34;
-  const notch = { content: ':root{--safe-t:' + SAFE_T + 'px !important;--safe-b:' + SAFE_B + 'px !important;}' };
+  const SAFE_T = 59,
+    SAFE_B = 34;
+  const notch = {
+    content: ':root{--safe-t:' + SAFE_T + 'px !important;--safe-b:' + SAFE_B + 'px !important;}',
+  };
   const phone = await browser.newContext({
-    viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true,
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 3,
+    hasTouch: true,
+    isMobile: true,
   });
   const ph = await phone.newPage();
   watch(ph, 'phone');
@@ -984,23 +1209,42 @@ async function main() {
   await ph.addStyleTag(notch);
   await step(ph, '31-phone-guide', 300);
 
-  const fit = await ph.evaluate((safe) => {
-    const vh = window.innerHeight;
-    const btns = [].slice.call(document.querySelectorAll('.panel-foot .btn'));
-    const steps = [].slice.call(document.querySelectorAll('.step'));
-    return {
-      buttons: btns.length,
-      lowest: Math.round(Math.max.apply(null, btns.map(b => b.getBoundingClientRect().bottom))),
-      floor: vh - safe.b,
-      narrowest: Math.min.apply(null, steps.map(st =>
-        st.querySelector('.s-txt').getBoundingClientRect().width / st.getBoundingClientRect().width)),
-      scrolls: (() => { const sc = document.querySelector('.panel-scroll'); return sc.scrollHeight > sc.clientHeight; })(),
-    };
-  }, { b: SAFE_B });
+  const fit = await ph.evaluate(
+    safe => {
+      const vh = window.innerHeight;
+      const btns = [].slice.call(document.querySelectorAll('.panel-foot .btn'));
+      const steps = [].slice.call(document.querySelectorAll('.step'));
+      return {
+        buttons: btns.length,
+        lowest: Math.round(
+          Math.max.apply(
+            null,
+            btns.map(b => b.getBoundingClientRect().bottom),
+          ),
+        ),
+        floor: vh - safe.b,
+        narrowest: Math.min.apply(
+          null,
+          steps.map(
+            st =>
+              st.querySelector('.s-txt').getBoundingClientRect().width /
+              st.getBoundingClientRect().width,
+          ),
+        ),
+        scrolls: (() => {
+          const sc = document.querySelector('.panel-scroll');
+          return sc.scrollHeight > sc.clientHeight;
+        })(),
+      };
+    },
+    { b: SAFE_B },
+  );
   console.log('phone panel:', JSON.stringify(fit));
   if (!fit.buttons) throw new Error('the card has no buttons in its foot');
-  if (fit.lowest > fit.floor) throw new Error('a panel button is hidden behind the bottom of the screen');
-  if (!(fit.narrowest > 0.55)) throw new Error('step text is squeezed into a column too narrow to read');
+  if (fit.lowest > fit.floor)
+    throw new Error('a panel button is hidden behind the bottom of the screen');
+  if (!(fit.narrowest > 0.55))
+    throw new Error('step text is squeezed into a column too narrow to read');
 
   // the start screen must clear the notch, and never hide its own top
   const ph2 = await phone.newPage();
@@ -1029,31 +1273,54 @@ async function main() {
   const pinched = await ph.evaluate(async () => {
     const cv = document.getElementById('world');
     const r = cv.getBoundingClientRect();
-    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const cx = r.left + r.width / 2,
+      cy = r.top + r.height / 2;
     const touch = (id, x, y) => new Touch({ identifier: id, target: cv, clientX: x, clientY: y });
     const fire = (type, pts) => {
       const t = pts.map((p, i) => touch(i, p[0], p[1]));
-      cv.dispatchEvent(new TouchEvent(type, {
-        touches: t, targetTouches: t, changedTouches: t, bubbles: true, cancelable: true,
-      }));
+      cv.dispatchEvent(
+        new TouchEvent(type, {
+          touches: t,
+          targetTouches: t,
+          changedTouches: t,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
     };
-    const wait = (ms) => new Promise(go => setTimeout(go, ms));
+    const wait = ms => new Promise(go => setTimeout(go, ms));
     window.OLW.renderer.userZoom = true;
     window.OLW.renderer.cam.zoom = 1.4;
     const before = window.OLW.renderer.cam.zoom;
-    fire('touchstart', [[cx - 40, cy], [cx + 40, cy]]);
-    for (let i = 1; i <= 4; i++) { fire('touchmove', [[cx - 40 - i * 20, cy], [cx + 40 + i * 20, cy]]); await wait(16); }
+    fire('touchstart', [
+      [cx - 40, cy],
+      [cx + 40, cy],
+    ]);
+    for (let i = 1; i <= 4; i++) {
+      fire('touchmove', [
+        [cx - 40 - i * 20, cy],
+        [cx + 40 + i * 20, cy],
+      ]);
+      await wait(16);
+    }
     const spread = window.OLW.renderer.cam.zoom;
-    fire('touchend', [[cx - 120, cy]]);          // one finger up
+    fire('touchend', [[cx - 120, cy]]); // one finger up
     await wait(60);
-    fire('touchend', []);                        // and the other, well inside 320ms
+    fire('touchend', []); // and the other, well inside 320ms
     await wait(120);
     return { before: before, spread: spread, after: window.OLW.renderer.cam.zoom };
   });
-  console.log('pinching: zoom', pinched.before.toFixed(2), '->', pinched.spread.toFixed(2),
-              '-> after the fingers lift', pinched.after.toFixed(2));
+  console.log(
+    'pinching: zoom',
+    pinched.before.toFixed(2),
+    '->',
+    pinched.spread.toFixed(2),
+    '-> after the fingers lift',
+    pinched.after.toFixed(2),
+  );
   if (!(pinched.spread > pinched.before + 0.2)) throw new Error('pinching out did not zoom in');
-  if (Math.abs(pinched.after - pinched.spread) > 0.01) throw new Error('the pinch snapped back when the fingers lifted');
+  if (Math.abs(pinched.after - pinched.spread) > 0.01)
+    throw new Error('the pinch snapped back when the fingers lifted');
 
   // A tap past the edge of the map is not a tap on the village. It used to
   // offer to build a road out there in the empty green, which is nowhere.
@@ -1065,7 +1332,8 @@ async function main() {
   });
   await ph.mouse.click(offMap.x, offMap.y);
   await ph.waitForTimeout(350);
-  if (await ph.$('.bubble')) throw new Error('a tap past the edge of the map still opened a bubble');
+  if (await ph.$('.bubble'))
+    throw new Error('a tap past the edge of the map still opened a bubble');
   // and the same tap inside the map does open one, so that proved something
   await ph.evaluate(() => window.OLW.look(22, 8, 2.4));
   await ph.waitForTimeout(250);
@@ -1076,9 +1344,14 @@ async function main() {
   await ph.mouse.click(onMap.x, onMap.y);
   await ph.waitForSelector('.bubble', { timeout: 5000 });
   console.log('past the edge: nothing; inside the map: a bubble. good');
-  await ph.evaluate(() => document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
+  await ph.evaluate(() =>
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })),
+  );
   await ph.waitForTimeout(200);
-  await ph.evaluate(() => { window.OLW.renderer.userZoom = false; window.OLW.renderer.resize(); });
+  await ph.evaluate(() => {
+    window.OLW.renderer.userZoom = false;
+    window.OLW.renderer.resize();
+  });
 
   // Dragging the world up and down is the one that broke. A phone frames the
   // world to cover the screen, which makes the vertical axis fit exactly, and
@@ -1094,7 +1367,8 @@ async function main() {
   await ph.waitForTimeout(200);
   const camAfter = await ph.evaluate(() => [window.OLW.renderer.cam.x, window.OLW.renderer.cam.y]);
   console.log('dragging up and down moved the camera:', camBefore[1], '->', camAfter[1]);
-  if (Math.abs(camAfter[1] - camBefore[1]) < 20) throw new Error('the world does not pan up and down on a phone');
+  if (Math.abs(camAfter[1] - camBefore[1]) < 20)
+    throw new Error('the world does not pan up and down on a phone');
 
   // And the far corner really can be brought into the middle to be tapped.
   // This also catches a stale viewport: the notch stylesheet went in without a
@@ -1105,11 +1379,14 @@ async function main() {
   await ph.evaluate(() => window.OLW.look(0, 0));
   await step(ph, '31b-phone-corner', 300);
   const corner = await ph.evaluate(() => {
-    const r = window.OLW.renderer, p = r.toScreen(0, 0), c = document.getElementById('world').getBoundingClientRect();
+    const r = window.OLW.renderer,
+      p = r.toScreen(0, 0),
+      c = document.getElementById('world').getBoundingClientRect();
     return { x: Math.round(p.x - c.width / 2), y: Math.round(p.y - c.height / 2) };
   });
   console.log('the top left corner sits this far from the middle:', JSON.stringify(corner));
-  if (Math.abs(corner.x) > 2 || Math.abs(corner.y) > 2) throw new Error('the corner cannot be brought to the middle');
+  if (Math.abs(corner.x) > 2 || Math.abs(corner.y) > 2)
+    throw new Error('the corner cannot be brought to the middle');
 
   await ph.click('#dayBadge');
   await ph.waitForTimeout(400);
@@ -1155,7 +1432,8 @@ async function main() {
     world: (document.querySelector('#startBody .w-name') || {}).textContent || '',
   }));
   console.log('after fetching the game again:', JSON.stringify(afterFetch));
-  if (!afterFetch.start || afterFetch.world !== 'Notch') throw new Error('the reload door lost the world');
+  if (!afterFetch.start || afterFetch.world !== 'Notch')
+    throw new Error('the reload door lost the world');
   await ph.click('#startBody .world-card');
   await ph.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
   await ph.waitForTimeout(600);
@@ -1165,8 +1443,17 @@ async function main() {
   await phone.close();
 
   await browser.close();
-  if (errors.length) { console.log('\nBROWSER ERRORS:\n' + errors.join('\n')); process.exit(1); }
-  console.log('\nsmoke test: all good' + (QUICK ? ' (quick: no screenshots, one browser, one screen)' : ''));
+  if (errors.length) {
+    console.log('\nBROWSER ERRORS:\n' + errors.join('\n'));
+    process.exit(1);
+  }
+  console.log(
+    '\nsmoke test: all good' + (QUICK ? ' (quick: no screenshots, one browser, one screen)' : ''),
+  );
 }
 
-main().catch(e => { console.error('\nFAILED: ' + e.message); if (errors.length) console.error(errors.join('\n')); process.exit(1); });
+main().catch(e => {
+  console.error('\nFAILED: ' + e.message);
+  if (errors.length) console.error(errors.join('\n'));
+  process.exit(1);
+});

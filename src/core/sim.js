@@ -4,35 +4,47 @@
 import { T, COST, GW, GH, tileAt, walkable, inBounds, rebuildBlocked } from './grid.js';
 import { findPath } from './pathfind.js';
 import {
-  byId, freeBed, blockProgress, isDusk, project, hasWell, riverClean, fieldFenced,
+  byId,
+  freeBed,
+  blockProgress,
+  isDusk,
+  project,
+  hasWell,
+  riverClean,
+  fieldFenced,
   SAPLING_TICKS,
 } from './world.js';
 import {
-  POORLY_TICKS, POORLY_CHANCE, HUNGER_RISE, HUNGRY_AT, EAGER_AT, LOAF_RELIEF,
+  POORLY_TICKS,
+  POORLY_CHANCE,
+  HUNGER_RISE,
+  HUNGRY_AT,
+  EAGER_AT,
+  LOAF_RELIEF,
 } from './content.js';
 import { rnd, rndInt } from './rng.js';
 import { fx, journal, note, setAct, clearAct } from './actions.js';
 
-const DT = 0.1;                      // seconds per tick
-const BASE_SPEED = 2.2;              // tiles per second on a road
-const RUN_SPEED = 1.6;               // a trot is faster than a wander
+const DT = 0.1; // seconds per tick
+const BASE_SPEED = 2.2; // tiles per second on a road
+const RUN_SPEED = 1.6; // a trot is faster than a wander
 
 // A life of their own: how often each thing happens, and how long it lasts.
 // All rare enough that the village still reads as calm, not as a fairground.
 const DANCE_CHANCE = 0.03;
-const DANCE_CHANCE_HAPPY = 0.08;     // happier feet dance more often
-const DANCE_TICKS = 30;              // plus a little more, picked at random
+const DANCE_CHANCE_HAPPY = 0.08; // happier feet dance more often
+const DANCE_TICKS = 30; // plus a little more, picked at random
 const RUN_CHANCE = 0.04;
-const RUN_CHANCE_KID = 0.10;         // children run about more than the grown-ups
-const RUN_RADIUS = 11;               // further off than an ordinary wander
-const RUN_SAFETY_TICKS = 150;        // clears the act if the trot never quite arrives
+const RUN_CHANCE_KID = 0.1; // children run about more than the grown-ups
+const RUN_RADIUS = 11; // further off than an ordinary wander
+const RUN_SAFETY_TICKS = 150; // clears the act if the trot never quite arrives
 const CHAT_CHANCE = 0.15;
 const CHAT_TICKS = 40;
-const SIT_CHANCE = 0.20;
+const SIT_CHANCE = 0.2;
 const SIT_TICKS = 80;
-const SQUABBLE_CHANCE = 0.01;        // rare on purpose — this is not that kind of village
+const SQUABBLE_CHANCE = 0.01; // rare on purpose — this is not that kind of village
 const SQUABBLE_TICKS = 40;
-const EAT_TICKS = 18;                // a bite or two before the loaf is gone
+const EAT_TICKS = 18; // a bite or two before the loaf is gone
 
 /* --------------------------------------------------------------------- */
 /* movement                                                              */
@@ -47,13 +59,16 @@ function speedAt(w, e, mult) {
 function advance(w, e, mult) {
   if (!e.path || !e.path.length) return true;
   const step = e.path[0];
-  const tx = step.x + 0.5, ty = step.y + 0.5;
-  const dx = tx - e.x, dy = ty - e.y;
+  const tx = step.x + 0.5,
+    ty = step.y + 0.5;
+  const dx = tx - e.x,
+    dy = ty - e.y;
   const d = Math.sqrt(dx * dx + dy * dy);
   const v = speedAt(w, e, mult) * DT;
-  e.facing = dx < -0.02 ? -1 : dx > 0.02 ? 1 : (e.facing || 1);
+  e.facing = dx < -0.02 ? -1 : dx > 0.02 ? 1 : e.facing || 1;
   if (d <= v) {
-    e.x = tx; e.y = ty;
+    e.x = tx;
+    e.y = ty;
     e.path.shift();
     return e.path.length === 0;
   }
@@ -64,9 +79,14 @@ function advance(w, e, mult) {
 }
 
 function goTo(w, e, tx, ty, within, avoid) {
-  const p = findPath(w, Math.floor(e.x), Math.floor(e.y), tx, ty,
-                     { within: within || 0, avoid: avoid == null ? -1 : avoid });
-  if (!p) { e.path = []; return false; }
+  const p = findPath(w, Math.floor(e.x), Math.floor(e.y), tx, ty, {
+    within: within || 0,
+    avoid: avoid == null ? -1 : avoid,
+  });
+  if (!p) {
+    e.path = [];
+    return false;
+  }
   e.path = p;
   return true;
 }
@@ -89,13 +109,20 @@ function randomNearbyTile(w, e, r) {
   return null;
 }
 
-function say(w, e, text, ticks) { e.said = text; e.saidUntil = w.tick + (ticks || 30); }
+function say(w, e, text, ticks) {
+  e.said = text;
+  e.saidUntil = w.tick + (ticks || 30);
+}
 
 /* --------------------------------------------------------------------- */
 /* villagers                                                             */
 /* --------------------------------------------------------------------- */
 
-const CURIOUS = [{ x: 27, y: 8 }, { x: 30, y: 17 }, { x: 24, y: 12 }];
+const CURIOUS = [
+  { x: 27, y: 8 },
+  { x: 30, y: 17 },
+  { x: 24, y: 12 },
+];
 
 function villagerMood(w, v) {
   if (v.poorly > 0) return 'poorly';
@@ -110,12 +137,18 @@ function chooseVillagerTask(w, v) {
   // 0. a poorly tummy: go home, sit down, and wait for it to pass
   if (v.poorly > 0 && v.homeId) {
     const home = byId(w.buildings, v.homeId);
-    if (home && goTo(w, v, home.door.x, home.door.y, 1)) { v.task = { kind: 'rest' }; return; }
+    if (home && goTo(w, v, home.door.x, home.door.y, 1)) {
+      v.task = { kind: 'rest' };
+      return;
+    }
   }
   // 1. a full basket is worth walking over for; a bare one only gets a look
   if (v.hunger > HUNGRY_AT || (w.larder.food > 0 && v.hunger > EAGER_AT)) {
     if (w.larder.food > 0) {
-      if (goTo(w, v, Math.floor(w.larder.x), Math.floor(w.larder.y), 1)) { v.task = { kind: 'eat' }; return; }
+      if (goTo(w, v, Math.floor(w.larder.x), Math.floor(w.larder.y), 1)) {
+        v.task = { kind: 'eat' };
+        return;
+      }
     } else if (rnd(w) < 0.25) {
       say(w, v, 'say.emptyBasket', 40);
     }
@@ -123,7 +156,10 @@ function chooseVillagerTask(w, v) {
   // 2. nowhere to sleep, and a bed has appeared
   if (!v.homeId) {
     const b = freeBed(w);
-    if (b && goTo(w, v, b.door.x, b.door.y, 1)) { v.task = { kind: 'movein', id: b.id }; return; }
+    if (b && goTo(w, v, b.door.x, b.door.y, 1)) {
+      v.task = { kind: 'movein', id: b.id };
+      return;
+    }
   }
   // 3. a felled log is lying about — carry it to the workshop
   if (!v.carrying) {
@@ -138,17 +174,27 @@ function chooseVillagerTask(w, v) {
   if (v.kid) {
     const pg = project(w, 'play');
     if (pg && pg.state === 'built' && rnd(w) < 0.4) {
-      const px = pg.x + rndInt(w, pg.w), py = pg.y + rndInt(w, pg.h);
-      if (goTo(w, v, px, py, 1)) { v.task = { kind: 'play' }; return; }
+      const px = pg.x + rndInt(w, pg.w),
+        py = pg.y + rndInt(w, pg.h);
+      if (goTo(w, v, px, py, 1)) {
+        v.task = { kind: 'play' };
+        return;
+      }
     }
   }
   // 5. curiosity: try to visit the far bank
   if (rnd(w) < 0.16) {
     const spot = CURIOUS[rndInt(w, CURIOUS.length)];
-    if (goTo(w, v, spot.x, spot.y, 1)) { v.task = { kind: 'visit' }; return; }
+    if (goTo(w, v, spot.x, spot.y, 1)) {
+      v.task = { kind: 'visit' };
+      return;
+    }
     // no way across — walk to the water's edge and look at it
     const bank = nearestBank(w, v);
-    if (bank && goTo(w, v, bank.x, bank.y, 0)) { v.task = { kind: 'stare' }; return; }
+    if (bank && goTo(w, v, bank.x, bank.y, 0)) {
+      v.task = { kind: 'stare' };
+      return;
+    }
   }
   // 6. a life of their own, once the day is actually under way — never
   //    instead of anything above, never as likely as any of it
@@ -162,9 +208,17 @@ function chooseVillagerTask(w, v) {
 
 /** Two villagers, close enough and neither already busy with something. */
 function nearbyFree(w, v, dist) {
-  return w.villagers.filter(o => o.id !== v.id && !o.act && !o.task && !o.carrying &&
-    !o.inside && o.poorly <= 0 && (!o.path || !o.path.length) &&
-    Math.abs(o.x - v.x) + Math.abs(o.y - v.y) <= dist);
+  return w.villagers.filter(
+    o =>
+      o.id !== v.id &&
+      !o.act &&
+      !o.task &&
+      !o.carrying &&
+      !o.inside &&
+      o.poorly <= 0 &&
+      (!o.path || !o.path.length) &&
+      Math.abs(o.x - v.x) + Math.abs(o.y - v.y) <= dist,
+  );
 }
 
 /** Somewhere nice to sit: the playground, the well, or your own front door. */
@@ -197,9 +251,20 @@ function livingItUp(w, v) {
       const ticks = SQUABBLE_TICKS + rndInt(w, SQUABBLE_TICKS);
       setAct(w, v, 'squabble', ticks, other.id);
       setAct(w, other, 'squabble', ticks, v.id);
-      v.path = []; v.task = null; v.wait = ticks;
-      other.path = []; other.task = null; other.wait = ticks;
-      note(w, 'squabble_' + v.id, '💢', 'notice.squabble', { name: v.name, other: other.name }, 'calm');
+      v.path = [];
+      v.task = null;
+      v.wait = ticks;
+      other.path = [];
+      other.task = null;
+      other.wait = ticks;
+      note(
+        w,
+        'squabble_' + v.id,
+        '💢',
+        'notice.squabble',
+        { name: v.name, other: other.name },
+        'calm',
+      );
       return true;
     }
   }
@@ -210,8 +275,12 @@ function livingItUp(w, v) {
       const ticks = CHAT_TICKS + rndInt(w, CHAT_TICKS);
       setAct(w, v, 'chat', ticks, other.id);
       setAct(w, other, 'chat', ticks, v.id);
-      v.path = []; v.task = null; v.wait = ticks;
-      other.path = []; other.task = null; other.wait = ticks;
+      v.path = [];
+      v.task = null;
+      v.wait = ticks;
+      other.path = [];
+      other.task = null;
+      other.wait = ticks;
       say(w, v, 'say.natter', ticks);
       return true;
     }
@@ -219,7 +288,10 @@ function livingItUp(w, v) {
   // a sit down somewhere that invites it
   if (rnd(w) < SIT_CHANCE) {
     const spot = sitSpot(w, v);
-    if (spot && goTo(w, v, spot.x, spot.y, 1)) { v.task = { kind: 'sitdown' }; return true; }
+    if (spot && goTo(w, v, spot.x, spot.y, 1)) {
+      v.task = { kind: 'sitdown' };
+      return true;
+    }
   }
   // a dance, more often when the day is going well
   if (rnd(w) < (v.mood === 'happy' ? DANCE_CHANCE_HAPPY : DANCE_CHANCE)) {
@@ -242,12 +314,16 @@ function livingItUp(w, v) {
 }
 
 function nearestBank(w, v) {
-  let best = null, bd = 1e9;
+  let best = null,
+    bd = 1e9;
   for (let y = 0; y < GH; y++)
     for (let x = 0; x < GW; x++) {
       if (tileAt(w, x, y) !== T.SAND) continue;
       const d = Math.abs(x - v.x) + Math.abs(y - v.y);
-      if (d < bd && walkable(w, x, y)) { bd = d; best = { x, y }; }
+      if (d < bd && walkable(w, x, y)) {
+        bd = d;
+        best = { x, y };
+      }
     }
   return best;
 }
@@ -265,7 +341,7 @@ function finishVillagerTask(w, v) {
         v.task = { kind: 'eatDone' };
         v.wait = EAT_TICKS;
       } else {
-        v.wait = 10;      // the basket ran out while they were walking over
+        v.wait = 10; // the basket ran out while they were walking over
       }
       break;
     case 'eatDone':
@@ -313,7 +389,10 @@ function finishVillagerTask(w, v) {
         w.logs = w.logs.filter(l => l.id !== log.id);
         v.carrying = { wood: log.wood, owner: log.owner };
         const ws = w.buildings.find(b => b.type === 'workshop');
-        if (ws && goTo(w, v, ws.door.x, ws.door.y, 1)) { v.task = { kind: 'deliver' }; return; }
+        if (ws && goTo(w, v, ws.door.x, ws.door.y, 1)) {
+          v.task = { kind: 'deliver' };
+          return;
+        }
       }
       v.wait = 10;
       break;
@@ -370,7 +449,10 @@ function goToBed(w, v) {
     v.said = null;
     return true;
   }
-  if (!goTo(w, v, b.door.x, b.door.y, 0)) { v.inside = true; return true; }
+  if (!goTo(w, v, b.door.x, b.door.y, 0)) {
+    v.inside = true;
+    return true;
+  }
   v.task = { kind: 'gohome' };
   return false;
 }
@@ -385,32 +467,47 @@ function tickVillager(w, v) {
     const home = v.homeId ? byId(w.buildings, v.homeId) : null;
     const ease = home ? Math.min(0.6, (home.comfort || 0) * 0.04) : 0;
     v.hunger = Math.min(100, v.hunger + 0.004 * (1 - ease));
-    if (v.poorly > 0 && home && home.warm) v.poorly -= 2;   // warm beats a chill
+    if (v.poorly > 0 && home && home.warm) v.poorly -= 2; // warm beats a chill
     return;
   }
 
   v.hunger = Math.min(100, v.hunger + HUNGER_RISE);
   if (v.poorly > 0) v.poorly--;
   v.mood = villagerMood(w, v);
-  if (v.saidUntil && w.tick > v.saidUntil) { v.said = null; v.saidUntil = 0; }
+  if (v.saidUntil && w.tick > v.saidUntil) {
+    v.said = null;
+    v.saidUntil = 0;
+  }
   // an act runs its course on its own once its time is up
   if (v.act && w.tick > v.act.until) clearAct(v);
 
   if (isDusk(w)) {
-    if (v.task && v.task.kind !== 'gohome') { v.task = null; v.path = []; }
-    if (v.act) clearAct(v);       // bedtime outranks a dance
+    if (v.task && v.task.kind !== 'gohome') {
+      v.task = null;
+      v.path = [];
+    }
+    if (v.act) clearAct(v); // bedtime outranks a dance
     if (goToBed(w, v)) return;
-    if (v.path && v.path.length) { if (advance(w, v, 1.15)) goToBed(w, v); return; }
+    if (v.path && v.path.length) {
+      if (advance(w, v, 1.15)) goToBed(w, v);
+      return;
+    }
     return;
   }
 
   if (v.path && v.path.length) {
-    const mult = v.poorly > 0 ? 0.6 : (v.task && v.task.kind === 'run' ? RUN_SPEED : 1);
+    const mult = v.poorly > 0 ? 0.6 : v.task && v.task.kind === 'run' ? RUN_SPEED : 1;
     if (advance(w, v, mult)) finishVillagerTask(w, v);
     return;
   }
-  if (v.wait > 0) { v.wait--; return; }
-  if (v.task) { finishVillagerTask(w, v); return; }
+  if (v.wait > 0) {
+    v.wait--;
+    return;
+  }
+  if (v.task) {
+    finishVillagerTask(w, v);
+    return;
+  }
   chooseVillagerTask(w, v);
 }
 
@@ -428,8 +525,7 @@ function sheepMood(s) {
 /** Somewhere to drink: the river, or the trough beside the well. */
 function drinkAt(w, x, y) {
   for (let dy = -1; dy <= 1; dy++)
-    for (let dx = -1; dx <= 1; dx++)
-      if (tileAt(w, x + dx, y + dy) === T.WATER) return true;
+    for (let dx = -1; dx <= 1; dx++) if (tileAt(w, x + dx, y + dy) === T.WATER) return true;
   const well = project(w, 'well');
   if (well && well.state === 'built') {
     if (Math.abs(x - well.x) <= 1 && Math.abs(y - well.y) <= 1) return true;
@@ -442,7 +538,11 @@ function nearWater(w, s) {
 }
 
 function tickSheep(w, s) {
-  if (!w.block.active && w.block.endedAt !== null) { s.path = []; s.wait = 20; return; }
+  if (!w.block.active && w.block.endedAt !== null) {
+    s.path = [];
+    s.wait = 20;
+    return;
+  }
   const tile = tileAt(w, Math.floor(s.x), Math.floor(s.y));
   s.hunger = Math.min(100, s.hunger + 0.045);
   s.thirst = Math.min(100, s.thirst + 0.016);
@@ -451,48 +551,68 @@ function tickSheep(w, s) {
   if (tile === T.GRASS || tile === T.FOREST) s.hunger = Math.max(0, s.hunger - 0.062);
   if (tile === T.FIELD) {
     s.hunger = Math.max(0, s.hunger - 0.12);
-    const p = w.plots.find(p => p.state !== 'empty' &&
-      Math.floor(s.x) >= p.x && Math.floor(s.x) < p.x + 2 &&
-      Math.floor(s.y) >= p.y && Math.floor(s.y) < p.y + 2);
+    const p = w.plots.find(
+      p =>
+        p.state !== 'empty' &&
+        Math.floor(s.x) >= p.x &&
+        Math.floor(s.x) < p.x + 2 &&
+        Math.floor(s.y) >= p.y &&
+        Math.floor(s.y) < p.y + 2,
+    );
     if (p) {
       if (p.state === 'growing') p.growth = Math.max(0, p.growth - 0.28);
-      if (!p.nibbled) { p.nibbled = 1; }
-      if (w.tick % 40 === 0 && !(w.block.active && blockProgress(w) > 0.85)) note(w, 'sheep_in_field', '🐑', 'notice.sheepField', null, 'ask');
+      if (!p.nibbled) {
+        p.nibbled = 1;
+      }
+      if (w.tick % 40 === 0 && !(w.block.active && blockProgress(w) > 0.85))
+        note(w, 'sheep_in_field', '🐑', 'notice.sheepField', null, 'ask');
     }
   }
   if (nearWater(w, s)) s.thirst = Math.max(0, s.thirst - 0.5);
   s.mood = sheepMood(s);
 
-  if (s.path && s.path.length) { advance(w, s, 0.62); return; }
+  if (s.path && s.path.length) {
+    advance(w, s, 0.62);
+    return;
+  }
 
   if (s.led) {
     const ok = goTo(w, s, s.led.x, s.led.y, 1, sheepAvoid(w, s.led.x, s.led.y));
     if (!ok) {
       // it wants to go, but it cannot get there from here
       s.gaveUp = true;
-      const acrossRiver = (s.x < 19) !== (s.led.x < 19);
-      if (acrossRiver && !w.bridge.built) note(w, 'sheep_far', '🐑', 'notice.sheepFar', null, 'ask');
-      else if (acrossRiver && w.bridge.damaged) note(w, 'bridge_broken', '🐑', 'notice.sheepBroken', null, 'ask');
+      const acrossRiver = s.x < 19 !== s.led.x < 19;
+      if (acrossRiver && !w.bridge.built)
+        note(w, 'sheep_far', '🐑', 'notice.sheepFar', null, 'ask');
+      else if (acrossRiver && w.bridge.damaged)
+        note(w, 'bridge_broken', '🐑', 'notice.sheepBroken', null, 'ask');
       s.led = null;
       s.wait = 30;
     } else {
-      s.led = null;      // path found; follow it to the end
+      s.led = null; // path found; follow it to the end
       s.wait = 0;
     }
     return;
   }
 
-  if (s.wait > 0) { s.wait--; return; }
+  if (s.wait > 0) {
+    s.wait--;
+    return;
+  }
 
   // a thirsty sheep goes looking for the river by herself
   if (s.thirst > 62) {
     const drink = nearestDrink(w, s);
-    if (drink && goTo(w, s, drink.x, drink.y, 0, sheepAvoid(w, drink.x, drink.y))) { s.wait = 0; return; }
+    if (drink && goTo(w, s, drink.x, drink.y, 0, sheepAvoid(w, drink.x, drink.y))) {
+      s.wait = 0;
+      return;
+    }
   }
   const t = randomNearbyTile(w, s, 3);
   // a fence is a fence: she does not wander into the wheat, or through it
   const intoField = t && fieldFenced(w) && tileAt(w, t.x, t.y) === T.FIELD;
-  if (t && !intoField && tileAt(w, t.x, t.y) !== T.BRIDGE) goTo(w, s, t.x, t.y, 0, sheepAvoid(w, t.x, t.y));
+  if (t && !intoField && tileAt(w, t.x, t.y) !== T.BRIDGE)
+    goTo(w, s, t.x, t.y, 0, sheepAvoid(w, t.x, t.y));
   s.wait = 20 + rndInt(w, 60);
 }
 
@@ -502,18 +622,24 @@ function tickSheep(w, s) {
 
 /** The closest bit of bank she can stand on and reach the water from. */
 function nearestDrink(w, s) {
-  const sx = Math.floor(s.x), sy = Math.floor(s.y);
-  let best = null, bd = 1e9;
+  const sx = Math.floor(s.x),
+    sy = Math.floor(s.y);
+  let best = null,
+    bd = 1e9;
   for (let r = 1; r < 12; r++) {
     for (let dy = -r; dy <= r; dy++)
       for (let dx = -r; dx <= r; dx++) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-        const x = sx + dx, y = sy + dy;
+        const x = sx + dx,
+          y = sy + dy;
         if (!inBounds(x, y) || !walkable(w, x, y)) continue;
         if (tileAt(w, x, y) === T.BRIDGE) continue;
         if (!drinkAt(w, x, y)) continue;
         const d = dx * dx + dy * dy;
-        if (d < bd) { bd = d; best = { x, y }; }
+        if (d < bd) {
+          bd = d;
+          best = { x, y };
+        }
       }
     if (best) return best;
   }
@@ -523,10 +649,13 @@ function nearestDrink(w, s) {
 function tickPlots(w) {
   for (const p of w.plots) {
     if (p.state === 'growing') {
-      if (p.water > 0) { p.growth += 0.062; p.water -= 0.09; }
-      else p.growth += 0.004;
+      if (p.water > 0) {
+        p.growth += 0.062;
+        p.water -= 0.09;
+      } else p.growth += 0.004;
       if (p.growth >= 100) {
-        p.state = 'ripe'; p.growth = 100;
+        p.state = 'ripe';
+        p.growth = 100;
         note(w, 'wheat_ready', '🌾', 'notice.wheatReady', null, 'calm');
       }
     }
@@ -537,8 +666,14 @@ function tickVisitors(w) {
   if (!w.visitors || !w.visitors.length) return;
   for (const c of w.visitors) {
     c.life--;
-    if (c.path && c.path.length) { advance(w, c, 0.8); continue; }
-    if (c.wait > 0) { c.wait--; continue; }
+    if (c.path && c.path.length) {
+      advance(w, c, 0.8);
+      continue;
+    }
+    if (c.wait > 0) {
+      c.wait--;
+      continue;
+    }
     const t = randomNearbyTile(w, c, 4);
     if (t) goTo(w, c, t.x, t.y);
     c.wait = 20 + rndInt(w, 50);
@@ -556,12 +691,12 @@ function tickVisitors(w) {
 function tickWater(w) {
   if (w.tick % 100 !== 0) return;
   if (!w.block.active || blockProgress(w) > 0.8) return;
-  if (w.tick < 1500) return;                       // never on a first quiet morning
+  if (w.tick < 1500) return; // never on a first quiet morning
   if (hasWell(w) || riverClean(w)) {
     w.notices = w.notices.filter(n => n.id !== 'poorly');
     return;
   }
-  if (w.villagers.some(v => v.poorly > 0)) return;  // one at a time, and only just
+  if (w.villagers.some(v => v.poorly > 0)) return; // one at a time, and only just
   if (rnd(w) > POORLY_CHANCE) return;
 
   const grown = w.villagers.filter(v => !v.kid);
@@ -583,8 +718,9 @@ function tickSaplings(w) {
     if (t.state !== 'sapling') continue;
     if (w.tick - (t.plantedTick || 0) < SAPLING_TICKS) continue;
     // never close a tile somebody is standing on
-    const busy = w.villagers.some(v => Math.floor(v.x) === t.x && Math.floor(v.y) === t.y) ||
-                 w.sheep.some(sh => Math.floor(sh.x) === t.x && Math.floor(sh.y) === t.y);
+    const busy =
+      w.villagers.some(v => Math.floor(v.x) === t.x && Math.floor(v.y) === t.y) ||
+      w.sheep.some(sh => Math.floor(sh.x) === t.x && Math.floor(sh.y) === t.y);
     if (busy) continue;
     t.state = 'standing';
     t.grownTick = w.tick;
@@ -644,7 +780,8 @@ export function tick(w) {
       note(w, 'homeless', '🛏️', 'notice.homeless', { name: noBed[0].name }, 'ask');
 
     if (!w.villagers.some(v => v.poorly > 0)) w.notices = w.notices.filter(n => n.id !== 'poorly');
-    if (!w.plots.some(p => p.state === 'ripe')) w.notices = w.notices.filter(n => n.id !== 'wheat_ready');
+    if (!w.plots.some(p => p.state === 'ripe'))
+      w.notices = w.notices.filter(n => n.id !== 'wheat_ready');
     if (!noBed.length) w.notices = w.notices.filter(n => n.id !== 'homeless');
     if (!w.buildings.some(b => b.id === 'site_east' && b.state === 'site'))
       w.notices = w.notices.filter(n => n.id !== 'newfamily');

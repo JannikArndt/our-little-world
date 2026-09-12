@@ -7,7 +7,26 @@ on:
   workflow_dispatch:
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      # the same gate as a local push: format, lint, unit tests, and the
+      # whole browser play-through. Never a copy of its steps inlined here —
+      # that is how local and CI drift apart.
+      - run: npm run verify
+
   deploy:
+    needs: verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -32,21 +32,27 @@ export function seatLink(name, role) {
  */
 function handOver(url, text) {
   if (typeof navigator !== 'undefined' && navigator.share) {
-    return navigator.share({ title: tr('app.title'), text: text, url: url })
-      .then(() => 'shared')
-      // a cancelled share sheet is not a failure, but a browser that refuses
-      // outright (no gesture, or not a secure page) should still copy
-      .catch((e) => (e && e.name === 'AbortError' ? 'shared' : copy(url)));
+    return (
+      navigator
+        .share({ title: tr('app.title'), text: text, url: url })
+        .then(() => 'shared')
+        // a cancelled share sheet is not a failure, but a browser that refuses
+        // outright (no gesture, or not a secure page) should still copy
+        .catch(e => (e && e.name === 'AbortError' ? 'shared' : copy(url)))
+    );
   }
   return Promise.resolve(copy(url));
 }
 
 export function shareWorld(name, otherRole) {
-  return handOver(worldLink(name), tr('invite.shareText', {
-    name: prettyName(name),
-    emoji: worldEmoji(name),
-    role: otherRole ? roleName(otherRole) : '',
-  }));
+  return handOver(
+    worldLink(name),
+    tr('invite.shareText', {
+      name: prettyName(name),
+      emoji: worldEmoji(name),
+      role: otherRole ? roleName(otherRole) : '',
+    }),
+  );
 }
 
 function copy(url) {
@@ -65,7 +71,9 @@ function copy(url) {
     const ok = document.execCommand('copy');
     document.body.removeChild(ta);
     return ok ? 'copied' : 'none';
-  } catch (e) { return 'none'; }
+  } catch {
+    return 'none';
+  }
 }
 
 /**
@@ -85,7 +93,13 @@ export function openInvite(game, role) {
   card.appendChild(el('span', 'w-emoji', worldEmoji(name)));
   const t = el('span', 'w-text');
   t.appendChild(el('span', 'w-name', prettyName(name)));
-  t.appendChild(el('span', 'w-line', tr('world.waitingFor', { role: roleName(other), emoji: ROLE[other].emoji })));
+  t.appendChild(
+    el(
+      'span',
+      'w-line',
+      tr('world.waitingFor', { role: roleName(other), emoji: ROLE[other].emoji }),
+    ),
+  );
   card.appendChild(t);
   p.body.appendChild(card);
 
@@ -93,13 +107,15 @@ export function openInvite(game, role) {
   p.body.appendChild(link);
 
   const row = p.row();
-  row.appendChild(p.button('📨 ' + tr('invite.share'), 'go', () => {
-    shareWorld(name, other).then((how) => {
-      if (how === 'copied') message(tr('invite.copied'));
-      else if (how === 'none') message(tr('invite.tellName', { name: prettyName(name) }));
-      p.close();
-    });
-  }));
+  row.appendChild(
+    p.button('📨 ' + tr('invite.share'), 'go', () => {
+      shareWorld(name, other).then(how => {
+        if (how === 'copied') message(tr('invite.copied'));
+        else if (how === 'none') message(tr('invite.tellName', { name: prettyName(name) }));
+        p.close();
+      });
+    }),
+  );
   row.appendChild(p.button(tr('ui.close'), 'soft', () => p.close()));
 
   p.body.appendChild(el('p', 'lead center', tr('invite.note', { name: prettyName(name) })));
@@ -117,7 +133,8 @@ export function openInvite(game, role) {
  * the relay like any two players.
  */
 export function openSeat(game) {
-  const name = game.worldName, role = game.role;
+  const name = game.worldName,
+    role = game.role;
   const url = seatLink(name, role);
   const p = openPanel({
     title: tr('seat.moveTitle'),
@@ -129,18 +146,24 @@ export function openSeat(game) {
   card.appendChild(el('span', 'w-emoji', worldEmoji(name)));
   const t = el('span', 'w-text');
   t.appendChild(el('span', 'w-name', prettyName(name)));
-  t.appendChild(el('span', 'w-line', tr('world.youAre', { role: roleName(role), emoji: ROLE[role].emoji })));
+  t.appendChild(
+    el('span', 'w-line', tr('world.youAre', { role: roleName(role), emoji: ROLE[role].emoji })),
+  );
   card.appendChild(t);
   p.body.appendChild(card);
   p.body.appendChild(el('p', 'link-line', url));
 
   const row = p.row();
-  row.appendChild(p.button(tr('seat.send'), 'go', () => {
-    handOver(url, tr('seat.shareText', { name: prettyName(name), emoji: worldEmoji(name) })).then((how) => {
-      if (how === 'copied') message(tr('invite.copied'));
-      p.close();
-    });
-  }));
+  row.appendChild(
+    p.button(tr('seat.send'), 'go', () => {
+      handOver(url, tr('seat.shareText', { name: prettyName(name), emoji: worldEmoji(name) })).then(
+        how => {
+          if (how === 'copied') message(tr('invite.copied'));
+          p.close();
+        },
+      );
+    }),
+  );
   row.appendChild(p.button(tr('ui.close'), 'soft', () => p.close()));
 
   p.body.appendChild(el('p', 'lead center', tr('seat.moveNote')));

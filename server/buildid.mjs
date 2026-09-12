@@ -20,7 +20,10 @@ const SERVED = ['index.html', 'stats.html', 'site.webmanifest', 'src', 'styles',
 function walk(dir, out) {
   const s = statSync(dir, { throwIfNoEntry: false });
   if (!s) return out;
-  if (!s.isDirectory()) { out.push(dir); return out; }
+  if (!s.isDirectory()) {
+    out.push(dir);
+    return out;
+  }
   for (const name of readdirSync(dir).sort()) walk(join(dir, name), out);
   return out;
 }

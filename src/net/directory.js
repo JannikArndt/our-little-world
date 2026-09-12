@@ -14,7 +14,9 @@ export function apiBase(qs) {
     try {
       const u = new URL(given);
       return (u.protocol === 'wss:' ? 'https://' : 'http://') + u.host;
-    } catch (e) { /* fall through to same origin */ }
+    } catch {
+      /* fall through to same origin */
+    }
   }
   return '';
 }
@@ -22,10 +24,12 @@ export function apiBase(qs) {
 export class Directory {
   constructor(base) {
     this.base = base || '';
-    this.reachable = null;                 // null = not asked yet
+    this.reachable = null; // null = not asked yet
   }
 
-  url(path) { return this.base + '/api' + path; }
+  url(path) {
+    return this.base + '/api' + path;
+  }
 
   /**
    * Is there a directory (and therefore a relay) on this host? Remembered per
@@ -35,33 +39,66 @@ export class Directory {
     const key = 'olw.api.' + this.base + location.host;
     try {
       const seen = localStorage.getItem(key);
-      if (seen === 'yes') { this.reachable = true; return Promise.resolve(true); }
-      if (seen === 'no') { this.reachable = false; return Promise.resolve(false); }
-    } catch (e) { /* no storage: ask every time */ }
-    return this.get('/health').then((r) => {
+      if (seen === 'yes') {
+        this.reachable = true;
+        return Promise.resolve(true);
+      }
+      if (seen === 'no') {
+        this.reachable = false;
+        return Promise.resolve(false);
+      }
+    } catch {
+      /* no storage: ask every time */
+    }
+    return this.get('/health').then(r => {
       const ok = !!(r && r.ok);
       this.reachable = ok;
-      try { localStorage.setItem(key, ok ? 'yes' : 'no'); } catch (e) { /* fine */ }
+      try {
+        localStorage.setItem(key, ok ? 'yes' : 'no');
+      } catch {
+        /* fine */
+      }
       return ok;
     });
   }
 
   /* ---- the calls the game makes ---- */
 
-  list() { return this.get('/worlds').then((r) => (r && r.worlds) || []); }
-  world(name) { return this.get('/worlds/' + encodeURIComponent(name)).then((r) => (r && r.world) || null); }
-  create(device, role) { return this.post('/worlds', { device, role }); }
+  list() {
+    return this.get('/worlds').then(r => (r && r.worlds) || []);
+  }
+  world(name) {
+    return this.get('/worlds/' + encodeURIComponent(name)).then(r => (r && r.world) || null);
+  }
+  create(device, role) {
+    return this.post('/worlds', { device, role });
+  }
   /** `start` turns "join this" into "join this, or begin it if nobody has". */
   join(name, device, role, start) {
-    return this.post('/worlds/' + encodeURIComponent(name) + '/join', { device, role, start: !!start });
+    return this.post('/worlds/' + encodeURIComponent(name) + '/join', {
+      device,
+      role,
+      start: !!start,
+    });
   }
-  seen(name, device, role) { return this.post('/worlds/' + encodeURIComponent(name) + '/seen', { device, role }); }
-  leave(name, device) { return this.post('/worlds/' + encodeURIComponent(name) + '/leave', { device }); }
+  seen(name, device, role) {
+    return this.post('/worlds/' + encodeURIComponent(name) + '/seen', { device, role });
+  }
+  leave(name, device) {
+    return this.post('/worlds/' + encodeURIComponent(name) + '/leave', { device });
+  }
 
-  snapshot(name) { return this.get('/worlds/' + encodeURIComponent(name) + '/snapshot'); }
+  snapshot(name) {
+    return this.get('/worlds/' + encodeURIComponent(name) + '/snapshot');
+  }
   /** `reset` is somebody starting their world over: the fresh world wins. */
   putSnapshot(name, device, tick, world, reset) {
-    return this.post('/worlds/' + encodeURIComponent(name) + '/snapshot', { device, tick, world, reset: !!reset });
+    return this.post('/worlds/' + encodeURIComponent(name) + '/snapshot', {
+      device,
+      tick,
+      world,
+      reset: !!reset,
+    });
   }
 
   /**
@@ -72,28 +109,47 @@ export class Directory {
   beaconSnapshot(name, device, tick, world) {
     if (typeof navigator === 'undefined' || !navigator.sendBeacon) return false;
     try {
-      const body = new Blob([JSON.stringify({ device, tick, world })], { type: 'application/json' });
-      return navigator.sendBeacon(this.url('/worlds/' + encodeURIComponent(name) + '/snapshot'), body);
-    } catch (e) { return false; }
+      const body = new Blob([JSON.stringify({ device, tick, world })], {
+        type: 'application/json',
+      });
+      return navigator.sendBeacon(
+        this.url('/worlds/' + encodeURIComponent(name) + '/snapshot'),
+        body,
+      );
+    } catch {
+      return false;
+    }
   }
 
   /* ---- plumbing ---- */
 
-  get(path) { return this.fetch(path, null); }
-  post(path, body) { return this.fetch(path, body || {}); }
+  get(path) {
+    return this.fetch(path, null);
+  }
+  post(path, body) {
+    return this.fetch(path, body || {});
+  }
 
   fetch(path, body) {
     if (typeof fetch !== 'function') return Promise.resolve(null);
     const opts = body
-      ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }
+      ? {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        }
       : { method: 'GET' };
     const call = fetch(this.url(path), opts)
-      .then((r) => (r.status === 204 ? {} : r.json().then((j) => {
-        if (j && typeof j === 'object') j.status = r.status;
-        return j;
-      })))
+      .then(r =>
+        r.status === 204
+          ? {}
+          : r.json().then(j => {
+              if (j && typeof j === 'object') j.status = r.status;
+              return j;
+            }),
+      )
       .catch(() => null);
-    const giveUp = new Promise((r) => setTimeout(() => r(null), TIMEOUT));
+    const giveUp = new Promise(r => setTimeout(() => r(null), TIMEOUT));
     return Promise.race([call, giveUp]);
   }
 }

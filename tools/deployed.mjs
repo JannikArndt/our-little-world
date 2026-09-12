@@ -10,8 +10,11 @@
 
 import { buildId } from '../server/buildid.mjs';
 
-const url = (process.argv.slice(2).find(a => a.startsWith('http')) ||
-             process.env.DEPLOY_URL || 'https://ourlittleworld.timpanini.com').replace(/\/$/, '');
+const url = (
+  process.argv.slice(2).find(a => a.startsWith('http')) ||
+  process.env.DEPLOY_URL ||
+  'https://ourlittleworld.timpanini.com'
+).replace(/\/$/, '');
 const waitFor = Number((process.argv.find(a => /^--wait=/.test(a)) || '--wait=180').split('=')[1]);
 
 const mine = buildId();

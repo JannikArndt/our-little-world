@@ -18,46 +18,53 @@ import { maybeEvent, resetEventBudget } from '../core/events.js';
 import { createWorld, deserialize, serialize, TICK_MS } from '../core/world.js';
 import { save, load } from '../core/persist.js';
 
-const SNAP_EVERY = 12;          // ticks between snapshots to the other player (1.2 s)
-const SAVE_EVERY = 50;          // ticks between saves to this device (5 s)
-const UPLOAD_EVERY = 300;       // ticks between saves to the server (30 s)
-const HOST_WAIT  = 900;         // ms to listen before claiming the host role
-const PENDING_MS = 5000;        // how long we carry an unacknowledged action of our own
+const SNAP_EVERY = 12; // ticks between snapshots to the other player (1.2 s)
+const SAVE_EVERY = 50; // ticks between saves to this device (5 s)
+const UPLOAD_EVERY = 300; // ticks between saves to the server (30 s)
+const HOST_WAIT = 900; // ms to listen before claiming the host role
+const PENDING_MS = 5000; // how long we carry an unacknowledged action of our own
 
 export class Session {
   constructor(opts) {
     this.room = opts.room;
-    this.role = opts.role;               // 'A' | 'B' | 'BOTH'
+    this.role = opts.role; // 'A' | 'B' | 'BOTH'
     this.transport = opts.transport;
     this.solo = opts.solo === true;
-    this.remote = opts.remote || null;      // { load(), save(tick, text, beacon, reset) }
+    this.remote = opts.remote || null; // { load(), save(tick, text, beacon, reset) }
     this.peer = 'p' + Math.random().toString(36).slice(2, 9);
     this.isHost = this.solo;
     this.world = null;
-    this.kept = null;                    // what the relay says the room was doing
+    this.kept = null; // what the relay says the room was doing
     this.listeners = [];
     this.acc = 0;
     this.lastSnap = 0;
     this.lastSave = 0;
     this.lastUpload = 0;
     this.status = this.solo ? 'solo' : 'waiting';
-    this.seq = 1;                        // numbers our own actions, for acks to name
-    this.pending = [];                   // our own actions the host has not confirmed yet
-    this.seenPeers = null;               // who has said hello, so we only echo once each
-    this.lowestPeer = null;              // the smallest peer id we have heard say hello
-    this.everOnline = false;             // tells a first connect from a reconnect
+    this.seq = 1; // numbers our own actions, for acks to name
+    this.pending = []; // our own actions the host has not confirmed yet
+    this.seenPeers = null; // who has said hello, so we only echo once each
+    this.lowestPeer = null; // the smallest peer id we have heard say hello
+    this.everOnline = false; // tells a first connect from a reconnect
   }
 
-  on(fn) { this.listeners.push(fn); return () => { this.listeners = this.listeners.filter(f => f !== fn); }; }
-  emit(what, data) { for (const fn of this.listeners) fn(what, data); }
+  on(fn) {
+    this.listeners.push(fn);
+    return () => {
+      this.listeners = this.listeners.filter(f => f !== fn);
+    };
+  }
+  emit(what, data) {
+    for (const fn of this.listeners) fn(what, data);
+  }
 
   async start() {
     // ask the server for the world while we listen for the other player
     const fromServer = this.remote ? this.remote.load() : Promise.resolve(null);
-    const connecting = this.transport.connect((m) => this.receive(m));
+    const connecting = this.transport.connect(m => this.receive(m));
     // A drop and reconnect otherwise never says hello again, so nothing tells
     // the other player we are worth a fresh snapshot after we come back.
-    this.transport.onStatus = (s) => this.onTransportStatus(s);
+    this.transport.onStatus = s => this.onTransportStatus(s);
     await connecting;
 
     if (this.solo) {
@@ -94,7 +101,9 @@ export class Session {
     try {
       const got = fromServer ? await fromServer : null;
       if (got && got.world) candidates.push(deserialize(got.world));
-    } catch (e) { /* the directory having nothing is not a problem */ }
+    } catch {
+      /* the directory having nothing is not a problem */
+    }
     let best = null;
     for (const w of candidates) if (w && (!best || w.tick >= best.tick)) best = w;
     return best || createWorld(hashSeed(this.room));
@@ -146,8 +155,11 @@ export class Session {
         if (!incoming) return;
         if (this.isHost) {
           // two hosts met: the one with the lower peer id keeps the clock
-          if (m.peer < this.peer) { this.isHost = false; this.status = 'joined'; this.emit('status', this.status); }
-          else return;
+          if (m.peer < this.peer) {
+            this.isHost = false;
+            this.status = 'joined';
+            this.emit('status', this.status);
+          } else return;
         }
         this.reconcile(incoming);
         this.status = 'joined';
@@ -161,13 +173,15 @@ export class Session {
           this.emit('acted', m.action);
           // tell whoever sent it that it landed, so they can stop carrying
           // it against the chance a snapshot undoes it
-          if (this.isHost && m.action.id) this.transport.send({ t: 'ack', peer: this.peer, id: m.action.id });
+          if (this.isHost && m.action.id)
+            this.transport.send({ t: 'ack', peer: this.peer, id: m.action.id });
         }
         break;
       case 'ack':
         this.pending = this.pending.filter(p => p.id !== m.id);
         break;
-      default: break;
+      default:
+        break;
     }
   }
 
@@ -177,15 +191,18 @@ export class Session {
       const keep = {};
       for (const v of this.world.villagers) keep[v.id] = v;
       for (const s of this.world.sheep) keep[s.id] = s;
-      const blend = (e) => {
+      const blend = e => {
         const old = keep[e.id];
         if (!old) return;
         const d = Math.abs(old.x - e.x) + Math.abs(old.y - e.y);
-        if (d < 2.5) { e.x = old.x + (e.x - old.x) * 0.35; e.y = old.y + (e.y - old.y) * 0.35; }
+        if (d < 2.5) {
+          e.x = old.x + (e.x - old.x) * 0.35;
+          e.y = old.y + (e.y - old.y) * 0.35;
+        }
       };
       incoming.villagers.forEach(blend);
       incoming.sheep.forEach(blend);
-      incoming.fx = this.world.fx || [];       // our own little sparkles stay ours
+      incoming.fx = this.world.fx || []; // our own little sparkles stay ours
     }
     // Whatever we did that the host has not acknowledged yet might not be in
     // this snapshot — it could have been taken before our action reached the
@@ -202,7 +219,7 @@ export class Session {
   snapshot() {
     if (this.solo) return;
     const fx = this.world.fx;
-    this.world.fx = [];                        // effects are re-created from actions
+    this.world.fx = []; // effects are re-created from actions
     this.transport.send({ t: 'snap', peer: this.peer, world: serialize(this.world) });
     this.world.fx = fx;
     this.lastSnap = this.world.tick;
@@ -213,7 +230,7 @@ export class Session {
   dispatch(action) {
     if (!this.world) return false;
     // A name for this one action, so an ack can say which of ours landed.
-    if (!this.solo && action.id == null) action.id = this.peer + ':' + (this.seq++);
+    if (!this.solo && action.id == null) action.id = this.peer + ':' + this.seq++;
     const ok = applyAction(this.world, action);
     if (!ok) return false;
     if (!this.solo) {
@@ -232,7 +249,7 @@ export class Session {
 
   update(dtMs) {
     if (!this.world) return;
-    this.acc += Math.min(dtMs, 500);           // a backgrounded tab does not fast-forward
+    this.acc += Math.min(dtMs, 500); // a backgrounded tab does not fast-forward
     let steps = 0;
     while (this.acc >= TICK_MS && steps < 8) {
       this.acc -= TICK_MS;
@@ -250,7 +267,8 @@ export class Session {
       save(this.room, this.world);
       this.lastSave = this.world.tick;
     }
-    if (this.isHost && this.remote && this.world.tick - this.lastUpload >= UPLOAD_EVERY) this.upload();
+    if (this.isHost && this.remote && this.world.tick - this.lastUpload >= UPLOAD_EVERY)
+      this.upload();
   }
 
   /** Hand the world to the server, so the next person to arrive gets it. */
@@ -277,10 +295,12 @@ export class Session {
     this.world = createWorld(hashSeed(this.room));
     this.kept = null;
     this.isHost = true;
-    this.pending = [];                   // nothing from the old world is owed a reply
-    this.lastSnap = 0; this.lastSave = 0; this.lastUpload = 0;
+    this.pending = []; // nothing from the old world is owed a reply
+    this.lastSnap = 0;
+    this.lastSave = 0;
+    this.lastUpload = 0;
     save(this.room, this.world);
-    if (!this.solo) this.snapshot();          // the relay's memory, and the other player
+    if (!this.solo) this.snapshot(); // the relay's memory, and the other player
     this.emit('world', this.world);
     return Promise.resolve(this.upload(false, true));
   }
@@ -300,6 +320,9 @@ export class Session {
 
 export function hashSeed(text) {
   let h = 2166136261;
-  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
   return h >>> 0;
 }

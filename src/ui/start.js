@@ -27,17 +27,24 @@ export function startScreen(opts) {
   const device = deviceId();
 
   // a link somebody sent, or an old ?room= bookmark
-  const invited = cleanName((qs.get('world') || qs.get('room') || ''));
+  const invited = cleanName(qs.get('world') || qs.get('room') || '');
 
   let step = 'home';
-  let pending = null;            // the world we just made, waiting for the other player
-  let list = null;               // open worlds, once asked for
-  let seatFor = null;            // a world that says it is full, and might be ours
-  let note = '';                 // one line of "that did not work"
+  let pending = null; // the world we just made, waiting for the other player
+  let list = null; // open worlds, once asked for
+  let seatFor = null; // a world that says it is full, and might be ours
+  let note = ''; // one line of "that did not work"
 
-  function go(next) { step = next; note = ''; render(); }
+  function go(next) {
+    step = next;
+    note = '';
+    render();
+  }
 
-  function say(key, vars) { note = tr(key, vars); render(); }
+  function say(key, vars) {
+    note = tr(key, vars);
+    render();
+  }
 
   /* ---------------- entering a world ---------------- */
 
@@ -52,18 +59,30 @@ export function startScreen(opts) {
    * it yet; one picked off the list is not, because it should already be there.
    */
   function enter(name, wantedRole, start) {
-    if (!dir.reachable) { play(name, wantedRole || guessRole(name), false); return; }
+    if (!dir.reachable) {
+      play(name, wantedRole || guessRole(name), false);
+      return;
+    }
     busy(true);
-    dir.join(name, device, wantedRole || null, start !== false).then((r) => {
+    dir.join(name, device, wantedRole || null, start !== false).then(r => {
       busy(false);
-      if (!r) { play(name, wantedRole || guessRole(name), false); return; }   // server went quiet: play anyway
-      if (r.status === 404) { say('join.gone'); return; }
+      if (!r) {
+        play(name, wantedRole || guessRole(name), false);
+        return;
+      } // server went quiet: play anyway
+      if (r.status === 404) {
+        say('join.gone');
+        return;
+      }
       if (r.full || !r.role) {
         // Both spots taken. If we already know which of the two we are — our
         // own world, or a link that says so — we are not a third person and
         // this is not a door to be kept shut: the spots are there to stop
         // strangers wandering in, not to lock a family out of their village.
-        if (wantedRole) { play(name, wantedRole, false, null); return; }
+        if (wantedRole) {
+          play(name, wantedRole, false, null);
+          return;
+        }
         // Otherwise ask. A spot is held by whichever browser took it, and a
         // Home Screen app is a browser of its own with its own memory — so the
         // person whose village this is arrives as a stranger and gets the
@@ -77,7 +96,7 @@ export function startScreen(opts) {
   }
 
   function guessRole(name) {
-    const known = recentWorlds().filter((w) => w.name === name)[0];
+    const known = recentWorlds().filter(w => w.name === name)[0];
     return (known && known.role) || 'A';
   }
 
@@ -114,24 +133,32 @@ export function startScreen(opts) {
     const mine = recentWorlds();
 
     // somebody sent a link: that world goes first, whatever else is here
-    if (invited && !mine.some((w) => w.name === invited)) {
+    if (invited && !mine.some(w => w.name === invited)) {
       host.appendChild(el('h2', 'start-h', tr('world.invited')));
-      host.appendChild(worldCard({
-        name: invited, wide: true,
-        line: tr('world.joinThis'),
-        onTap: () => enter(invited, null, true),
-      }));
+      host.appendChild(
+        worldCard({
+          name: invited,
+          wide: true,
+          line: tr('world.joinThis'),
+          onTap: () => enter(invited, null, true),
+        }),
+      );
     }
 
     if (mine.length) {
       host.appendChild(el('h2', 'start-h', tr('world.yours')));
       for (const w of mine.slice(0, 4)) {
-        host.appendChild(worldCard({
-          name: w.name, wide: true,
-          line: w.role ? tr('world.youAre', { role: roleName(w.role), emoji: ROLE[w.role].emoji }) : tr('role.both.name'),
-          sub: ago(w.at),
-          onTap: () => (w.role ? enter(w.name, w.role, true) : play(w.name, 'A', true)),
-        }));
+        host.appendChild(
+          worldCard({
+            name: w.name,
+            wide: true,
+            line: w.role
+              ? tr('world.youAre', { role: roleName(w.role), emoji: ROLE[w.role].emoji })
+              : tr('role.both.name'),
+            sub: ago(w.at),
+            onTap: () => (w.role ? enter(w.name, w.role, true) : play(w.name, 'A', true)),
+          }),
+        );
       }
     }
 
@@ -154,7 +181,10 @@ export function startScreen(opts) {
       join.appendChild(el('span', 'role-emoji', '🔭'));
       join.appendChild(el('span', 'role-name', tr('world.joinWorld')));
       if (!quiet) join.appendChild(el('span', 'role-desc', tr('world.joinWorldDesc')));
-      join.addEventListener('click', () => { go('join'); refreshList(); });
+      join.addEventListener('click', () => {
+        go('join');
+        refreshList();
+      });
       host.appendChild(join);
     }
 
@@ -221,9 +251,13 @@ export function startScreen(opts) {
       return;
     }
     busy(true);
-    dir.create(device, role).then((made) => {
+    dir.create(device, role).then(made => {
       busy(false);
-      if (!made || !made.world) { pending = { name: randomName(), role: role, free: [role === 'A' ? 'B' : 'A'] }; go('made'); return; }
+      if (!made || !made.world) {
+        pending = { name: randomName(), role: role, free: [role === 'A' ? 'B' : 'A'] };
+        go('made');
+        return;
+      }
       pending = { name: made.world.name, role: made.role || role, free: made.world.free };
       rememberWorld(pending.name, pending.role);
       go('made');
@@ -233,16 +267,19 @@ export function startScreen(opts) {
   function renderMade() {
     const other = pending.role === 'A' ? 'B' : 'A';
     host.appendChild(el('h2', 'start-h', tr('world.madeTitle')));
-    host.appendChild(worldCard({
-      name: pending.name, wide: true,
-      line: tr('world.waitingFor', { role: roleName(other), emoji: ROLE[other].emoji }),
-      sub: tr('world.tellThem'),
-    }));
+    host.appendChild(
+      worldCard({
+        name: pending.name,
+        wide: true,
+        line: tr('world.waitingFor', { role: roleName(other), emoji: ROLE[other].emoji }),
+        sub: tr('world.tellThem'),
+      }),
+    );
 
     const row = el('div', 'row');
     const share = el('button', 'btn go', '📨 ' + tr('invite.share'));
     share.addEventListener('click', () => {
-      shareWorld(pending.name, other).then((how) => {
+      shareWorld(pending.name, other).then(how => {
         if (how === 'copied') say('invite.copied');
         else if (how === 'none') say('invite.tellName', { name: prettyName(pending.name) });
       });
@@ -268,18 +305,28 @@ export function startScreen(opts) {
     } else {
       for (const w of list) {
         const free = w.free[0];
-        host.appendChild(worldCard({
-          name: w.name, wide: true,
-          line: tr('world.spotFree', { role: roleName(free), emoji: ROLE[free] ? ROLE[free].emoji : '🙂' }),
-          sub: ago(w.seen),
-          onTap: () => enter(w.name, free, false),
-        }));
+        host.appendChild(
+          worldCard({
+            name: w.name,
+            wide: true,
+            line: tr('world.spotFree', {
+              role: roleName(free),
+              emoji: ROLE[free] ? ROLE[free].emoji : '🙂',
+            }),
+            sub: ago(w.seen),
+            onTap: () => enter(w.name, free, false),
+          }),
+        );
       }
     }
 
     const row = el('div', 'row');
     const again = el('button', 'btn soft', '🔄 ' + tr('join.again'));
-    again.addEventListener('click', () => { list = null; render(); refreshList(); });
+    again.addEventListener('click', () => {
+      list = null;
+      render();
+      refreshList();
+    });
     row.appendChild(again);
     host.appendChild(row);
 
@@ -298,18 +345,23 @@ export function startScreen(opts) {
     const goBtn = el('button', 'btn go', tr('join.go'));
     const tryName = () => {
       const n = cleanName(input.value);
-      if (!n) { say('join.needName'); return; }
+      if (!n) {
+        say('join.needName');
+        return;
+      }
       enter(n, null, true);
     };
     goBtn.addEventListener('click', tryName);
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryName(); });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') tryName();
+    });
     nameRow.appendChild(goBtn);
     host.appendChild(nameRow);
     host.appendChild(back(() => go('home')));
   }
 
   function refreshList() {
-    dir.list().then((got) => {
+    dir.list().then(got => {
       list = got || [];
       if (step === 'join') render();
     });
@@ -328,8 +380,10 @@ export function startScreen(opts) {
   // ?world=sunny-otter&role=B, and the old ?role= on its own, skip the screen
   const auto = qs.get('role');
   if (auto === 'BOTH') play(invited || randomName(), 'A', true);
-  else if (auto === 'A' || auto === 'B') { if (invited) enter(invited, auto, true); else makeWorld(auto); }
-  else render();
+  else if (auto === 'A' || auto === 'B') {
+    if (invited) enter(invited, auto, true);
+    else makeWorld(auto);
+  } else render();
 
   return { render: () => render(), forget: forgetWorld };
 }
@@ -338,8 +392,10 @@ export function startScreen(opts) {
 export function ago(at) {
   const d = Date.now() - (at || 0);
   if (d < 5 * MINUTE) return tr('ago.now');
-  if (d < 90 * MINUTE) return trn('ago.minutes', Math.round(d / MINUTE), { n: Math.round(d / MINUTE) });
-  if (d < 36 * 3600000) return trn('ago.hours', Math.round(d / 3600000), { n: Math.round(d / 3600000) });
+  if (d < 90 * MINUTE)
+    return trn('ago.minutes', Math.round(d / MINUTE), { n: Math.round(d / MINUTE) });
+  if (d < 36 * 3600000)
+    return trn('ago.hours', Math.round(d / 3600000), { n: Math.round(d / 3600000) });
   return trn('ago.days', Math.round(d / 86400000), { n: Math.round(d / 86400000) });
 }
 
@@ -350,5 +406,7 @@ function selectAll(node) {
     const sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(r);
-  } catch (e) { /* selecting text is a nicety */ }
+  } catch {
+    /* selecting text is a nicety */
+  }
 }

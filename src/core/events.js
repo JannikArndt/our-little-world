@@ -5,9 +5,9 @@
 import { rnd } from './rng.js';
 import { blockProgress } from './world.js';
 
-const QUIET_AFTER = 0.72;      // no new problems in the last quarter of a block
-const WARMUP       = 0.10;
-const GAP_TICKS    = 520;      // at least ~52 s between events
+const QUIET_AFTER = 0.72; // no new problems in the last quarter of a block
+const WARMUP = 0.1;
+const GAP_TICKS = 520; // at least ~52 s between events
 const MAX_PER_BLOCK = 3;
 
 export function maybeEvent(w) {
@@ -38,12 +38,19 @@ export function maybeEvent(w) {
   const already = w.eventsSeen || [];
   const fresh = options.filter(o => already.indexOf(o.event) === -1);
   if (!fresh.length) return null;
-  if (rnd(w) > 0.55) return null;             // most checks pass quietly
+  if (rnd(w) > 0.55) return null; // most checks pass quietly
 
-  let total = 0; for (const o of fresh) total += o.weight;
+  let total = 0;
+  for (const o of fresh) total += o.weight;
   let r = rnd(w) * total;
   let chosen = fresh[0];
-  for (const o of fresh) { r -= o.weight; if (r <= 0) { chosen = o; break; } }
+  for (const o of fresh) {
+    r -= o.weight;
+    if (r <= 0) {
+      chosen = o;
+      break;
+    }
+  }
 
   w.lastEventTick = w.tick;
   w.eventsThisBlock = (w.eventsThisBlock || 0) + 1;
@@ -56,4 +63,3 @@ export function resetEventBudget(w) {
   w.eventsSeen = [];
   w.lastEventTick = w.tick;
 }
-

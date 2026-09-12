@@ -8,17 +8,18 @@ import { blockProgress, dayPhase } from '../core/world.js';
 // The colour of the day, in eight moments. Everything between them is mixed.
 // wash is laid over the picture; dark is multiplied into it as shade.
 const DAY_LIGHT = [
-  { at: 0.00, wash: [120, 110, 200, 0.44], dark: [ 70,  80, 140, 0.34] },  // first light
-  { at: 0.12, wash: [206, 232, 255, 0.10], dark: [ 80,  90, 140, 0.02] },  // morning
-  { at: 0.35, wash: [255, 250, 220, 0.06], dark: [255, 255, 255, 0.00] },  // midday
-  { at: 0.62, wash: [255, 236, 180, 0.08], dark: [255, 255, 255, 0.00] },  // afternoon
-  { at: 0.80, wash: [255, 190,  95, 0.20], dark: [150, 105,  80, 0.08] },  // gold
-  { at: 0.90, wash: [255, 140,  55, 0.34], dark: [140,  85,  80, 0.20] },  // sunset
-  { at: 0.97, wash: [150, 110, 175, 0.34], dark: [ 70,  70, 130, 0.36] },  // afterglow
-  { at: 1.00, wash: [ 90,  95, 170, 0.30], dark: [ 52,  58, 118, 0.46] },  // dark
+  { at: 0.0, wash: [120, 110, 200, 0.44], dark: [70, 80, 140, 0.34] }, // first light
+  { at: 0.12, wash: [206, 232, 255, 0.1], dark: [80, 90, 140, 0.02] }, // morning
+  { at: 0.35, wash: [255, 250, 220, 0.06], dark: [255, 255, 255, 0.0] }, // midday
+  { at: 0.62, wash: [255, 236, 180, 0.08], dark: [255, 255, 255, 0.0] }, // afternoon
+  { at: 0.8, wash: [255, 190, 95, 0.2], dark: [150, 105, 80, 0.08] }, // gold
+  { at: 0.9, wash: [255, 140, 55, 0.34], dark: [140, 85, 80, 0.2] }, // sunset
+  { at: 0.97, wash: [150, 110, 175, 0.34], dark: [70, 70, 130, 0.36] }, // afterglow
+  { at: 1.0, wash: [90, 95, 170, 0.3], dark: [52, 58, 118, 0.46] }, // dark
 ];
 
-const rgba = (c) => 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + c[3] + ')';
+const rgba = c =>
+  'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + c[3] + ')';
 import * as art from './art.js';
 
 const C = art.C;
@@ -26,17 +27,28 @@ const C = art.C;
 /** A friendly face for the field. */
 function scarecrow(ctx, x, y) {
   ctx.save();
-  ctx.strokeStyle = '#8a6f4a'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+  ctx.strokeStyle = '#8a6f4a';
+  ctx.lineWidth = 2.6;
+  ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(x, y + 26); ctx.lineTo(x, y + 4);
-  ctx.moveTo(x - 9, y + 11); ctx.lineTo(x + 9, y + 11);
+  ctx.moveTo(x, y + 26);
+  ctx.lineTo(x, y + 4);
+  ctx.moveTo(x - 9, y + 11);
+  ctx.lineTo(x + 9, y + 11);
   ctx.stroke();
   ctx.fillStyle = '#c9974f';
-  ctx.beginPath(); ctx.arc(x, y + 3, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x, y + 3, 5, 0, Math.PI * 2);
+  ctx.fill();
   ctx.fillStyle = '#8a6f4a';
-  ctx.beginPath(); ctx.ellipse(x, y - 1, 8.5, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x, y - 1, 8.5, 2.6, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.fillStyle = '#43372a';
-  ctx.beginPath(); ctx.arc(x - 2, y + 3, 0.8, 0, Math.PI * 2); ctx.arc(x + 2, y + 3, 0.8, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x - 2, y + 3, 0.8, 0, Math.PI * 2);
+  ctx.arc(x + 2, y + 3, 0.8, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -44,16 +56,19 @@ function scarecrow(ctx, x, y) {
 function ribbon(ctx, pts, grow, reverse) {
   const p = reverse ? pts.slice().reverse() : pts;
   const first = { x: p[0].x + grow, y: p[0].y - 40 };
-  if (reverse) ctx.lineTo(first.x, first.y); else ctx.moveTo(first.x, first.y);
+  if (reverse) ctx.lineTo(first.x, first.y);
+  else ctx.moveTo(first.x, first.y);
   for (let i = 0; i < p.length - 1; i++) {
-    const a = p[i], b = p[i + 1];
+    const a = p[i],
+      b = p[i + 1];
     ctx.quadraticCurveTo(a.x + grow, a.y, (a.x + b.x) / 2 + grow, (a.y + b.y) / 2);
   }
   const last = p[p.length - 1];
   ctx.lineTo(last.x + grow, last.y + 40);
 }
 
-function tileNoise(x, y) {           // stable per-tile pseudo random
+function tileNoise(x, y) {
+  // stable per-tile pseudo random
   let h = (x * 374761393 + y * 668265263) ^ 0x5bf03635;
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
@@ -69,7 +84,8 @@ export class Renderer {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d', { alpha: false });
     this.terrain = document.createElement('canvas');
-    this.terrain.width = WORLD_W; this.terrain.height = WORLD_H;
+    this.terrain.width = WORLD_W;
+    this.terrain.height = WORLD_H;
     this.tctx = this.terrain.getContext('2d');
     this.stamp = -1;
     this.water = [];
@@ -86,9 +102,11 @@ export class Renderer {
   resize() {
     const r = this.canvas.getBoundingClientRect();
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+    const w = Math.max(1, Math.round(r.width * dpr)),
+      h = Math.max(1, Math.round(r.height * dpr));
     if (this.canvas.width !== w || this.canvas.height !== h) {
-      this.canvas.width = w; this.canvas.height = h;
+      this.canvas.width = w;
+      this.canvas.height = h;
     }
     this.dpr = dpr;
     this.view = { w: r.width, h: r.height };
@@ -115,7 +133,9 @@ export class Renderer {
     this.resize();
   }
 
-  scale() { return this.fit * this.cam.zoom; }
+  scale() {
+    return this.fit * this.cam.zoom;
+  }
 
   /**
    * How close you may get. Not a bare number, because the same number means a
@@ -123,7 +143,9 @@ export class Renderer {
    * the size it is painted, whatever the screen. Zoom 1 is always the whole
    * world, so that stays the floor.
    */
-  maxZoom() { return Math.max(1, MAX_TILE_PX / TILE / (this.fit || 1)); }
+  maxZoom() {
+    return Math.max(1, MAX_TILE_PX / TILE / (this.fit || 1));
+  }
 
   /**
    * How far you may push the world about: anywhere from one corner to the
@@ -142,11 +164,17 @@ export class Renderer {
 
   toScreen(wx, wy) {
     const s = this.scale();
-    return { x: (wx - this.cam.x) * s + this.view.w / 2, y: (wy - this.cam.y) * s + this.view.h / 2 };
+    return {
+      x: (wx - this.cam.x) * s + this.view.w / 2,
+      y: (wy - this.cam.y) * s + this.view.h / 2,
+    };
   }
   toWorld(sx, sy) {
     const s = this.scale();
-    return { x: (sx - this.view.w / 2) / s + this.cam.x, y: (sy - this.view.h / 2) / s + this.cam.y };
+    return {
+      x: (sx - this.view.w / 2) / s + this.cam.x,
+      y: (sy - this.view.h / 2) / s + this.cam.y,
+    };
   }
 
   /* ---------------- terrain cache ---------------- */
@@ -166,9 +194,11 @@ export class Renderer {
     c.fillStyle = C.grass;
     c.fillRect(0, 0, WORLD_W, WORLD_H);
     for (let i = 0; i < 150; i++) {
-      const n1 = tileNoise(i, 3), n2 = tileNoise(i, 11), n3 = tileNoise(i, 29);
+      const n1 = tileNoise(i, 3),
+        n2 = tileNoise(i, 11),
+        n3 = tileNoise(i, 29);
       c.fillStyle = n3 > 0.5 ? C.grassLite : C.grassDark;
-      c.globalAlpha = 0.30;
+      c.globalAlpha = 0.3;
       c.beginPath();
       c.ellipse(n1 * WORLD_W, n2 * WORLD_H, 26 + n3 * 46, 18 + n1 * 26, n2 * 3, 0, Math.PI * 2);
       c.fill();
@@ -183,18 +213,31 @@ export class Renderer {
         c.globalAlpha = 0.52;
         c.fillStyle = n > 0.5 ? C.forest : C.forestDark;
         c.beginPath();
-        c.ellipse(x * TILE + TILE / 2, y * TILE + TILE / 2, TILE * 0.92, TILE * 0.84, n * 3, 0, Math.PI * 2);
+        c.ellipse(
+          x * TILE + TILE / 2,
+          y * TILE + TILE / 2,
+          TILE * 0.92,
+          TILE * 0.84,
+          n * 3,
+          0,
+          Math.PI * 2,
+        );
         c.fill();
       }
     c.globalAlpha = 1;
 
     // 3. the ploughed field
-    let fx0 = GW, fy0 = GH, fx1 = -1, fy1 = -1;
+    let fx0 = GW,
+      fy0 = GH,
+      fx1 = -1,
+      fy1 = -1;
     for (let y = 0; y < GH; y++)
       for (let x = 0; x < GW; x++)
         if (w.terrain[idx(x, y)] === T.FIELD) {
-          if (x < fx0) fx0 = x; if (x > fx1) fx1 = x;
-          if (y < fy0) fy0 = y; if (y > fy1) fy1 = y;
+          if (x < fx0) fx0 = x;
+          if (x > fx1) fx1 = x;
+          if (y < fy0) fy0 = y;
+          if (y > fy1) fy1 = y;
         }
     if (fx1 >= 0) {
       c.fillStyle = C.field;
@@ -202,28 +245,46 @@ export class Renderer {
         for (let x = 0; x < GW; x++) {
           if (w.terrain[idx(x, y)] !== T.FIELD) continue;
           c.beginPath();
-          c.ellipse(x * TILE + TILE / 2, y * TILE + TILE / 2, TILE * 0.78, TILE * 0.74, 0, 0, Math.PI * 2);
+          c.ellipse(
+            x * TILE + TILE / 2,
+            y * TILE + TILE / 2,
+            TILE * 0.78,
+            TILE * 0.74,
+            0,
+            0,
+            Math.PI * 2,
+          );
           c.fill();
         }
-      c.strokeStyle = 'rgba(120,95,60,.10)'; c.lineWidth = 1.4; c.lineCap = 'round';
+      c.strokeStyle = 'rgba(120,95,60,.10)';
+      c.lineWidth = 1.4;
+      c.lineCap = 'round';
       for (let y = 0; y < GH; y++)
         for (let x = 0; x < GW; x++) {
           if (w.terrain[idx(x, y)] !== T.FIELD) continue;
           for (let i = 0; i < 2; i++) {
             const yy = y * TILE + 7 + i * 10;
-            c.beginPath(); c.moveTo(x * TILE + 3, yy); c.lineTo(x * TILE + TILE - 3, yy); c.stroke();
+            c.beginPath();
+            c.moveTo(x * TILE + 3, yy);
+            c.lineTo(x * TILE + TILE - 3, yy);
+            c.stroke();
           }
         }
       scarecrow(c, fx0 * TILE + 8, fy0 * TILE + 6);
     }
 
     // 4. the river, as one smooth ribbon rather than a staircase of tiles
-    const left = [], right = [];
+    const left = [],
+      right = [];
     for (let y = 0; y < GH; y++) {
-      let a = -1, b = -1;
+      let a = -1,
+        b = -1;
       for (let x = 0; x < GW; x++) {
         const t = w.terrain[idx(x, y)];
-        if (t === T.WATER || t === T.BRIDGE) { if (a < 0) a = x; b = x; }
+        if (t === T.WATER || t === T.BRIDGE) {
+          if (a < 0) a = x;
+          b = x;
+        }
       }
       if (a < 0) continue;
       left.push({ x: a * TILE, y: y * TILE + TILE / 2 });
@@ -242,14 +303,20 @@ export class Renderer {
       band(0, C.water);
       c.save();
       c.globalAlpha = 0.35;
-      c.strokeStyle = C.waterDeep; c.lineWidth = 5;
-      c.beginPath(); ribbon(c, left, 2, false); c.stroke();
-      c.beginPath(); ribbon(c, right, -2, false); c.stroke();
+      c.strokeStyle = C.waterDeep;
+      c.lineWidth = 5;
+      c.beginPath();
+      ribbon(c, left, 2, false);
+      c.stroke();
+      c.beginPath();
+      ribbon(c, right, -2, false);
+      c.stroke();
       c.restore();
       for (let y = 0; y < GH; y++)
         for (let x = 0; x < GW; x++) {
           const t = w.terrain[idx(x, y)];
-          if (t === T.WATER || t === T.BRIDGE) this.water.push({ x: x * TILE, y: y * TILE, n: tileNoise(x, y) });
+          if (t === T.WATER || t === T.BRIDGE)
+            this.water.push({ x: x * TILE, y: y * TILE, n: tileNoise(x, y) });
         }
     }
 
@@ -259,16 +326,30 @@ export class Renderer {
       for (let x = 0; x < GW; x++) {
         if (w.terrain[idx(x, y)] !== T.ROAD) continue;
         c.beginPath();
-        c.ellipse(x * TILE + TILE / 2, y * TILE + TILE / 2, TILE * 0.62, TILE * 0.58, 0, 0, Math.PI * 2);
+        c.ellipse(
+          x * TILE + TILE / 2,
+          y * TILE + TILE / 2,
+          TILE * 0.62,
+          TILE * 0.58,
+          0,
+          0,
+          Math.PI * 2,
+        );
         c.fill();
       }
     for (let y = 0; y < GH; y++)
       for (let x = 0; x < GW; x++) {
         if (w.terrain[idx(x, y)] !== T.ROAD) continue;
-        const n = tileNoise(x, y + 5), m = tileNoise(x + 7, y);
+        const n = tileNoise(x, y + 5),
+          m = tileNoise(x + 7, y);
         c.fillStyle = C.roadDark;
         for (let i = 0; i < 5; i++)
-          c.fillRect(x * TILE + ((n * 733 + i * 173) % TILE), y * TILE + ((m * 419 + i * 251) % TILE), 1.8, 1.8);
+          c.fillRect(
+            x * TILE + ((n * 733 + i * 173) % TILE),
+            y * TILE + ((m * 419 + i * 251) % TILE),
+            1.8,
+            1.8,
+          );
       }
 
     // 6. small things that make it look lived in
@@ -277,34 +358,40 @@ export class Renderer {
         const t = w.terrain[idx(x, y)];
         if (t !== T.GRASS && t !== T.SAND) continue;
         const n = tileNoise(x + 13, y + 41);
-        const px = x * TILE + 4 + (n * 311) % (TILE - 8);
+        const px = x * TILE + 4 + ((n * 311) % (TILE - 8));
         const py = y * TILE + 4 + ((n * 907) % (TILE - 8));
         if (t === T.SAND) {
           if (n < 0.86) continue;
           c.fillStyle = 'rgba(150,140,120,.5)';
-          c.beginPath(); c.ellipse(px, py, 2.4, 1.7, n * 3, 0, Math.PI * 2); c.fill();
+          c.beginPath();
+          c.ellipse(px, py, 2.4, 1.7, n * 3, 0, Math.PI * 2);
+          c.fill();
         } else if (n > 0.955) {
-          c.fillStyle = C.forestDark;               // a little bush
+          c.fillStyle = C.forestDark; // a little bush
           c.beginPath();
           c.arc(px, py, 4.2, 0, Math.PI * 2);
           c.arc(px + 4, py + 1.4, 3.4, 0, Math.PI * 2);
           c.fill();
-        } else if (n > 0.90) {
-          const petal = n > 0.93 ? '#f6e08a' : '#f0a8b8';   // flowers
+        } else if (n > 0.9) {
+          const petal = n > 0.93 ? '#f6e08a' : '#f0a8b8'; // flowers
           c.fillStyle = petal;
-          for (let i = 0; i < 3; i++)
-            c.fillRect(px + i * 3, py + ((i * 5) % 4), 1.8, 1.8);
+          for (let i = 0; i < 3; i++) c.fillRect(px + i * 3, py + ((i * 5) % 4), 1.8, 1.8);
         } else if (n > 0.882) {
-          c.strokeStyle = C.grassLite; c.lineWidth = 1.4; c.lineCap = 'round';
+          c.strokeStyle = C.grassLite;
+          c.lineWidth = 1.4;
+          c.lineCap = 'round';
           c.beginPath();
-          c.moveTo(px, py + 3); c.lineTo(px + 1, py - 2);
-          c.moveTo(px + 3, py + 3); c.lineTo(px + 2.5, py - 3);
+          c.moveTo(px, py + 3);
+          c.lineTo(px + 1, py - 2);
+          c.moveTo(px + 3, py + 3);
+          c.lineTo(px + 2.5, py - 3);
           c.stroke();
         }
       }
 
     // a soft border so the world reads as a little diorama
-    c.strokeStyle = 'rgba(80,66,48,.20)'; c.lineWidth = 6;
+    c.strokeStyle = 'rgba(80,66,48,.20)';
+    c.lineWidth = 6;
     c.strokeRect(3, 3, WORLD_W - 6, WORLD_H - 6);
   }
 
@@ -313,7 +400,10 @@ export class Renderer {
   render(w, time, extra) {
     const ctx = this.ctx;
     const st = this.terrainStamp(w);
-    if (st !== this.stamp) { this.paintTerrain(w); this.stamp = st; }
+    if (st !== this.stamp) {
+      this.paintTerrain(w);
+      this.stamp = st;
+    }
 
     const s = this.scale();
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -352,20 +442,16 @@ export class Renderer {
           else if (o.type === 'play') {
             if (o.state === 'built') art.drawPlayground(ctx, o, time, w.tick);
             else art.drawPlan(ctx, o, time, '🛝');
-          }
-          else if (o.type === 'well') {
+          } else if (o.type === 'well') {
             if (o.state === 'built') art.drawWell(ctx, o, time, w.tick);
             else art.drawPlan(ctx, o, time, '🪣');
-          }
-          else if (o.type === 'privy') {
+          } else if (o.type === 'privy') {
             if (o.state === 'built') art.drawPrivy(ctx, o, time, w.tick);
             else art.drawPlan(ctx, o, time, '🚪');
-          }
-          else if (o.type === 'fence') {
+          } else if (o.type === 'fence') {
             if (o.state === 'built') art.drawFence(ctx, o, time);
             else art.drawPlan(ctx, o, time, '🚧');
-          }
-          else if (o.state === 'site') art.drawSite(ctx, o, time);
+          } else if (o.state === 'site') art.drawSite(ctx, o, time);
           else if (o.type === 'workshop') art.drawWorkshop(ctx, o, time, w.tick);
           else art.drawHouse(ctx, o, time, w.tick);
           break;
@@ -374,19 +460,36 @@ export class Renderer {
           else if (o.state === 'sapling') art.drawSapling(ctx, o, time);
           else {
             const age = w.tick - (o.fellTick != null ? o.fellTick : -999);
-            if (age < 18) { art.drawStump(ctx, o); art.drawFallingTree(ctx, o, age / 18); }
-            else art.drawStump(ctx, o);
+            if (age < 18) {
+              art.drawStump(ctx, o);
+              art.drawFallingTree(ctx, o, age / 18);
+            } else art.drawStump(ctx, o);
           }
           break;
         }
-        case 'log': art.drawLog(ctx, o); break;
-        case 'plot': art.drawPlot(ctx, o, time); break;
-        case 'stones': art.drawStoneBank(ctx, o); break;
-        case 'villager': art.drawVillager(ctx, o, time, w.tick); break;
-        case 'sheep': art.drawSheep(ctx, o, time, w.tick); break;
-        case 'deer': art.drawDeer(ctx, o, time); break;
-        case 'larder': art.drawLarder(ctx, o, time); break;
-        default: break;
+        case 'log':
+          art.drawLog(ctx, o);
+          break;
+        case 'plot':
+          art.drawPlot(ctx, o, time);
+          break;
+        case 'stones':
+          art.drawStoneBank(ctx, o);
+          break;
+        case 'villager':
+          art.drawVillager(ctx, o, time, w.tick);
+          break;
+        case 'sheep':
+          art.drawSheep(ctx, o, time, w.tick);
+          break;
+        case 'deer':
+          art.drawDeer(ctx, o, time);
+          break;
+        case 'larder':
+          art.drawLarder(ctx, o, time);
+          break;
+        default:
+          break;
       }
     }
 
@@ -400,7 +503,8 @@ export class Renderer {
 
   drawWaterShimmer(ctx, time) {
     ctx.strokeStyle = 'rgba(255,255,255,.30)';
-    ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+    ctx.lineWidth = 1.6;
+    ctx.lineCap = 'round';
     for (let i = 0; i < this.water.length; i += 3) {
       const t = this.water[i];
       const ph = time * 0.0011 + t.n * 6.28;
@@ -417,16 +521,21 @@ export class Renderer {
   /** Somewhere the world has not got to yet: soft weather, not a wall. */
   drawMist(ctx, w, time) {
     for (const box of w.regionBoxes) {
-      const x = box[0] * TILE, y = box[1] * TILE;
-      const bw = (box[2] - box[0] + 1) * TILE, bh = (box[3] - box[1] + 1) * TILE;
+      const x = box[0] * TILE,
+        y = box[1] * TILE;
+      const bw = (box[2] - box[0] + 1) * TILE,
+        bh = (box[3] - box[1] + 1) * TILE;
       ctx.save();
       ctx.fillStyle = 'rgba(236,240,238,.88)';
       ctx.fillRect(x, y, bw, bh);
       ctx.fillStyle = 'rgba(255,255,255,.5)';
       for (let i = 0; i < 14; i++) {
-        const cx = x + ((i * 137) % bw), cy = y + ((i * 89) % bh);
+        const cx = x + ((i * 137) % bw),
+          cy = y + ((i * 89) % bh);
         const r = 18 + (i % 4) * 9 + Math.sin(time * 0.0006 + i) * 4;
-        ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, r, r * 0.5, 0, 0, Math.PI * 2);
+        ctx.fill();
       }
       ctx.restore();
     }
@@ -436,18 +545,35 @@ export class Renderer {
   drawHalos(ctx, w, time, extra) {
     const pulse = 0.35 + 0.25 * Math.sin(time * 0.003);
     const ring = (x, y, r, colour) => {
-      ctx.strokeStyle = colour; ctx.lineWidth = 2.4;
+      ctx.strokeStyle = colour;
+      ctx.lineWidth = 2.4;
       ctx.globalAlpha = pulse;
-      ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.55, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(x, y, r, r * 0.55, 0, 0, Math.PI * 2);
+      ctx.stroke();
       ctx.globalAlpha = 1;
     };
-    for (const s of w.sheep) if (s.mood !== 'ok') ring(s.x * TILE, s.y * TILE + 3, 15, 'rgba(93,145,80,.9)');
-    for (const p of w.plots) if (p.state === 'ripe' || (p.state === 'growing' && p.water <= 8))
-      ring(p.x * TILE + TILE, p.y * TILE + TILE, 24, 'rgba(224,185,80,.95)');
-    for (const b of w.buildings) if (b.state === 'site' && b.type === 'site')
-      ring(b.x * TILE + b.w * TILE / 2, b.y * TILE + b.h * TILE - 4, b.w * TILE * 0.5, 'rgba(200,120,60,.9)');
+    for (const s of w.sheep)
+      if (s.mood !== 'ok') ring(s.x * TILE, s.y * TILE + 3, 15, 'rgba(93,145,80,.9)');
+    for (const p of w.plots)
+      if (p.state === 'ripe' || (p.state === 'growing' && p.water <= 8))
+        ring(p.x * TILE + TILE, p.y * TILE + TILE, 24, 'rgba(224,185,80,.95)');
+    for (const b of w.buildings)
+      if (b.state === 'site' && b.type === 'site')
+        ring(
+          b.x * TILE + (b.w * TILE) / 2,
+          b.y * TILE + b.h * TILE - 4,
+          b.w * TILE * 0.5,
+          'rgba(200,120,60,.9)',
+        );
     for (const l of w.logs) ring(l.x * TILE, l.y * TILE + 3, 16, 'rgba(169,116,63,.9)');
-    if (w.bridge.damaged) ring((w.bridge.site.x0 + w.bridge.site.x1 + 1) * TILE / 2, (w.bridge.site.row + 1) * TILE, 34, 'rgba(200,90,70,.95)');
+    if (w.bridge.damaged)
+      ring(
+        ((w.bridge.site.x0 + w.bridge.site.x1 + 1) * TILE) / 2,
+        (w.bridge.site.row + 1) * TILE,
+        34,
+        'rgba(200,90,70,.95)',
+      );
     if (extra && extra.highlight) {
       const h = extra.highlight;
       ring(h.x * TILE, h.y * TILE, h.r || 20, 'rgba(255,255,255,.95)');
@@ -456,7 +582,8 @@ export class Renderer {
       // who the guide is talking about: a slower, wider ring than the rest
       const sp = extra.spotlight;
       const beat = 0.45 + 0.35 * Math.sin(time * 0.0022);
-      ctx.strokeStyle = 'rgba(242,193,78,.95)'; ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(242,193,78,.95)';
+      ctx.lineWidth = 3;
       ctx.globalAlpha = beat;
       ctx.beginPath();
       ctx.ellipse(sp.x * TILE, sp.y * TILE + 3, sp.r || 22, (sp.r || 22) * 0.55, 0, 0, Math.PI * 2);
@@ -477,7 +604,8 @@ export class Renderer {
     const k = DAY_LIGHT;
     let i = 0;
     while (i < k.length - 2 && p >= k[i + 1].at) i++;
-    const a = k[i], b = k[i + 1];
+    const a = k[i],
+      b = k[i + 1];
     const t = Math.max(0, Math.min(1, (p - a.at) / (b.at - a.at)));
     const mix = (x, y) => x.map((v, n) => v + (y[n] - v) * t);
     return { wash: mix(a.wash, b.wash), dark: mix(a.dark, b.dark) };
@@ -486,11 +614,11 @@ export class Renderer {
   /** Where the sun stands, for everything that casts a shadow. */
   sunFor(w) {
     if (dayPhase(w) === 'night') return { dx: 0, stretch: 1, alpha: 0.07 };
-    const angle = blockProgress(w) * 2 - 1;              // -1 in the east, +1 in the west
+    const angle = blockProgress(w) * 2 - 1; // -1 in the east, +1 in the west
     return {
       dx: angle * 1.7,
       stretch: 1 + Math.abs(angle) * 1.5,
-      alpha: 0.20 - Math.abs(angle) * 0.10,
+      alpha: 0.2 - Math.abs(angle) * 0.1,
     };
   }
 

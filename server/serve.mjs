@@ -37,13 +37,13 @@ const api = createApi(worlds, {
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
-  '.js':   'text/javascript; charset=utf-8',
-  '.mjs':  'text/javascript; charset=utf-8',
-  '.css':  'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
-  '.svg':  'image/svg+xml',
-  '.png':  'image/png',
-  '.ico':  'image/x-icon',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
   '.webmanifest': 'application/manifest+json',
 };
 
@@ -61,7 +61,7 @@ const STARTED = new Date().toISOString();
  * page copes: it just never claims anything is out of date.
  */
 function stamp(html) {
-  return html.replace(/(<meta name="olw-build" content=")[^"]*(">)/, '$1' + BUILD + '$2');
+  return html.replace(/(<meta name="olw-build" content=")[^"]*("\s*\/?>)/, '$1' + BUILD + '$2');
 }
 
 const server = createServer(async (req, res) => {
@@ -71,7 +71,9 @@ const server = createServer(async (req, res) => {
     // "is what I pushed live?" — compare `build` with `node server/buildid.mjs`
     if (url.pathname === '/version') {
       res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-      res.end(JSON.stringify({ version: VERSION, schema: SCHEMA, build: BUILD, startedAt: STARTED }));
+      res.end(
+        JSON.stringify({ version: VERSION, schema: SCHEMA, build: BUILD, startedAt: STARTED }),
+      );
       return;
     }
     if (url.pathname === '/rooms') {
@@ -85,9 +87,17 @@ const server = createServer(async (req, res) => {
     // /api/stats, which is the same numbers without the pictures
     if (p === '/stats') p = '/stats.html';
     const file = join(ROOT, normalize(p).replace(/^(\.\.[/\\])+/, ''));
-    if (!file.startsWith(ROOT)) { res.writeHead(403); res.end('no'); return; }
+    if (!file.startsWith(ROOT)) {
+      res.writeHead(403);
+      res.end('no');
+      return;
+    }
     const s = await stat(file).catch(() => null);
-    if (!s || !s.isFile()) { res.writeHead(404); res.end('not found'); return; }
+    if (!s || !s.isFile()) {
+      res.writeHead(404);
+      res.end('not found');
+      return;
+    }
     let body = await readFile(file);
     const type = TYPES[extname(file)] || 'application/octet-stream';
     // the page is told which build it is, so it can notice when it is old
@@ -100,11 +110,16 @@ const server = createServer(async (req, res) => {
     const asked = String(req.headers['if-none-match'] || '').replace(/^W\//, '');
     res.setHeader('etag', tag);
     res.setHeader('cache-control', 'no-cache');
-    if (asked === tag) { res.writeHead(304); res.end(); return; }
+    if (asked === tag) {
+      res.writeHead(304);
+      res.end();
+      return;
+    }
     res.writeHead(200, { 'content-type': type });
     res.end(body);
-  } catch (e) {
-    res.writeHead(500); res.end('error');
+  } catch {
+    res.writeHead(500);
+    res.end('error');
   }
 });
 
@@ -114,19 +129,29 @@ server.listen(PORT, () => {
   const nets = networkInterfaces();
   const addrs = [];
   for (const name of Object.keys(nets))
-    for (const n of nets[name] || [])
-      if (n.family === 'IPv4' && !n.internal) addrs.push(n.address);
+    for (const n of nets[name] || []) if (n.family === 'IPv4' && !n.internal) addrs.push(n.address);
   console.log('Our Little World  v' + VERSION + '  build ' + BUILD);
   console.log('  http://localhost:' + PORT);
   for (const a of addrs) console.log('  http://' + a + ':' + PORT + '   <- open this on the iPad');
   const s = worlds.stats();
-  console.log('  ' + s.worlds + ' world(s) remembered in ' + DATA_DIR + ', forgotten after ' + TTL_DAYS + ' days');
+  console.log(
+    '  ' +
+      s.worlds +
+      ' world(s) remembered in ' +
+      DATA_DIR +
+      ', forgotten after ' +
+      TTL_DAYS +
+      ' days',
+  );
 });
 
 // Whatever happens, the worlds people were playing in get written down first.
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, () => {
-    worlds.close().then(() => process.exit(0), () => process.exit(0));
+    worlds.close().then(
+      () => process.exit(0),
+      () => process.exit(0),
+    );
     setTimeout(() => process.exit(0), 2000).unref();
   });
 }

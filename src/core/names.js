@@ -6,33 +6,74 @@
 // functions and imports nothing.
 
 export const ADJECTIVES = [
-  'sunny', 'golden', 'quiet', 'happy', 'sleepy', 'windy', 'misty', 'merry',
-  'wild', 'soft', 'brave', 'clever', 'warm', 'silver', 'green', 'little',
-  'cosy', 'jolly', 'snowy', 'rainy', 'starry', 'mossy', 'sandy', 'breezy',
-  'bright', 'tiny', 'round', 'fluffy', 'lucky', 'friendly',
+  'sunny',
+  'golden',
+  'quiet',
+  'happy',
+  'sleepy',
+  'windy',
+  'misty',
+  'merry',
+  'wild',
+  'soft',
+  'brave',
+  'clever',
+  'warm',
+  'silver',
+  'green',
+  'little',
+  'cosy',
+  'jolly',
+  'snowy',
+  'rainy',
+  'starry',
+  'mossy',
+  'sandy',
+  'breezy',
+  'bright',
+  'tiny',
+  'round',
+  'fluffy',
+  'lucky',
+  'friendly',
 ];
 
 // The picture is the point: a child who cannot read yet still knows which one
 // is theirs. Animals only, so the emoji is never ambiguous.
 export const ANIMALS = [
-  { word: 'otter', emoji: '🦦' }, { word: 'fox', emoji: '🦊' },
-  { word: 'owl', emoji: '🦉' }, { word: 'bear', emoji: '🐻' },
-  { word: 'deer', emoji: '🦌' }, { word: 'frog', emoji: '🐸' },
-  { word: 'whale', emoji: '🐳' }, { word: 'panda', emoji: '🐼' },
-  { word: 'tiger', emoji: '🐯' }, { word: 'koala', emoji: '🐨' },
-  { word: 'duck', emoji: '🦆' }, { word: 'bee', emoji: '🐝' },
-  { word: 'snail', emoji: '🐌' }, { word: 'turtle', emoji: '🐢' },
-  { word: 'seal', emoji: '🦭' }, { word: 'mouse', emoji: '🐭' },
-  { word: 'rabbit', emoji: '🐰' }, { word: 'horse', emoji: '🐴' },
-  { word: 'sheep', emoji: '🐑' }, { word: 'cat', emoji: '🐱' },
-  { word: 'dog', emoji: '🐶' }, { word: 'penguin', emoji: '🐧' },
-  { word: 'squirrel', emoji: '🐿️' }, { word: 'elephant', emoji: '🐘' },
-  { word: 'giraffe', emoji: '🦒' }, { word: 'dolphin', emoji: '🐬' },
-  { word: 'crab', emoji: '🦀' }, { word: 'butterfly', emoji: '🦋' },
-  { word: 'hedgehog', emoji: '🦔' }, { word: 'ladybird', emoji: '🐞' },
+  { word: 'otter', emoji: '🦦' },
+  { word: 'fox', emoji: '🦊' },
+  { word: 'owl', emoji: '🦉' },
+  { word: 'bear', emoji: '🐻' },
+  { word: 'deer', emoji: '🦌' },
+  { word: 'frog', emoji: '🐸' },
+  { word: 'whale', emoji: '🐳' },
+  { word: 'panda', emoji: '🐼' },
+  { word: 'tiger', emoji: '🐯' },
+  { word: 'koala', emoji: '🐨' },
+  { word: 'duck', emoji: '🦆' },
+  { word: 'bee', emoji: '🐝' },
+  { word: 'snail', emoji: '🐌' },
+  { word: 'turtle', emoji: '🐢' },
+  { word: 'seal', emoji: '🦭' },
+  { word: 'mouse', emoji: '🐭' },
+  { word: 'rabbit', emoji: '🐰' },
+  { word: 'horse', emoji: '🐴' },
+  { word: 'sheep', emoji: '🐑' },
+  { word: 'cat', emoji: '🐱' },
+  { word: 'dog', emoji: '🐶' },
+  { word: 'penguin', emoji: '🐧' },
+  { word: 'squirrel', emoji: '🐿️' },
+  { word: 'elephant', emoji: '🐘' },
+  { word: 'giraffe', emoji: '🦒' },
+  { word: 'dolphin', emoji: '🐬' },
+  { word: 'crab', emoji: '🦀' },
+  { word: 'butterfly', emoji: '🦋' },
+  { word: 'hedgehog', emoji: '🦔' },
+  { word: 'ladybird', emoji: '🐞' },
 ];
 
-const pick = (list) => list[Math.floor(Math.random() * list.length)];
+const pick = list => list[Math.floor(Math.random() * list.length)];
 
 /**
  * A fresh two word name. `taken` (anything with a .has(), or a plain array)
@@ -40,7 +81,7 @@ const pick = (list) => list[Math.floor(Math.random() * list.length)];
  * loop forever.
  */
 export function randomName(taken) {
-  const has = (n) => {
+  const has = n => {
     if (!taken) return false;
     if (typeof taken.has === 'function') return taken.has(n);
     return taken.indexOf(n) >= 0;
@@ -58,7 +99,9 @@ export function randomName(taken) {
 
 /** The animal in the name, or a globe for a name somebody typed themselves. */
 export function worldEmoji(name) {
-  const parts = String(name || '').toLowerCase().split('-');
+  const parts = String(name || '')
+    .toLowerCase()
+    .split('-');
   for (const p of parts) {
     for (const a of ANIMALS) if (a.word === p) return a.emoji;
   }
@@ -69,8 +112,8 @@ export function worldEmoji(name) {
 export function prettyName(name) {
   return String(name || '')
     .split('-')
-    .filter((w) => w.length)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .filter(w => w.length)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
 }
 
@@ -81,7 +124,8 @@ export function prettyName(name) {
  */
 export function cleanName(text) {
   const n = String(text == null ? '' : text)
-    .trim().toLowerCase()
+    .trim()
+    .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '')
     .replace(/-+/g, '-')

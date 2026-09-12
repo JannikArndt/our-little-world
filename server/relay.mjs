@@ -16,16 +16,22 @@ const rooms = new Map();
 
 // the last world seen in a room, kept for a while after everybody has gone
 const kept = new Map();
-const KEEP_MS = 12 * 60 * 60 * 1000;      // half a day
-const KEEP_MAX = 3 * 1024 * 1024;         // a world is ~10 KB; this is a wall, not a target
+const KEEP_MS = 12 * 60 * 60 * 1000; // half a day
+const KEEP_MAX = 3 * 1024 * 1024; // a world is ~10 KB; this is a wall, not a target
 const KEEP_ROOMS = 200;
 
 function remember(room, text) {
   if (text.length > KEEP_MAX) return;
   kept.set(room, { text, at: Date.now() });
-  if (kept.size > KEEP_ROOMS) {           // oldest out first
-    let oldest = null, when = Infinity;
-    for (const [r, v] of kept) if (v.at < when) { when = v.at; oldest = r; }
+  if (kept.size > KEEP_ROOMS) {
+    // oldest out first
+    let oldest = null,
+      when = Infinity;
+    for (const [r, v] of kept)
+      if (v.at < when) {
+        when = v.at;
+        oldest = r;
+      }
     if (oldest) kept.delete(oldest);
   }
 }
@@ -33,12 +39,17 @@ function remember(room, text) {
 function recall(room) {
   const v = kept.get(room);
   if (!v) return null;
-  if (Date.now() - v.at > KEEP_MS) { kept.delete(room); return null; }
+  if (Date.now() - v.at > KEEP_MS) {
+    kept.delete(room);
+    return null;
+  }
   return v.text;
 }
 
 function accept(key) {
-  return createHash('sha1').update(key + GUID).digest('base64');
+  return createHash('sha1')
+    .update(key + GUID)
+    .digest('base64');
 }
 
 function frame(payload) {
@@ -58,7 +69,7 @@ function frame(payload) {
     head.writeUInt32BE(0, 2);
     head.writeUInt32BE(len, 6);
   }
-  head[0] = 0x81;                       // FIN + text
+  head[0] = 0x81; // FIN + text
   return Buffer.concat([head, data]);
 }
 
@@ -80,14 +91,25 @@ class Peer {
   }
   send(text) {
     if (!this.alive) return;
-    try { this.socket.write(frame(text)); } catch (e) { this.close(); }
+    try {
+      this.socket.write(frame(text));
+    } catch {
+      this.close();
+    }
   }
   close() {
     if (!this.alive) return;
     this.alive = false;
     const set = rooms.get(this.room);
-    if (set) { set.delete(this); if (!set.size) rooms.delete(this.room); }
-    try { this.socket.destroy(); } catch (e) { /* already gone */ }
+    if (set) {
+      set.delete(this);
+      if (!set.size) rooms.delete(this.room);
+    }
+    try {
+      this.socket.destroy();
+    } catch {
+      /* already gone */
+    }
   }
 }
 
@@ -100,11 +122,25 @@ function readFrames(peer, onText) {
     const masked = (buf[1] & 0x80) !== 0;
     let len = buf[1] & 0x7f;
     let off = 2;
-    if (len === 126) { if (buf.length < off + 2) break; len = buf.readUInt16BE(off); off += 2; }
-    else if (len === 127) { if (buf.length < off + 8) break; len = Number(buf.readBigUInt64BE(off)); off += 8; }
-    if (len > 4 * 1024 * 1024) { peer.close(); return; }
+    if (len === 126) {
+      if (buf.length < off + 2) break;
+      len = buf.readUInt16BE(off);
+      off += 2;
+    } else if (len === 127) {
+      if (buf.length < off + 8) break;
+      len = Number(buf.readBigUInt64BE(off));
+      off += 8;
+    }
+    if (len > 4 * 1024 * 1024) {
+      peer.close();
+      return;
+    }
     let mask = null;
-    if (masked) { if (buf.length < off + 4) break; mask = buf.slice(off, off + 4); off += 4; }
+    if (masked) {
+      if (buf.length < off + 4) break;
+      mask = buf.slice(off, off + 4);
+      off += 4;
+    }
     if (buf.length < off + len) break;
 
     let payload = buf.slice(off, off + len);
@@ -114,9 +150,16 @@ function readFrames(peer, onText) {
     }
     buf = buf.slice(off + len);
 
-    if (opcode === 0x8) { peer.socket.write(controlFrame(0x8)); peer.close(); return; }
-    if (opcode === 0x9) { peer.socket.write(controlFrame(0xA, payload)); continue; }
-    if (opcode === 0xA) continue;
+    if (opcode === 0x8) {
+      peer.socket.write(controlFrame(0x8));
+      peer.close();
+      return;
+    }
+    if (opcode === 0x9) {
+      peer.socket.write(controlFrame(0xa, payload));
+      continue;
+    }
+    if (opcode === 0xa) continue;
     if (opcode === 0x1 || opcode === 0x2 || opcode === 0x0) {
       peer.fragments.push(payload);
       if (fin) {
@@ -133,20 +176,35 @@ function readFrames(peer, onText) {
 export function attachRelay(server, path = '/relay') {
   server.on('upgrade', (req, socket) => {
     const url = new URL(req.url, 'http://localhost');
-    if (url.pathname !== path) { socket.destroy(); return; }
+    if (url.pathname !== path) {
+      socket.destroy();
+      return;
+    }
     const key = req.headers['sec-websocket-key'];
-    if (!key || (req.headers.upgrade || '').toLowerCase() !== 'websocket') { socket.destroy(); return; }
+    if (!key || (req.headers.upgrade || '').toLowerCase() !== 'websocket') {
+      socket.destroy();
+      return;
+    }
 
     socket.write(
       'HTTP/1.1 101 Switching Protocols\r\n' +
-      'Upgrade: websocket\r\n' +
-      'Connection: Upgrade\r\n' +
-      'Sec-WebSocket-Accept: ' + accept(key) + '\r\n\r\n'
+        'Upgrade: websocket\r\n' +
+        'Connection: Upgrade\r\n' +
+        'Sec-WebSocket-Accept: ' +
+        accept(key) +
+        '\r\n\r\n',
     );
     socket.setNoDelay(true);
 
     if (url.searchParams.get('probe') === '1') {
-      setTimeout(() => { try { socket.write(controlFrame(0x8)); socket.destroy(); } catch (e) { /* ignore */ } }, 50);
+      setTimeout(() => {
+        try {
+          socket.write(controlFrame(0x8));
+          socket.destroy();
+        } catch {
+          /* ignore */
+        }
+      }, 50);
       return;
     }
 
@@ -159,11 +217,15 @@ export function attachRelay(server, path = '/relay') {
     const memory = recall(room);
     if (memory) peer.send(JSON.stringify({ t: 'kept', world: JSON.parse(memory).world }));
 
-    socket.on('data', (chunk) => {
+    socket.on('data', chunk => {
       peer.buf = Buffer.concat([peer.buf, chunk]);
-      readFrames(peer, (text) => {
+      readFrames(peer, text => {
         if (text.length > 40 && text.indexOf('"snap"') > 0) {
-          try { if (JSON.parse(text).t === 'snap') remember(room, text); } catch (e) { /* not ours */ }
+          try {
+            if (JSON.parse(text).t === 'snap') remember(room, text);
+          } catch {
+            /* not ours */
+          }
         }
         for (const other of rooms.get(room) || []) if (other !== peer) other.send(text);
       });
@@ -174,7 +236,13 @@ export function attachRelay(server, path = '/relay') {
 
   const ping = setInterval(() => {
     for (const set of rooms.values())
-      for (const p of set) { try { p.socket.write(controlFrame(0x9)); } catch (e) { p.close(); } }
+      for (const p of set) {
+        try {
+          p.socket.write(controlFrame(0x9));
+        } catch {
+          p.close();
+        }
+      }
   }, 25000);
   ping.unref();
   return server;
@@ -188,12 +256,17 @@ export function roomSizes() {
 }
 
 /** For tests: forget what the relay is holding. */
-export function forgetRooms() { kept.clear(); }
+export function forgetRooms() {
+  kept.clear();
+}
 
 // Standalone: node server/relay.mjs [port]
 if (import.meta.url === 'file://' + process.argv[1]) {
   const port = Number(process.argv[2] || 8081);
-  const server = createServer((req, res) => { res.writeHead(200); res.end('relay ok'); });
+  const server = createServer((req, res) => {
+    res.writeHead(200);
+    res.end('relay ok');
+  });
   attachRelay(server);
   server.listen(port, () => console.log('relay on ws://localhost:' + port + '/relay'));
 }

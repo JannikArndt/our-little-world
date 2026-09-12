@@ -6,9 +6,15 @@ import { GW, GH, T, idx, inBounds, rebuildBlocked } from './grid.js';
 import { rnd, rndInt, rndRange } from './rng.js';
 import { tr } from './i18n.js';
 import {
-  SCENARIOS, DEFAULT_SCENARIO, scenarioOf, ROLES, PROJECTS,
-  HUNGER_RISE, LOAF_RELIEF,
-  HOUSE_STUFF, HOUSE_WALL, HOUSE_ALL,
+  SCENARIOS,
+  DEFAULT_SCENARIO,
+  scenarioOf,
+  ROLES,
+  HUNGER_RISE,
+  LOAF_RELIEF,
+  HOUSE_STUFF,
+  HOUSE_WALL,
+  HOUSE_ALL,
 } from './content.js';
 import { runMigrations } from './migrate.js';
 
@@ -16,16 +22,16 @@ import { runMigrations } from './migrate.js';
 // meaning — anything new and additive is handled by ensureWorld(), so adding
 // to the world does not cost anybody their village. See migrate.js.
 export const SCHEMA = 7;
-export const TICK_MS = 100;                 // one simulation step
-export const BLOCK_TICKS = 5 * 60 * 10;     // a five minute play block
+export const TICK_MS = 100; // one simulation step
+export const BLOCK_TICKS = 5 * 60 * 10; // a five minute play block
 
 export const RESOURCES = [
-  { key: 'wood',  icon: '🪵' },
+  { key: 'wood', icon: '🪵' },
   { key: 'plank', icon: '🪚' },
   { key: 'stone', icon: '🪨' },
   { key: 'wheat', icon: '🌾' },
-  { key: 'food',  icon: '🍞' },
-  { key: 'wool',  icon: '🧶' },
+  { key: 'food', icon: '🍞' },
+  { key: 'wool', icon: '🧶' },
 ];
 
 // what things cost and how fast they grow lives with the rest of the content
@@ -40,30 +46,40 @@ export const ROLE = ROLES;
 export const ROLE_ORDER = Object.keys(ROLES);
 
 export const CAPS = {
-  fell:   { icon: '🪓', owner: 'A' },
-  saw:    { icon: '🪚', owner: 'A' },
+  fell: { icon: '🪓', owner: 'A' },
+  saw: { icon: '🪚', owner: 'A' },
   bridge: { icon: '🌉', owner: 'A' },
-  house:  { icon: '🏠', owner: 'A' },
-  mill:   { icon: '🌀', owner: 'A' },
-  herd:   { icon: '🐑', owner: 'B' },
-  care:   { icon: '💚', owner: 'B' },
-  road:   { icon: '🛤️', owner: 'B' },
-  farm:   { icon: '🌱', owner: 'B' },
+  house: { icon: '🏠', owner: 'A' },
+  mill: { icon: '🌀', owner: 'A' },
+  herd: { icon: '🐑', owner: 'B' },
+  care: { icon: '💚', owner: 'B' },
+  road: { icon: '🛤️', owner: 'B' },
+  farm: { icon: '🌱', owner: 'B' },
 };
 
 /** Names live in the language tables, not in the world. */
-export function roleName(id) { return tr('role.' + id + '.short'); }
-export function capName(key) { return tr('cap.' + key); }
-export function resName(key) { return tr('res.' + key); }
+export function roleName(id) {
+  return tr('role.' + id + '.short');
+}
+export function capName(key) {
+  return tr('cap.' + key);
+}
+export function resName(key) {
+  return tr('res.' + key);
+}
 
 let nextId = 1;
-export function newId(prefix) { return prefix + '_' + (nextId++); }
+export function newId(prefix) {
+  return prefix + '_' + nextId++;
+}
 
 /* --------------------------------------------------------------------- */
 /* terrain                                                               */
 /* --------------------------------------------------------------------- */
 
-function riverCentre(y) { return 18.6 + Math.sin(y * 0.40) * 1.9; }
+function riverCentre(y) {
+  return 18.6 + Math.sin(y * 0.4) * 1.9;
+}
 
 /**
  * How wide the river is at a row: an hourglass, narrowest at the crossing and
@@ -80,7 +96,7 @@ function riverCentre(y) { return 18.6 + Math.sin(y * 0.40) * 1.9; }
  * crossing, so it can never quietly pinch the river somewhere else instead.
  */
 function riverHalfWidth(y, crossY) {
-  const d = Math.abs(y - crossY) / (GH / 2);       // 0 at the crossing, about 1 at the edge
+  const d = Math.abs(y - crossY) / (GH / 2); // 0 at the crossing, about 1 at the edge
   return 1.8 + 2.0 * d * d + 0.5 * d * Math.sin(y * 0.85 + 1);
 }
 
@@ -92,13 +108,13 @@ function paintValley(w, scen) {
 
   // forest in the north west
   for (let y = 0; y < 10; y++)
-    for (let x = 0; x < 13; x++)
-      if (y + x * 0.35 < 11) t[idx(x, y)] = T.FOREST;
+    for (let x = 0; x < 13; x++) if (y + x * 0.35 < 11) t[idx(x, y)] = T.FOREST;
 
   // the river, north to south, at its narrowest where the bridge belongs
   const crossY = (scen && scen.crossingRow != null ? scen.crossingRow : 12) + 0.5;
   for (let y = 0; y < GH; y++) {
-    const cx = riverCentre(y), hw = riverHalfWidth(y, crossY);
+    const cx = riverCentre(y),
+      hw = riverHalfWidth(y, crossY);
     for (let x = 0; x < GW; x++) {
       const d = Math.abs(x + 0.5 - cx);
       if (d < hw) t[idx(x, y)] = T.WATER;
@@ -108,8 +124,7 @@ function paintValley(w, scen) {
 
   // the field on the east bank
   for (let y = 15; y <= 21; y++)
-    for (let x = 25; x <= 34; x++)
-      if (t[idx(x, y)] === T.GRASS) t[idx(x, y)] = T.FIELD;
+    for (let x = 25; x <= 34; x++) if (t[idx(x, y)] === T.GRASS) t[idx(x, y)] = T.FIELD;
 }
 
 function paintRoad(w, ax, ay, bx, by) {
@@ -153,8 +168,8 @@ export function createWorld(seed, scenarioId) {
     regions: {},
     notices: [],
     journal: [],
-    flags: {},        // one-off switches: what has been seen, what is unlocked
-    ext: {},          // room for anything a later version wants to keep
+    flags: {}, // one-off switches: what has been seen, what is unlocked
+    ext: {}, // room for anything a later version wants to keep
     seq: 0,
   };
 
@@ -165,21 +180,49 @@ export function createWorld(seed, scenarioId) {
 
   // ---- what stands in the village ------------------------------------
   for (const h of scen.houses)
-    addBuilding(w, { key: h.key, type: 'house', x: h.x, y: h.y, w: h.w, h: h.h,
-                     state: 'built', name: h.name, beds: h.beds, warm: true, light: true });
+    addBuilding(w, {
+      key: h.key,
+      type: 'house',
+      x: h.x,
+      y: h.y,
+      w: h.w,
+      h: h.h,
+      state: 'built',
+      name: h.name,
+      beds: h.beds,
+      warm: true,
+      light: true,
+    });
   for (const st of scen.sites)
-    addBuilding(w, { key: st.key, type: 'site', x: st.x, y: st.y, w: st.w, h: st.h,
-                     state: 'site', name: st.name });
+    addBuilding(w, {
+      key: st.key,
+      type: 'site',
+      x: st.x,
+      y: st.y,
+      w: st.w,
+      h: st.h,
+      state: 'site',
+      name: st.name,
+    });
   for (const b of scen.works)
-    addBuilding(w, { key: b.key, type: b.type, x: b.x, y: b.y, w: b.w, h: b.h,
-                     state: 'built', name: b.name });
+    addBuilding(w, {
+      key: b.key,
+      type: b.type,
+      x: b.x,
+      y: b.y,
+      w: b.w,
+      h: b.h,
+      state: 'built',
+      name: b.name,
+    });
   for (const r of scen.roads) paintRoad(w, r[0], r[1], r[2], r[3]);
 
   // ---- the forest ----------------------------------------------------
   const f = scen.forest;
   const spots = [];
   for (let i = 0; i < 60 && spots.length < f.count; i++) {
-    const x = f.x + rndInt(w, f.w), y = f.y + rndInt(w, f.h);
+    const x = f.x + rndInt(w, f.w),
+      y = f.y + rndInt(w, f.h);
     if (w.terrain[idx(x, y)] !== T.FOREST) continue;
     if (spots.some(s => Math.abs(s.x - x) + Math.abs(s.y - y) < f.apart)) continue;
     spots.push({ x, y });
@@ -194,15 +237,25 @@ export function createWorld(seed, scenarioId) {
   // ---- animals -------------------------------------------------------
   for (const spec of scen.sheep) {
     w.sheep.push({
-      id: newId('sheep'), name: spec.name,
-      x: spec.at[0] + 0.5, y: spec.at[1] + 0.5,
-      path: [], pathI: 0, hunger: 20 + rndInt(w, 25), thirst: 15 + rndInt(w, 30),
-      fluff: 40 + rndInt(w, 30), mood: 'ok', wait: rndInt(w, 40), led: null, hearts: 0,
+      id: newId('sheep'),
+      name: spec.name,
+      x: spec.at[0] + 0.5,
+      y: spec.at[1] + 0.5,
+      path: [],
+      pathI: 0,
+      hunger: 20 + rndInt(w, 25),
+      thirst: 15 + rndInt(w, 30),
+      fluff: 40 + rndInt(w, 30),
+      mood: 'ok',
+      wait: rndInt(w, 40),
+      led: null,
+      hearts: 0,
     });
   }
   // each one starts wanting a different thing, so there is something to notice
   for (let i = 0; i < scen.sheep.length; i++) {
-    const spec = scen.sheep[i], sh = w.sheep[i];
+    const spec = scen.sheep[i],
+      sh = w.sheep[i];
     if (spec.fluff != null) sh.fluff = spec.fluff;
     if (spec.thirst != null) sh.thirst = spec.thirst;
     if (spec.hunger != null) sh.hunger = spec.hunger;
@@ -233,9 +286,10 @@ export function createWorld(seed, scenarioId) {
 /** A player's side of the table, as their role starts out. */
 function newPlayer(id) {
   const role = ROLES[id] || {};
-  const res = {}, caps = {};
-  for (const k in (role.res || {})) res[k] = role.res[k];
-  for (const k in (role.caps || {})) caps[k] = role.caps[k];
+  const res = {},
+    caps = {};
+  for (const k in role.res || {}) res[k] = role.res[k];
+  for (const k in role.caps || {}) caps[k] = role.caps[k];
   return { res, caps, done: {}, busy: null, seen: 0 };
 }
 
@@ -243,11 +297,24 @@ function newPlayer(id) {
 function makeVillager(w, spec) {
   const home = spec.home != null ? houseFor(w, spec.home) : null;
   return {
-    id: newId('v'), key: spec.key, name: spec.name, colour: spec.colour,
-    kid: !!spec.kid, x: spec.at[0] + 0.5, y: spec.at[1] + 0.5,
-    path: [], pathI: 0, task: null, wait: rndInt(w, 30),
-    hunger: 28 + rndInt(w, 26), homeId: home ? home.id : null, carrying: null,
-    mood: 'ok', hearts: 0, said: null, saidUntil: 0,
+    id: newId('v'),
+    key: spec.key,
+    name: spec.name,
+    colour: spec.colour,
+    kid: !!spec.kid,
+    x: spec.at[0] + 0.5,
+    y: spec.at[1] + 0.5,
+    path: [],
+    pathI: 0,
+    task: null,
+    wait: rndInt(w, 30),
+    hunger: 28 + rndInt(w, 26),
+    homeId: home ? home.id : null,
+    carrying: null,
+    mood: 'ok',
+    hearts: 0,
+    said: null,
+    saidUntil: 0,
   };
 }
 
@@ -255,8 +322,11 @@ function makeVillager(w, spec) {
 function houseFor(w, n) {
   const spec = scenarioOf(w).houses[n];
   if (!spec) return null;
-  return w.buildings.find(b => b.key === spec.key) ||
-         w.buildings.find(b => b.x === spec.x && b.y === spec.y) || null;
+  return (
+    w.buildings.find(b => b.key === spec.key) ||
+    w.buildings.find(b => b.x === spec.x && b.y === spec.y) ||
+    null
+  );
 }
 
 /* --------------------------------------------------------------------- */
@@ -273,8 +343,18 @@ export function ensureWorld(w) {
   w.scenario = SCENARIOS[w.scenario] ? w.scenario : DEFAULT_SCENARIO;
   const scen = scenarioOf(w);
 
-  for (const k of ['trees', 'logs', 'buildings', 'plots', 'sheep', 'villagers',
-                   'stones', 'visitors', 'notices', 'journal']) {
+  for (const k of [
+    'trees',
+    'logs',
+    'buildings',
+    'plots',
+    'sheep',
+    'villagers',
+    'stones',
+    'visitors',
+    'notices',
+    'journal',
+  ]) {
     if (!Array.isArray(w[k])) w[k] = [];
   }
   if (!w.flags || typeof w.flags !== 'object') w.flags = {};
@@ -284,20 +364,29 @@ export function ensureWorld(w) {
 
   // a role the scenario plays that this world has never heard of gets a seat
   for (const id of scen.roles || ['A', 'B']) if (!w.players[id]) w.players[id] = newPlayer(id);
-  for (const r of scen.regions || []) if (!w.regions[r.id]) w.regions[r.id] = r.open === false ? 'later' : 'open';
+  for (const r of scen.regions || [])
+    if (!w.regions[r.id]) w.regions[r.id] = r.open === false ? 'later' : 'open';
   cacheRegions(w);
   if (!w.block) w.block = { active: false, startTick: 0, length: BLOCK_TICKS, endedAt: null };
 
   // fields that later versions expect to find on things that already exist
-  for (const t of w.trees) { if (!t.state) t.state = 'standing'; }
-  for (const b of w.buildings) { if (!b.residents) b.residents = []; if (b.beds == null) b.beds = 0; }
+  for (const t of w.trees) {
+    if (!t.state) t.state = 'standing';
+  }
+  for (const b of w.buildings) {
+    if (!b.residents) b.residents = [];
+    if (b.beds == null) b.beds = 0;
+  }
   // a house has furniture now, and an old one keeps what it was already doing
   for (const b of w.buildings) {
     if (b.type !== 'house' || b.state !== 'built') continue;
     if (!Array.isArray(b.stuff)) b.stuff = inheritedStuff(b);
     houseFit(b);
   }
-  for (const v of w.villagers) { if (v.kid === undefined) v.kid = false; if (!v.poorly) v.poorly = 0; }
+  for (const v of w.villagers) {
+    if (v.kid === undefined) v.kid = false;
+    if (!v.poorly) v.poorly = 0;
+  }
 
   ensurePeople(w, scen);
   ensurePlans(w, scen);
@@ -308,22 +397,41 @@ export function ensureWorld(w) {
 function ensurePeople(w, scen) {
   for (const spec of scen.villagers) {
     const there = w.villagers.find(v => (v.key && v.key === spec.key) || v.name === spec.name);
-    if (there) { if (!there.key) there.key = spec.key; continue; }
+    if (there) {
+      if (!there.key) there.key = spec.key;
+      continue;
+    }
     const v = makeVillagerPlain(spec);
     w.villagers.push(v);
     const home = spec.home != null ? houseFor(w, spec.home) : null;
-    if (home && home.residents.length < home.beds) { home.residents.push(v.id); v.homeId = home.id; }
+    if (home && home.residents.length < home.beds) {
+      home.residents.push(v.id);
+      v.homeId = home.id;
+    }
   }
 }
 
 /** Like makeVillager, but for a world that is already running (no dice). */
 function makeVillagerPlain(spec) {
   return {
-    id: newId('v'), key: spec.key, name: spec.name, colour: spec.colour,
-    kid: !!spec.kid, x: spec.at[0] + 0.5, y: spec.at[1] + 0.5,
-    path: [], pathI: 0, task: null, wait: 20,
-    hunger: 30, homeId: null, carrying: null,
-    mood: 'ok', hearts: 0, said: null, saidUntil: 0,
+    id: newId('v'),
+    key: spec.key,
+    name: spec.name,
+    colour: spec.colour,
+    kid: !!spec.kid,
+    x: spec.at[0] + 0.5,
+    y: spec.at[1] + 0.5,
+    path: [],
+    pathI: 0,
+    task: null,
+    wait: 20,
+    hunger: 30,
+    homeId: null,
+    carrying: null,
+    mood: 'ok',
+    hearts: 0,
+    said: null,
+    saidUntil: 0,
   };
 }
 
@@ -334,8 +442,15 @@ function ensurePlans(w, scen) {
     const at = resolveAnchor(w, spec.anchor);
     if (!at) continue;
     addBuilding(w, {
-      id: spec.id, type: spec.type, x: at.x, y: at.y, w: spec.w, h: spec.h,
-      state: 'plan', name: spec.name, walkable: !!spec.walkable,
+      id: spec.id,
+      type: spec.type,
+      x: at.x,
+      y: at.y,
+      w: spec.w,
+      h: spec.h,
+      state: 'plan',
+      name: spec.name,
+      walkable: !!spec.walkable,
     });
   }
 }
@@ -360,14 +475,24 @@ export function slotFits(slot, where) {
  */
 export function houseFit(b) {
   if (!Array.isArray(b.stuff)) b.stuff = [];
-  let beds = 0, warm = false, light = false, flame = false, comfort = 0;
+  let beds = 0,
+    warm = false,
+    light = false,
+    flame = false,
+    comfort = 0;
   for (const s of b.stuff) {
     const def = HOUSE_STUFF[s.kind];
     if (!def) continue;
     comfort += def.comfort || 0;
     if (def.gives === 'bed') beds++;
-    if (def.gives === 'warm') { warm = true; flame = true; }
-    if (def.gives === 'light') { light = true; if (s.kind === 'lamp') flame = true; }
+    if (def.gives === 'warm') {
+      warm = true;
+      flame = true;
+    }
+    if (def.gives === 'light') {
+      light = true;
+      if (s.kind === 'lamp') flame = true;
+    }
   }
   b.beds = beds;
   b.warm = warm;
@@ -381,7 +506,8 @@ export function houseFit(b) {
 
 /** Put a list of things in the first slots that will take them. */
 export function placeStuff(kinds) {
-  const out = [], taken = {};
+  const out = [],
+    taken = {};
   for (const kind of kinds) {
     const def = HOUSE_STUFF[kind];
     if (!def) continue;
@@ -398,7 +524,9 @@ export function placeStuff(kinds) {
 }
 
 /** What a house has the day it goes up: light to see by and a bed to sleep in. */
-export function newHouseStuff() { return placeStuff(['window', 'bed']); }
+export function newHouseStuff() {
+  return placeStuff(['window', 'bed']);
+}
 
 /**
  * A house built before there was anything to put in one. It keeps exactly what
@@ -407,14 +535,15 @@ export function newHouseStuff() { return placeStuff(['window', 'bed']); }
  */
 function inheritedStuff(b) {
   const plan = b.plan && typeof b.plan === 'object' ? b.plan : null;
-  const inPlan = (kind) => {
+  const inPlan = kind => {
     let n = 0;
-    for (const k in (plan || {})) if (plan[k] === kind) n++;
+    for (const k in plan || {}) if (plan[k] === kind) n++;
     return n;
   };
   const want = [];
   for (let i = 0; i < Math.max(1, b.beds || 0); i++) want.push('bed');
-  for (let i = 0; i < Math.max(b.light === false ? 0 : 1, inPlan('window')); i++) want.push('window');
+  for (let i = 0; i < Math.max(b.light === false ? 0 : 1, inPlan('window')); i++)
+    want.push('window');
   if (b.warm !== false || inPlan('stove')) want.push('stove');
   for (let i = 0; i < inPlan('table'); i++) want.push('table');
   return placeStuff(want);
@@ -454,7 +583,8 @@ function findSandNear(w, cx, cy) {
     for (let dy = -r; dy <= r; dy++)
       for (let dx = -r; dx <= r; dx++) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-        const x = cx + dx, y = cy + dy;
+        const x = cx + dx,
+          y = cy + dy;
         if (inBounds(x, y) && w.terrain[idx(x, y)] === T.SAND) return { x, y };
       }
   return null;
@@ -462,10 +592,14 @@ function findSandNear(w, cx, cy) {
 
 /** The two rows where a bridge can be built, plus the water span. */
 function findCrossing(w, row) {
-  let x0 = GW, x1 = -1;
+  let x0 = GW,
+    x1 = -1;
   for (const y of [row, row + 1])
     for (let x = 0; x < GW; x++)
-      if (w.terrain[idx(x, y)] === T.WATER) { if (x < x0) x0 = x; if (x > x1) x1 = x; }
+      if (w.terrain[idx(x, y)] === T.WATER) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+      }
   return { row, rows: 2, x0, x1, span: x1 - x0 + 1 };
 }
 
@@ -474,15 +608,21 @@ function findCrossing(w, row) {
 /* --------------------------------------------------------------------- */
 
 export const byId = (list, id) => list.find(o => o.id === id) || null;
-export function otherRole(r) { return r === 'A' ? 'B' : 'A'; }
-export function can(w, role, cap) { return !!(w.players[role] && w.players[role].caps[cap]); }
+export function otherRole(r) {
+  return r === 'A' ? 'B' : 'A';
+}
+export function can(w, role, cap) {
+  return !!(w.players[role] && w.players[role].caps[cap]);
+}
 
 export function freeBed(w) {
   for (const b of w.buildings)
     if (b.type === 'house' && b.state === 'built' && b.residents.length < b.beds) return b;
   return null;
 }
-export function homeless(w) { return w.villagers.filter(v => !v.homeId); }
+export function homeless(w) {
+  return w.villagers.filter(v => !v.homeId);
+}
 
 /**
  * How much bread the village gets through in a day, and how long what is in
@@ -505,15 +645,25 @@ export function basketDays(w) {
   if (eaten <= 0) return null;
   return w.larder.food / eaten;
 }
-export function poorly(w) { return w.villagers.filter(v => v.poorly > 0); }
+export function poorly(w) {
+  return w.villagers.filter(v => v.poorly > 0);
+}
 
 /** Whose turn it is not: everybody else at the table. */
-export function otherRoles(w, id) { return Object.keys(w.players).filter(r => r !== id); }
+export function otherRoles(w, id) {
+  return Object.keys(w.players).filter(r => r !== id);
+}
 
 /** Clean water to drink, and a river nobody has spoiled. */
-export function hasWell(w) { return hasProject(w, 'well'); }
-export function riverClean(w) { return hasProject(w, 'privy'); }
-export function fieldFenced(w) { return hasProject(w, 'fence'); }
+export function hasWell(w) {
+  return hasProject(w, 'well');
+}
+export function riverClean(w) {
+  return hasProject(w, 'privy');
+}
+export function fieldFenced(w) {
+  return hasProject(w, 'fence');
+}
 
 /**
  * The boxes the pathfinder should treat as not-there-yet, worked out once and
@@ -535,20 +685,32 @@ export function regionAt(w, x, y) {
   }
   return null;
 }
-export function regionOpen(w, id) { return (w.regions || {})[id] !== 'later'; }
-export function kids(w) { return w.villagers.filter(v => v.kid); }
+export function regionOpen(w, id) {
+  return (w.regions || {})[id] !== 'later';
+}
+export function kids(w) {
+  return w.villagers.filter(v => v.kid);
+}
 
 /** The house plot people are waiting on — never one of the project plans. */
-export function openSite(w) { return w.buildings.find(b => b.state === 'site') || null; }
+export function openSite(w) {
+  return w.buildings.find(b => b.state === 'site') || null;
+}
 
 /** A project: 'plan' while it is only an idea, 'built' once it is there. */
-export function project(w, type) { return w.buildings.find(b => b.type === type) || null; }
+export function project(w, type) {
+  return w.buildings.find(b => b.type === type) || null;
+}
 export function hasProject(w, type) {
   const b = project(w, type);
   return !!(b && b.state === 'built');
 }
-export function stumps(w) { return w.trees.filter(t => t.state === 'stump'); }
-export function saplings(w) { return w.trees.filter(t => t.state === 'sapling'); }
+export function stumps(w) {
+  return w.trees.filter(t => t.state === 'stump');
+}
+export function saplings(w) {
+  return w.trees.filter(t => t.state === 'sapling');
+}
 
 export function blockProgress(w) {
   if (!w.block.active) return w.block.endedAt !== null ? 1 : 0;
@@ -562,9 +724,9 @@ export function blockProgress(w) {
 // says it instead, and the people go to bed when it is over.
 
 export const PHASES = [
-  { at: 0.00, id: 'dawn' },
+  { at: 0.0, id: 'dawn' },
   { at: 0.12, id: 'morning' },
-  { at: 0.40, id: 'midday' },
+  { at: 0.4, id: 'midday' },
   { at: 0.66, id: 'afternoon' },
   { at: 0.84, id: 'evening' },
 ];
@@ -588,7 +750,9 @@ export function isDusk(w) {
 /* serialisation                                                         */
 /* --------------------------------------------------------------------- */
 
-export function serialize(w) { return JSON.stringify(w); }
+export function serialize(w) {
+  return JSON.stringify(w);
+}
 
 /**
  * Read a world back. An older world is brought up to date rather than thrown
@@ -597,19 +761,32 @@ export function serialize(w) { return JSON.stringify(w); }
  */
 export function deserialize(text) {
   let w = null;
-  try { w = JSON.parse(text); } catch (e) { return null; }
+  try {
+    w = JSON.parse(text);
+  } catch {
+    return null;
+  }
   if (!w || typeof w !== 'object' || !Array.isArray(w.terrain)) return null;
   if (!runMigrations(w, SCHEMA)) return null;
 
   // keep the id counter ahead of anything already in the world, before
   // ensureWorld starts handing out ids of its own
   let max = 0;
-  const scan = (list) => {
+  const scan = list => {
     if (!Array.isArray(list)) return;
-    for (const o of list) { const n = parseInt(String(o.id).split('_')[1], 10); if (n > max) max = n; }
+    for (const o of list) {
+      const n = parseInt(String(o.id).split('_')[1], 10);
+      if (n > max) max = n;
+    }
   };
-  scan(w.trees); scan(w.buildings); scan(w.sheep); scan(w.villagers);
-  scan(w.plots); scan(w.logs); scan(w.stones); scan(w.visitors);
+  scan(w.trees);
+  scan(w.buildings);
+  scan(w.sheep);
+  scan(w.villagers);
+  scan(w.plots);
+  scan(w.logs);
+  scan(w.stones);
+  scan(w.visitors);
   nextId = max + 1;
 
   ensureWorld(w);

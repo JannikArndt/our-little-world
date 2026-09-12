@@ -5,8 +5,17 @@
 
 import { GW, GH, T, inBounds, setTile, tileAt, rebuildBlocked, walkable } from './grid.js';
 import {
-  addBuilding, byId, newId, CAPS, capName, BLOCK_TICKS, cacheRegions, isDusk,
-  houseFit, newHouseStuff, slotFits,
+  addBuilding,
+  byId,
+  newId,
+  CAPS,
+  capName,
+  BLOCK_TICKS,
+  cacheRegions,
+  isDusk,
+  houseFit,
+  newHouseStuff,
+  slotFits,
 } from './world.js';
 import { PROJECTS, EAGER_AT, HOUSE_SHELL, HOUSE_STUFF } from './content.js';
 import { findPath } from './pathfind.js';
@@ -17,7 +26,15 @@ import { rndInt } from './rng.js';
 export function fx(w, kind, x, y, text, colour) {
   w.fx = w.fx || [];
   if (w.fx.length > 40) w.fx.shift();
-  w.fx.push({ kind, x, y, text: text || '', colour: colour || null, born: w.tick, id: newId('fx') });
+  w.fx.push({
+    kind,
+    x,
+    y,
+    text: text || '',
+    colour: colour || null,
+    born: w.tick,
+    id: newId('fx'),
+  });
 }
 
 /**
@@ -46,17 +63,23 @@ export function setAct(w, v, kind, ticks, withId) {
   v.act = { kind, until: w.tick + ticks, with: withId || null };
   return v.act;
 }
-export function clearAct(v) { v.act = null; }
+export function clearAct(v) {
+  v.act = null;
+}
 
 /** A few tiles off, wherever the ground allows it. Used to send someone shy scurrying away. */
 function trotAway(w, v, tiles) {
-  const sx = Math.floor(v.x), sy = Math.floor(v.y);
+  const sx = Math.floor(v.x),
+    sy = Math.floor(v.y);
   for (let i = 0; i < 10; i++) {
     const x = sx + rndInt(w, tiles * 2 + 1) - tiles;
     const y = sy + rndInt(w, tiles * 2 + 1) - tiles;
     if (!inBounds(x, y) || !walkable(w, x, y)) continue;
     const p = findPath(w, sx, sy, x, y);
-    if (p && p.length) { v.path = p; return true; }
+    if (p && p.length) {
+      v.path = p;
+      return true;
+    }
   }
   return false;
 }
@@ -86,14 +109,13 @@ function tally(w, role, what) {
   const d = w.players[role].done;
   d[what] = (d[what] || 0) + 1;
 }
-const POKE_TICKS = 25;                             // about two and a half seconds
+const POKE_TICKS = 25; // about two and a half seconds
 const POKE_ANSWERS = ['wave', 'wink', 'hop', 'shy'];
 
 /* ---- the reducer ---------------------------------------------------- */
 
 export function applyAction(w, a) {
   switch (a.type) {
-
     /* ---------------- the play block ---------------- */
     case 'block.start': {
       w.block.active = true;
@@ -114,8 +136,11 @@ export function applyAction(w, a) {
         v.inside = false;
         v.path = [];
         v.task = null;
-        v.wait = 6 + (n++) * 9;
-        if (b) { v.x = b.door.x + 0.5; v.y = b.door.y + 0.9; }
+        v.wait = 6 + n++ * 9;
+        if (b) {
+          v.x = b.door.x + 0.5;
+          v.y = b.door.y + 0.9;
+        }
       }
       return true;
     }
@@ -140,9 +165,20 @@ export function applyAction(w, a) {
       if (a.logs > 0) {
         const dx = a.dir === 'W' ? -2 : a.dir === 'E' ? 2 : 0;
         const dy = a.dir === 'N' ? -2 : a.dir === 'S' ? 2 : 0;
-        let lx = Math.max(0, Math.min(GW - 1, tree.x + dx)), ly = Math.max(0, Math.min(GH - 1, tree.y + dy));
-        if (tileAt(w, lx, ly) === T.WATER) { lx = tree.x; ly = tree.y; }
-        w.logs.push({ id: newId('log'), x: lx + 0.5, y: ly + 0.5, owner: a.role, claimed: null, wood: a.logs });
+        let lx = Math.max(0, Math.min(GW - 1, tree.x + dx)),
+          ly = Math.max(0, Math.min(GH - 1, tree.y + dy));
+        if (tileAt(w, lx, ly) === T.WATER) {
+          lx = tree.x;
+          ly = tree.y;
+        }
+        w.logs.push({
+          id: newId('log'),
+          x: lx + 0.5,
+          y: ly + 0.5,
+          owner: a.role,
+          claimed: null,
+          wood: a.logs,
+        });
       }
       tally(w, a.role, 'fell');
       journal(w, '🌳', 'j.felled');
@@ -154,7 +190,10 @@ export function applyAction(w, a) {
       if (!pay(w, a.role, { wood: a.wood })) return false;
       gain(w, a.role, 'plank', a.planks);
       const ws = w.buildings.find(b => b.type === 'workshop');
-      if (ws) { ws.spin = w.tick; fx(w, 'float', ws.x + 2, ws.y - 0.2, '+' + a.planks + ' 🪚'); }
+      if (ws) {
+        ws.spin = w.tick;
+        fx(w, 'float', ws.x + 2, ws.y - 0.2, '+' + a.planks + ' 🪚');
+      }
       tally(w, a.role, 'saw');
       // A perfectly cut log — every piece the size that was ordered — is what
       // teaches the next level of the sawmill: see LEVEL2_AT in sawmill.js.
@@ -168,7 +207,10 @@ export function applyAction(w, a) {
       if (!pay(w, a.role, { wheat: a.wheat })) return false;
       gain(w, a.role, 'food', a.food);
       const ws = w.buildings.find(b => b.type === 'workshop');
-      if (ws) { ws.spin = w.tick; fx(w, 'float', ws.x + 2, ws.y - 0.2, '+' + a.food + ' 🍞'); }
+      if (ws) {
+        ws.spin = w.tick;
+        fx(w, 'float', ws.x + 2, ws.y - 0.2, '+' + a.food + ' 🍞');
+      }
       tally(w, a.role, 'mill');
       journal(w, '🍞', 'j.baked', { n: a.food });
       return true;
@@ -286,18 +328,30 @@ export function applyAction(w, a) {
       rebuildBlocked(w);
       fx(w, 'sparkle', plan.x + plan.w / 2, plan.y + plan.h / 2);
       // the children hear the swing go up and go straight to it
-      if (def.type === 'play') for (const v of w.villagers) if (v.kid) { v.path = []; v.task = null; v.wait = 0; }
+      if (def.type === 'play')
+        for (const v of w.villagers)
+          if (v.kid) {
+            v.path = [];
+            v.task = null;
+            v.wait = 0;
+          }
       // clean water means nobody has to feel poorly about the river
       if (def.type === 'well' || def.type === 'privy')
-        for (const v of w.villagers) if (v.poorly > 0) { v.poorly = 0; v.hearts = w.tick; }
+        for (const v of w.villagers)
+          if (v.poorly > 0) {
+            v.poorly = 0;
+            v.hearts = w.tick;
+          }
       tally(w, a.role, def.type);
       journal(w, def.journal, 'j.' + def.type);
       w.notices = w.notices.filter(n => n.id !== 'poorly' && n.id !== 'sheep_in_field');
       return true;
     }
     // the two projects that shipped before there was one action for all of them
-    case 'boat.build': return applyAction(w, { type: 'project.build', role: a.role, what: 'boat' });
-    case 'play.build': return applyAction(w, { type: 'project.build', role: a.role, what: 'play' });
+    case 'boat.build':
+      return applyAction(w, { type: 'project.build', role: a.role, what: 'boat' });
+    case 'play.build':
+      return applyAction(w, { type: 'project.build', role: a.role, what: 'play' });
 
     case 'fish.catch': {
       const boat = byId(w.buildings, 'plan_boat');
@@ -331,7 +385,7 @@ export function applyAction(w, a) {
       if (!t || t.state !== 'stump') return false;
       t.state = 'sapling';
       t.plantedTick = w.tick;
-      t.kind = 1 + (Math.abs((t.x * 7 + t.y * 13)) % 3);
+      t.kind = 1 + (Math.abs(t.x * 7 + t.y * 13) % 3);
       fx(w, 'float', t.x + 0.5, t.y, '🌱');
       tally(w, a.role, 'plant');
       journal(w, '🌱', 'j.planted');
@@ -340,14 +394,19 @@ export function applyAction(w, a) {
 
     /* ---------------- roads ---------------- */
     case 'road.build': {
-      const tiles = (a.tiles || []).filter(t => inBounds(t.x, t.y) &&
-        tileAt(w, t.x, t.y) !== T.WATER && tileAt(w, t.x, t.y) !== T.ROAD && tileAt(w, t.x, t.y) !== T.BRIDGE);
+      const tiles = (a.tiles || []).filter(
+        t =>
+          inBounds(t.x, t.y) &&
+          tileAt(w, t.x, t.y) !== T.WATER &&
+          tileAt(w, t.x, t.y) !== T.ROAD &&
+          tileAt(w, t.x, t.y) !== T.BRIDGE,
+      );
       if (!tiles.length) return false;
       const cost = Math.ceil(tiles.length / 2);
       if (!pay(w, a.role, { stone: cost })) return false;
       for (const t of tiles) setTile(w, t.x, t.y, T.ROAD);
       rebuildBlocked(w);
-      for (const v of w.villagers) v.path = [];      // everybody re-plans on the new road
+      for (const v of w.villagers) v.path = []; // everybody re-plans on the new road
       for (const s of w.sheep) s.path = [];
       tally(w, a.role, 'road');
       journal(w, '🛤️', 'j.road', { n: tiles.length });
@@ -367,10 +426,15 @@ export function applyAction(w, a) {
     case 'sheep.care': {
       const s = byId(w.sheep, a.sheepId);
       if (!s) return false;
-      if (a.item === 'hay')   s.hunger = Math.max(0, s.hunger - 70);
+      if (a.item === 'hay') s.hunger = Math.max(0, s.hunger - 70);
       if (a.item === 'water') s.thirst = Math.max(0, s.thirst - 80);
-      if (a.item === 'shear') { const got = s.fluff > 60 ? 2 : 1; s.fluff = 0; gain(w, a.role, 'wool', got); fx(w, 'float', s.x, s.y - 0.6, '+' + got + ' 🧶'); }
-      if (a.item === 'pet')   s.hearts = w.tick;
+      if (a.item === 'shear') {
+        const got = s.fluff > 60 ? 2 : 1;
+        s.fluff = 0;
+        gain(w, a.role, 'wool', got);
+        fx(w, 'float', s.x, s.y - 0.6, '+' + got + ' 🧶');
+      }
+      if (a.item === 'pet') s.hearts = w.tick;
       s.hearts = w.tick;
       fx(w, 'hearts', s.x, s.y - 0.7);
       tally(w, a.role, 'care');
@@ -408,7 +472,9 @@ export function applyAction(w, a) {
       // otherwise, an answer — the same one on both screens, since it comes
       // from the world's own seeded rng rather than anything local
       const answer = POKE_ANSWERS[rndInt(w, POKE_ANSWERS.length)];
-      v.path = []; v.task = null; v.wait = POKE_TICKS;
+      v.path = [];
+      v.task = null;
+      v.wait = POKE_TICKS;
       setAct(w, v, answer, POKE_TICKS);
       v.hearts = w.tick;
       fx(w, 'hearts', v.x, v.y - 0.7);
@@ -420,7 +486,10 @@ export function applyAction(w, a) {
     case 'plot.plant': {
       const p = byId(w.plots, a.plotId);
       if (!p || p.state !== 'empty') return false;
-      p.state = 'growing'; p.growth = 0; p.water = a.watered ? 100 : 0; p.nibbled = 0;
+      p.state = 'growing';
+      p.growth = 0;
+      p.water = a.watered ? 100 : 0;
+      p.nibbled = 0;
       fx(w, 'float', p.x + 1, p.y, '🌱');
       tally(w, a.role, 'farm');
       tally(w, a.role, 'sow');
@@ -437,7 +506,10 @@ export function applyAction(w, a) {
       const p = byId(w.plots, a.plotId);
       if (!p || p.state !== 'ripe') return false;
       const n = Math.max(1, 3 - p.nibbled);
-      p.state = 'empty'; p.growth = 0; p.water = 0; p.nibbled = 0;
+      p.state = 'empty';
+      p.growth = 0;
+      p.water = 0;
+      p.nibbled = 0;
       gain(w, a.role, 'wheat', n);
       fx(w, 'float', p.x + 1, p.y, '+' + n + ' 🌾');
       tally(w, a.role, 'farm');
@@ -467,7 +539,8 @@ export function applyAction(w, a) {
 
     /* ---------------- sharing ---------------- */
     case 'give': {
-      const from = w.players[a.from], to = w.players[a.to];
+      const from = w.players[a.from],
+        to = w.players[a.to];
       if (!from || !to) return false;
       const n = Math.min(a.n, from.res[a.res] || 0);
       if (n <= 0) return false;
@@ -491,7 +564,9 @@ export function applyAction(w, a) {
       for (const v of w.villagers) {
         if (v.hunger <= EAGER_AT) continue;
         if (v.poorly > 0 || v.carrying || isDusk(w)) continue;
-        v.path = []; v.task = null; v.wait = 0;
+        v.path = [];
+        v.task = null;
+        v.wait = 0;
       }
       return true;
     }
@@ -503,7 +578,14 @@ export function applyAction(w, a) {
       if (w.players[a.to].caps[a.cap]) return false;
       w.players[a.to].caps[a.cap] = 1;
       journal(w, '👐', 'j.taught');
-      note(w, 'taught_' + a.cap, CAPS[a.cap].icon, 'teach.notice', { what: capName(a.cap) }, 'calm');
+      note(
+        w,
+        'taught_' + a.cap,
+        CAPS[a.cap].icon,
+        'teach.notice',
+        { what: capName(a.cap) },
+        'calm',
+      );
       return true;
     }
 
@@ -519,7 +601,8 @@ export function applyAction(w, a) {
       w.notices = w.notices.filter(n => n.id !== a.id);
       return true;
     }
-    case 'world.event': {                    // emitted by events.js, replayed identically
+    case 'world.event': {
+      // emitted by events.js, replayed identically
       return applyWorldEvent(w, a);
     }
     default:
@@ -544,7 +627,16 @@ function applyWorldEvent(w, a) {
     }
     case 'newfamily': {
       if (w.buildings.some(b => b.id === 'site_east')) return false;
-      const b = addBuilding(w, { id: 'site_east', type: 'site', x: 26, y: 6, w: 3, h: 2, state: 'site', name: 'a marked-out plot' });
+      const b = addBuilding(w, {
+        id: 'site_east',
+        type: 'site',
+        x: 26,
+        y: 6,
+        w: 3,
+        h: 2,
+        state: 'site',
+        name: 'a marked-out plot',
+      });
       b.newFamily = true;
       note(w, 'newfamily', '👨‍👩‍👧', 'notice.newFamily', null, 'ask');
       journal(w, '👨‍👩‍👧', 'j.family');
@@ -553,18 +645,31 @@ function applyWorldEvent(w, a) {
     case 'critter': {
       w.visitors = w.visitors || [];
       if (w.visitors.length) return false;
-      w.visitors.push({ id: newId('cr'), kind: a.kind || 'deer', x: 2.5, y: 9.5, path: [], wait: 0, life: 1400 });
+      w.visitors.push({
+        id: newId('cr'),
+        kind: a.kind || 'deer',
+        x: 2.5,
+        y: 9.5,
+        path: [],
+        wait: 0,
+        life: 1400,
+      });
       note(w, 'critter', '🦌', 'notice.critter', null, 'calm');
       journal(w, '🦌', 'j.deer');
       return true;
     }
     case 'goodharvest': {
       let n = 0;
-      for (const p of w.plots) if (p.state === 'growing' && p.growth > 30) { p.growth = Math.min(100, p.growth + 25); n++; }
+      for (const p of w.plots)
+        if (p.state === 'growing' && p.growth > 30) {
+          p.growth = Math.min(100, p.growth + 25);
+          n++;
+        }
       if (!n) return false;
       note(w, 'goodharvest', '☀️', 'notice.goodHarvest', null, 'calm');
       return true;
     }
-    default: return false;
+    default:
+      return false;
   }
 }

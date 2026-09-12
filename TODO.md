@@ -9,43 +9,7 @@ on the live site. Delete an item when it lands — this file should get shorter.
 
 ---
 
-## 1. 🔧 Tooling and CI — do this first
-
-Everything else is easier once a machine keeps the rules. Nothing here ships:
-`devDependencies` only, no runtime dependency, no build step.
-
-**1b. Prettier and ESLint.** Flat config (`eslint.config.mjs`). ESLint rules
-that earn their place: no unused variables or imports, no `var`, no implicit
-globals, `eqeqeq`, and `ecmaVersion: 'latest'` so modern syntax is the floor.
-Prettier for formatting, one config, no per-file overrides. **Fix every existing
-violation in the same commit** — a config with a backlog is a config nobody runs.
-
-**1c. The scripts.** Add to `package.json`:
-
-```
-check    prettier --check . && eslint . && node --test tests/*.test.mjs
-fix      prettier --write . && eslint . --fix
-```
-
-and keep `verify` as it is, with `check` as its first step instead of the bare
-unit tests.
-
-**1d. The workflow.** `.github/workflows/deploy.yml` currently checks out and
-deploys with no tests at all. Give it two jobs: one that runs `npm ci` and
-`npm run verify` (Node 22, Playwright browsers installed), and the CapRover
-step `needs:` it. **The CI job calls `npm run verify`** — never a copy of its
-steps inlined into the YAML, which is how local and CI drift apart. No
-escape hatch: `workflow_dispatch` runs the same gate.
-
-**1e. Write the loop down where it is found.** `CLAUDE.md` already describes it;
-make sure the scripts match the description exactly, and fix whichever is wrong.
-
-*Definition of done: a deliberately broken test makes the workflow red and
-nothing deploys.*
-
----
-
-## 2. 🎯 One mission, in its own button
+## 1. 🎯 One mission, in its own button
 
 **Law 1 and law 3.** `MAX_ACTIVE` is still 2, and the mission still hides behind
 the player's own chip under a red count.
@@ -67,7 +31,7 @@ the player's own chip under a red count.
 
 ---
 
-## 3. 🎁 The welcome-back screen
+## 2. 🎁 The welcome-back screen
 
 **Law 10.** Nothing tells you what the other player did while you were away.
 The largest piece here; worth sketching before writing.
@@ -93,7 +57,7 @@ The largest piece here; worth sketching before writing.
 
 ---
 
-## 4. 🌱 Kind things while nobody is there
+## 3. 🌱 Kind things while nobody is there
 
 **Law 9.** The world is frozen between visits; saplings only grow while somebody
 is watching, because `SAPLING_TICKS` counts play ticks.
@@ -114,7 +78,7 @@ is watching, because `SAPLING_TICKS` counts play ticks.
 
 ---
 
-## 5. 🌍 The i18n test only knows two languages
+## 4. 🌍 The i18n test only knows two languages
 
 **Law 14** says every language must be complete, and the README invites a third.
 `tests/i18n.test.mjs` imports `en` and `de` by name and compares them pairwise.
@@ -129,12 +93,12 @@ is watching, because `SAPLING_TICKS` counts play ticks.
 
 ---
 
-## 6. 🧹 The modern-JavaScript sweep
+## 5. 🧹 The modern-JavaScript sweep
 
 House style says modern JS everywhere; the code still avoids optional chaining,
 `??` and flexbox `gap` from when the floor was Safari 12.
 
-- Do it **after** item 1, so ESLint can hold the line afterwards.
+- ESLint now holds the line afterwards, so this is safe to do.
 - One mechanical pass, its own commit, touching nothing else. `npm run verify`
   green before and after; no behaviour should change.
 - Do it when nothing else is in flight — it conflicts with everything.

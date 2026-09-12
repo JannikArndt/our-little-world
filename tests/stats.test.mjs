@@ -17,30 +17,42 @@ function store(opts) {
   const o = opts || {};
   const clock = { t: o.at || START };
   const s = new Worlds({ dir: o.dir === undefined ? null : o.dir, now: () => clock.t });
-  return { s, clock, on: (ms) => { clock.t += ms; } };
+  return {
+    s,
+    clock,
+    on: ms => {
+      clock.t += ms;
+    },
+  };
 }
 
 /** A snapshot of a world that has got somewhere. */
 function snap(over) {
-  return JSON.stringify(Object.assign({
-    tick: 1800, day: 2,
-    bridge: { built: true },
-    buildings: [
-      { type: 'house', state: 'built' },                    // one the village started with
-      { type: 'house', state: 'built', builtTick: 900 },    // one somebody put up
-      { type: 'well', state: 'built' },
-      { type: 'site', state: 'site' },
-    ],
-    villagers: [{ homeId: 'h1' }, { homeId: 'h2' }],
-    players: { A: { done: { fell: 3, saw: 2 } }, B: { done: { road: 4 } } },
-  }, over || {}));
+  return JSON.stringify(
+    Object.assign(
+      {
+        tick: 1800,
+        day: 2,
+        bridge: { built: true },
+        buildings: [
+          { type: 'house', state: 'built' }, // one the village started with
+          { type: 'house', state: 'built', builtTick: 900 }, // one somebody put up
+          { type: 'well', state: 'built' },
+          { type: 'site', state: 'site' },
+        ],
+        villagers: [{ homeId: 'h1' }, { homeId: 'h2' }],
+        players: { A: { done: { fell: 3, saw: 2 } }, B: { done: { road: 4 } } },
+      },
+      over || {},
+    ),
+  );
 }
 
 test('a day is a day, and a spot is counted once on it', async () => {
   const { s, on } = store();
   const { world } = s.create({ device: 'kid', role: 'A' });
   s.join(world.name, { device: 'parent', role: 'B' });
-  s.touch(world.name, { device: 'kid', role: 'A' });      // still here, again and again
+  s.touch(world.name, { device: 'kid', role: 'A' }); // still here, again and again
   s.touch(world.name, { device: 'kid', role: 'A' });
 
   let r = s.report();
@@ -62,10 +74,10 @@ test('minutes come from the world clock, and only the new ones count', () => {
   const { s } = store();
   const { world } = s.create({ device: 'kid', role: 'A' });
 
-  s.putSnapshot(world.name, { tick: 1800, world: snap({ tick: 1800 }) });   // three minutes
+  s.putSnapshot(world.name, { tick: 1800, world: snap({ tick: 1800 }) }); // three minutes
   assert.equal(s.report().days[0].minutes, 3);
 
-  s.putSnapshot(world.name, { tick: 3600, world: snap({ tick: 3600 }) });   // three more
+  s.putSnapshot(world.name, { tick: 3600, world: snap({ tick: 3600 }) }); // three more
   assert.equal(s.report().days[0].minutes, 6, 'the difference, not the total again');
 });
 
@@ -119,7 +131,7 @@ test('nothing in the report belongs to anybody', () => {
   assert.equal(/\d\d:\d\d/.test(text), false, 'no times of day');
 });
 
-test('the counting survives a restart', async (t) => {
+test('the counting survives a restart', async t => {
   const dir = await mkdtemp(join(tmpdir(), 'olw-stats-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
 
@@ -144,8 +156,16 @@ test('a world started over keeps what was done in it', () => {
   s.putSnapshot(world.name, { tick: 3000, world: snap({ tick: 3000, day: 4 }) });
   // "start this world over": a fresh world at tick 0 in the same room
   s.putSnapshot(world.name, {
-    tick: 0, reset: true,
-    world: snap({ tick: 0, day: 1, bridge: { built: false }, buildings: [], villagers: [], players: { A: { done: {} } } }),
+    tick: 0,
+    reset: true,
+    world: snap({
+      tick: 0,
+      day: 1,
+      bridge: { built: false },
+      buildings: [],
+      villagers: [],
+      players: { A: { done: {} } },
+    }),
   });
 
   const r = s.report();
@@ -156,7 +176,10 @@ test('a world started over keeps what was done in it', () => {
 
 test('the pieces on their own', () => {
   assert.equal(dayKey(Date.UTC(2026, 0, 2, 23, 59)), '2026-01-02');
-  assert.deepEqual(deedsOf({ players: { A: { done: { fell: 1 } }, B: { done: { fell: 2, road: 1 } } } }), { fell: 3, road: 1 });
+  assert.deepEqual(
+    deedsOf({ players: { A: { done: { fell: 1 } }, B: { done: { fell: 2, road: 1 } } } }),
+    { fell: 3, road: 1 },
+  );
   assert.deepEqual(marksOf({ bridge: { built: false }, buildings: [], villagers: [] }), {});
   // a village with nobody in it is not a village where everybody has a bed
   assert.equal(marksOf({ buildings: [], villagers: [] }).housed, undefined);

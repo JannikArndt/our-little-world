@@ -14,29 +14,48 @@
 import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overlay.js';
 import { rr, glyph, drawVillager } from '../render/art.js';
 import { tr, trn } from '../core/i18n.js';
-import { HOUSE_SHELL, HOUSE_STUFF, HOUSE_SHELF, HOUSE_FEEL, HOUSE_WALL, HOUSE_ALL, HOUSE_SLOTS } from '../core/content.js';
+import {
+  HOUSE_SHELL,
+  HOUSE_STUFF,
+  HOUSE_SHELF,
+  HOUSE_FEEL,
+  HOUSE_WALL,
+  HOUSE_ALL,
+  HOUSE_SLOTS,
+} from '../core/content.js';
 import { canPay } from '../core/actions.js';
 import { tracer, wordStrokes, shapeStrokes, traceHeader } from './trace.js';
 
-const CW = 514, CH = 300;
+const CW = 514,
+  CH = 300;
 
 // the room, in the order you meet it: a wall behind, a floor in front of it
-const WALL_TOP = 30, FLOOR_Y = 158, FLOOR_END = 282;
-const DOOR_X = 462;                    // the way in, at the far end of the wall
+const WALL_TOP = 30,
+  FLOOR_Y = 158,
+  FLOOR_END = 282;
+const DOOR_X = 462; // the way in, at the far end of the wall
 
 // where the tracing goes, when something is being made rather than placed
 const WORD_BOX = { x: 26, y: 92, w: 462, h: 150 };
 const SHAPE_BOX = { x: 132, y: 68, w: 250, h: 210 };
-const HOW_KEY = 'olw.trace';           // letters or picture, remembered per device
+const HOW_KEY = 'olw.trace'; // letters or picture, remembered per device
 
-const itemName = (k) => tr('house.' + k);
+const itemName = k => tr('house.' + k);
 
 /** Letters or picture: whichever was chosen last, on this device. */
 function howLast() {
-  try { return localStorage.getItem(HOW_KEY) === 'shape' ? 'shape' : 'word'; } catch (e) { return 'word'; }
+  try {
+    return localStorage.getItem(HOW_KEY) === 'shape' ? 'shape' : 'word';
+  } catch {
+    return 'word';
+  }
 }
 function howKeep(how) {
-  try { localStorage.setItem(HOW_KEY, how); } catch (e) { /* a preference is a nicety */ }
+  try {
+    localStorage.setItem(HOW_KEY, how);
+  } catch {
+    /* a preference is a nicety */
+  }
 }
 
 /**
@@ -47,7 +66,8 @@ function howKeep(how) {
 function slotAt(i) {
   if (i < HOUSE_WALL) return { zone: 'wall', x: 60 + i * 80, y: 88, s: 1 };
   const k = i - HOUSE_WALL;
-  const row = Math.floor(k / HOUSE_SLOTS.cols), col = k % HOUSE_SLOTS.cols;
+  const row = Math.floor(k / HOUSE_SLOTS.cols),
+    col = k % HOUSE_SLOTS.cols;
   return { zone: 'floor', x: 52 + col * 82, y: row ? 246 : 192, s: row ? 1 : 0.84 };
 }
 
@@ -61,7 +81,8 @@ function slotAt(i) {
  * in it.
  */
 export function openRaise(game, site) {
-  const w = game.world, r = game.role;
+  const w = game.world,
+    r = game.role;
   const p = openPanel({ title: tr('house.raiseTitle'), lead: tr('house.raiseLead') });
 
   const cv = makeCanvas(CW, 190);
@@ -74,41 +95,63 @@ export function openRaise(game, site) {
 
   const row = p.row();
   const go = p.button(tr('house.raise'), 'go', () => {
-    if (!canPay(w, r, HOUSE_SHELL)) { p.readout(tr('house.notEnough')); return; }
+    if (!canPay(w, r, HOUSE_SHELL)) {
+      p.readout(tr('house.notEnough'));
+      return;
+    }
     if (!game.dispatch({ type: 'house.build', role: r, siteId: site.id })) return;
-    stop(); p.close();
+    stop();
+    p.close();
     message(tr('msg.houseUp'));
     game.look(site.x + site.w / 2, site.y + site.h / 2);
     const built = game.world.buildings.filter(b => b.id === site.id)[0];
-    if (built) openHouse(game, built);          // straight inside, to furnish it
+    if (built) openHouse(game, built); // straight inside, to furnish it
   });
   go.disabled = !canPay(w, r, HOUSE_SHELL);
   if (go.disabled) p.readout(tr('house.notEnough'));
   row.appendChild(go);
-  const back = p.button(tr('ui.later'), 'soft', () => { stop(); p.close(); });
+  const back = p.button(tr('ui.later'), 'soft', () => {
+    stop();
+    p.close();
+  });
   back.style.flex = '0 0 auto';
   row.appendChild(back);
 
   // a little picture of what you are buying, so it is not a wall of numbers
-  const stop = loop((t) => {
+  const stop = loop(t => {
     cv.fit();
     const ctx = cv.ctx;
     ctx.clearRect(0, 0, CW, 190);
-    ctx.fillStyle = '#cfe3d4'; rr(ctx, 6, 8, CW - 12, 174, 18); ctx.fill();
-    const x = CW / 2, y = 150;
+    ctx.fillStyle = '#cfe3d4';
+    rr(ctx, 6, 8, CW - 12, 174, 18);
+    ctx.fill();
+    const x = CW / 2,
+      y = 150;
     ctx.fillStyle = 'rgba(60,50,35,.16)';
-    ctx.beginPath(); ctx.ellipse(x, y + 4, 92, 12, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#d3a877'; rr(ctx, x - 76, y - 62, 152, 62, 6); ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x, y + 4, 92, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#d3a877';
+    rr(ctx, x - 76, y - 62, 152, 62, 6);
+    ctx.fill();
     ctx.fillStyle = '#a8543c';
     ctx.beginPath();
-    ctx.moveTo(x - 88, y - 60); ctx.lineTo(x, y - 104); ctx.lineTo(x + 88, y - 60);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#7d5730'; rr(ctx, x - 14, y - 34, 28, 34, 3); ctx.fill();
+    ctx.moveTo(x - 88, y - 60);
+    ctx.lineTo(x, y - 104);
+    ctx.lineTo(x + 88, y - 60);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#7d5730';
+    rr(ctx, x - 14, y - 34, 28, 34, 3);
+    ctx.fill();
     const flick = 0.8 + Math.sin(t * 0.004) * 0.1;
     ctx.fillStyle = 'rgba(255,216,115,' + flick + ')';
-    rr(ctx, x + 30, y - 50, 22, 22, 3); ctx.fill();
-    ctx.strokeStyle = '#8a6540'; ctx.lineWidth = 2;
-    rr(ctx, x + 30, y - 50, 22, 22, 3); ctx.stroke();
+    rr(ctx, x + 30, y - 50, 22, 22, 3);
+    ctx.fill();
+    ctx.strokeStyle = '#8a6540';
+    ctx.lineWidth = 2;
+    rr(ctx, x + 30, y - 50, 22, 22, 3);
+    ctx.stroke();
     glyph(ctx, '🛏️', x - 42, y - 39, 22);
   });
   return p;
@@ -119,7 +162,6 @@ export function openRaise(game, site) {
 /* ------------------------------------------------------------------ */
 
 export function openHouse(game, house) {
-  const w = game.world;
   const p = openPanel({ title: '🏠 ' + (house.name || tr('w.house')) });
 
   const cv = makeCanvas(CW, CH);
@@ -127,19 +169,25 @@ export function openHouse(game, house) {
 
   // what is in your hand: something from the shelf to buy, or something
   // already in the room that you have picked up to put somewhere else
-  let held = null;                     // { kind } or { kind, from }
+  let held = null; // { kind } or { kind, from }
   // and what is being made: nothing is bought with a tap any more, it is
   // written or drawn first, which is the price of it
-  let making = null;                   // { kind, how, pen }
+  let making = null; // { kind, how, pen }
   let how = howLast();
 
   function startMaking(kind) {
     const box = how === 'word' ? WORD_BOX : SHAPE_BOX;
-    const strokes = how === 'word'
-      ? wordStrokes(itemName(kind), box.x, box.y, box.w, box.h)
-      : shapeStrokes(kind, box.x, box.y, box.w, box.h);
+    const strokes =
+      how === 'word'
+        ? wordStrokes(itemName(kind), box.x, box.y, box.w, box.h)
+        : shapeStrokes(kind, box.x, box.y, box.w, box.h);
     // a word with no letters we know how to write is not a reason to stop
-    if (!strokes.length) { held = { kind: kind }; making = null; showTrace(); return; }
+    if (!strokes.length) {
+      held = { kind: kind };
+      making = null;
+      showTrace();
+      return;
+    }
     making = { kind: kind, how: how, pen: tracer(strokes, how === 'word' ? box.h : box.w) };
     showTrace();
   }
@@ -147,11 +195,13 @@ export function openHouse(game, house) {
   // What is being traced, where a console — or the play-through — can see it.
   // Nothing in the game reads this; it is the only way a test can follow a
   // line it has no other way of knowing the shape of.
-  function showTrace() { game.tracing = making ? making.pen : null; }
+  function showTrace() {
+    game.tracing = making ? making.pen : null;
+  }
 
   const here = () => game.world.buildings.filter(b => b.id === house.id)[0] || house;
-  const stuff = () => (here().stuff || []);
-  const at = (slot) => stuff().filter(s => s.slot === slot)[0] || null;
+  const stuff = () => here().stuff || [];
+  const at = slot => stuff().filter(s => s.slot === slot)[0] || null;
   const mine = () => game.world.players[game.role].res;
 
   /* ---------------- the shelf of things ---------------- */
@@ -164,14 +214,32 @@ export function openHouse(game, house) {
     const b = el('button', 'tool');
     const bits = [];
     for (const res in it.cost) bits.push(it.cost[res] + resIcon(res));
-    b.innerHTML = '<span class="ico">' + it.icon + '</span><span class="lab">' + itemName(k) + '</span>' +
-      '<span class="cost">' + bits.join(' ') + '</span>';
+    b.innerHTML =
+      '<span class="ico">' +
+      it.icon +
+      '</span><span class="lab">' +
+      itemName(k) +
+      '</span>' +
+      '<span class="cost">' +
+      bits.join(' ') +
+      '</span>';
     b.addEventListener('click', () => {
-      if (making && making.kind === k) { making = null; showTrace(); paint(); return; }
-      if (held && !held.from && held.kind === k) { held = null; paint(); return; }
+      if (making && making.kind === k) {
+        making = null;
+        showTrace();
+        paint();
+        return;
+      }
+      if (held && !held.from && held.kind === k) {
+        held = null;
+        paint();
+        return;
+      }
       // being asked to write out something you cannot pay for is a mean trick
       if (!canPay(game.world, game.role, it.cost)) {
-        held = null; making = null; showTrace();
+        held = null;
+        making = null;
+        showTrace();
         p.readout(tr('house.notEnough'));
         p.cost(costOf(k));
         return;
@@ -187,33 +255,67 @@ export function openHouse(game, house) {
   /* ---------------- putting something down ---------------- */
 
   onPointer(cv.canvas, CW, CH, {
-    move(pt) { if (making) making.pen.move(pt); },
-    up() { if (making) making.pen.up(); },
+    move(pt) {
+      if (making) making.pen.move(pt);
+    },
+    up() {
+      if (making) making.pen.up();
+    },
     down(pt) {
-      if (making) { making.pen.down(pt); return; }
-      let best = -1, bd = 1e9;
+      if (making) {
+        making.pen.down(pt);
+        return;
+      }
+      let best = -1,
+        bd = 1e9;
       for (let i = 0; i < HOUSE_ALL; i++) {
         const s = slotAt(i);
         const d = Math.hypot(pt.x - s.x, pt.y - s.y);
-        if (d < bd) { bd = d; best = i; }
+        if (d < bd) {
+          bd = d;
+          best = i;
+        }
       }
-      if (bd > 40) { held = null; paint(); return; }
+      if (bd > 40) {
+        held = null;
+        paint();
+        return;
+      }
       const standing = at(best);
 
       if (held) {
         const def = HOUSE_STUFF[held.kind];
         if (slotAt(best).zone !== def.where) {
-          p.readout(tr(def.where === 'wall' ? 'house.onTheWall' : 'house.onTheFloor', { what: itemName(held.kind) }));
+          p.readout(
+            tr(def.where === 'wall' ? 'house.onTheWall' : 'house.onTheFloor', {
+              what: itemName(held.kind),
+            }),
+          );
           return;
         }
-        if (standing) { p.readout(tr('house.taken')); return; }
+        if (standing) {
+          p.readout(tr('house.taken'));
+          return;
+        }
         if (held.from != null) {
-          game.dispatch({ type: 'house.move', role: game.role, houseId: here().id, from: held.from, to: best });
+          game.dispatch({
+            type: 'house.move',
+            role: game.role,
+            houseId: here().id,
+            from: held.from,
+            to: best,
+          });
         } else if (!canPay(game.world, game.role, def.cost)) {
           p.readout(tr('house.notEnough'));
           return;
         } else {
-          game.dispatch({ type: 'house.put', role: game.role, houseId: here().id, kind: held.kind, slot: best });
+          game.dispatch({
+            type: 'house.put',
+            role: game.role,
+            houseId: here().id,
+            kind: held.kind,
+            slot: best,
+          });
         }
         held = null;
         paint();
@@ -221,8 +323,10 @@ export function openHouse(game, house) {
       }
 
       // nothing in your hand: pick up whatever is standing there
-      if (standing) { held = { kind: standing.kind, from: best }; paint(); }
-      else paint();
+      if (standing) {
+        held = { kind: standing.kind, from: best };
+        paint();
+      } else paint();
     },
   });
 
@@ -237,10 +341,14 @@ export function openHouse(game, house) {
       toolBtns[k].className = 'tool' + (on ? ' on' : '') + (poor ? ' poor' : '');
     }
     if (making) {
-      p.readout(tr(making.how === 'word' ? 'trace.write' : 'trace.draw', { what: itemName(making.kind) }));
+      p.readout(
+        tr(making.how === 'word' ? 'trace.write' : 'trace.draw', { what: itemName(making.kind) }),
+      );
       p.cost(costOf(making.kind));
     } else if (held) {
-      p.readout(tr(held.from != null ? 'house.moveWhere' : 'house.putWhere', { what: itemName(held.kind) }));
+      p.readout(
+        tr(held.from != null ? 'house.moveWhere' : 'house.putWhere', { what: itemName(held.kind) }),
+      );
       p.cost(held.from != null ? [] : costOf(held.kind));
     } else {
       p.readout(feelLine(b));
@@ -248,7 +356,7 @@ export function openHouse(game, house) {
     }
     swap.textContent = tr(how === 'word' ? 'trace.asShape' : 'trace.asWord');
     swap.style.display = making ? '' : 'none';
-    never.style.display = (held || making) ? '' : 'none';
+    never.style.display = held || making ? '' : 'none';
   }
 
   /** What a thing costs, as the counted pictures the panels use. */
@@ -261,7 +369,9 @@ export function openHouse(game, house) {
 
   /** Who lives here and what the room is like, in one line each. */
   function feelLine(b) {
-    const who = (b.residents || []).map(id => (game.world.villagers.filter(v => v.id === id)[0] || {}).name).filter(Boolean);
+    const who = (b.residents || [])
+      .map(id => (game.world.villagers.filter(v => v.id === id)[0] || {}).name)
+      .filter(Boolean);
     const spare = (b.beds || 0) - (b.residents || []).length;
     const lines = [tr('house.feels', { feel: tr('house.feel' + feelLevel(b)) })];
     if (who.length) lines.push(trn('w.livesHere', who.length, { names: who.join(tr('w.and')) }));
@@ -280,15 +390,30 @@ export function openHouse(game, house) {
   });
   swap.style.flex = '0 0 auto';
   row.appendChild(swap);
-  const never = p.button(tr('ui.neverMind'), 'soft', () => { held = null; making = null; showTrace(); paint(); });
+  const never = p.button(tr('ui.neverMind'), 'soft', () => {
+    held = null;
+    making = null;
+    showTrace();
+    paint();
+  });
   never.style.flex = '0 0 auto';
   row.appendChild(never);
-  row.appendChild(p.button(tr('ui.close'), 'soft', () => { stop(); making = null; showTrace(); p.close(); }));
+  row.appendChild(
+    p.button(tr('ui.close'), 'soft', () => {
+      stop();
+      making = null;
+      showTrace();
+      p.close();
+    }),
+  );
   paint();
 
   /* ---------------- drawing the room ---------------- */
 
-  const stop = loop((t) => { cv.fit(); draw(t); });
+  const stop = loop(t => {
+    cv.fit();
+    draw(t);
+  });
 
   function draw(t) {
     const ctx = cv.ctx;
@@ -297,12 +422,14 @@ export function openHouse(game, house) {
     const lit = b.light !== false;
 
     ctx.clearRect(0, 0, CW, CH);
-    ctx.fillStyle = '#efe4cd'; ctx.fillRect(0, 0, CW, CH);
+    ctx.fillStyle = '#efe4cd';
+    ctx.fillRect(0, 0, CW, CH);
 
     // making something takes the whole card: the room can wait a minute
     if (making) {
       ctx.fillStyle = '#fdf7ea';
-      rr(ctx, 10, 10, CW - 20, CH - 20, 16); ctx.fill();
+      rr(ctx, 10, 10, CW - 20, CH - 20, 16);
+      ctx.fill();
       traceHeader(ctx, HOUSE_STUFF[making.kind].icon, itemName(making.kind), 22, 22, CW - 44);
       making.pen.draw(ctx, t);
       if (making.pen.done()) {
@@ -318,28 +445,38 @@ export function openHouse(game, house) {
 
     // the wall behind, lit or not depending on whether there is a window in it
     ctx.fillStyle = lit ? '#efe0c4' : '#b9b0a0';
-    rr(ctx, 14, WALL_TOP - 8, CW - 28, FLOOR_Y - WALL_TOP + 8, 12); ctx.fill();
+    rr(ctx, 14, WALL_TOP - 8, CW - 28, FLOOR_Y - WALL_TOP + 8, 12);
+    ctx.fill();
     ctx.fillStyle = 'rgba(90,70,45,.10)';
     ctx.fillRect(14, WALL_TOP - 8, CW - 28, 9);
 
     // the floor, in boards running away from you
     ctx.fillStyle = '#c9a877';
     ctx.fillRect(14, FLOOR_Y, CW - 28, FLOOR_END - FLOOR_Y);
-    ctx.strokeStyle = 'rgba(120,88,52,.22)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(120,88,52,.22)';
+    ctx.lineWidth = 1;
     for (let i = 1; i < 8; i++) {
       const y = FLOOR_Y + i * ((FLOOR_END - FLOOR_Y) / 8);
-      ctx.beginPath(); ctx.moveTo(14, y); ctx.lineTo(CW - 14, y); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(14, y);
+      ctx.lineTo(CW - 14, y);
+      ctx.stroke();
     }
-    ctx.fillStyle = '#8a6540';                       // the skirting board
+    ctx.fillStyle = '#8a6540'; // the skirting board
     ctx.fillRect(14, FLOOR_Y - 6, CW - 28, 7);
 
     // the way in
     ctx.fillStyle = '#7d5730';
-    rr(ctx, DOOR_X - 20, WALL_TOP + 22, 40, FLOOR_Y - WALL_TOP - 22, 4); ctx.fill();
-    ctx.strokeStyle = '#5f3f22'; ctx.lineWidth = 2;
-    rr(ctx, DOOR_X - 20, WALL_TOP + 22, 40, FLOOR_Y - WALL_TOP - 22, 4); ctx.stroke();
+    rr(ctx, DOOR_X - 20, WALL_TOP + 22, 40, FLOOR_Y - WALL_TOP - 22, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#5f3f22';
+    ctx.lineWidth = 2;
+    rr(ctx, DOOR_X - 20, WALL_TOP + 22, 40, FLOOR_Y - WALL_TOP - 22, 4);
+    ctx.stroke();
     ctx.fillStyle = '#e0b26a';
-    ctx.beginPath(); ctx.arc(DOOR_X - 11, FLOOR_Y - 46, 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(DOOR_X - 11, FLOOR_Y - 46, 2.6, 0, Math.PI * 2);
+    ctx.fill();
 
     // the empty places, and which of them will take what is in your hand
     const want = held ? HOUSE_STUFF[held.kind].where : null;
@@ -349,14 +486,19 @@ export function openHouse(game, house) {
       if (want && s.zone === want) {
         const beat = 0.22 + 0.14 * Math.sin(t * 0.005 + i);
         ctx.fillStyle = 'rgba(127,194,90,' + beat + ')';
-        ctx.strokeStyle = 'rgba(93,145,80,.85)'; ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(93,145,80,.85)';
+        ctx.lineWidth = 2;
         ctx.setLineDash([5, 4]);
-        rr(ctx, s.x - 26, s.y - 26, 52, 52, 10); ctx.fill(); ctx.stroke();
+        rr(ctx, s.x - 26, s.y - 26, 52, 52, 10);
+        ctx.fill();
+        ctx.stroke();
         ctx.setLineDash([]);
       } else if (!want) {
-        ctx.strokeStyle = 'rgba(120,95,60,.13)'; ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(120,95,60,.13)';
+        ctx.lineWidth = 1.5;
         ctx.setLineDash([3, 6]);
-        rr(ctx, s.x - 22, s.y - 22, 44, 44, 9); ctx.stroke();
+        rr(ctx, s.x - 22, s.y - 22, 44, 44, 9);
+        ctx.stroke();
         ctx.setLineDash([]);
       }
     }
@@ -370,7 +512,9 @@ export function openHouse(game, house) {
       g.addColorStop(0, 'rgba(242,163,74,' + (0.24 + 0.06 * Math.sin(t * 0.004)) + ')');
       g.addColorStop(1, 'rgba(242,163,74,0)');
       ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(at1.x, at1.y, 76, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(at1.x, at1.y, 76, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     // everything in the room, back to front, with the people among it
@@ -386,7 +530,10 @@ export function openHouse(game, house) {
     for (const th of things) th.draw();
 
     // and a shadow over the lot when there is nothing to see by
-    if (!lit) { ctx.fillStyle = 'rgba(40,44,70,.30)'; ctx.fillRect(0, 0, CW, CH); }
+    if (!lit) {
+      ctx.fillStyle = 'rgba(40,44,70,.30)';
+      ctx.fillRect(0, 0, CW, CH);
+    }
   }
 
   function piece(ctx, s, a, t) {
@@ -399,7 +546,9 @@ export function openHouse(game, house) {
     }
     if (a.zone === 'floor') {
       ctx.fillStyle = 'rgba(60,50,35,.18)';
-      ctx.beginPath(); ctx.ellipse(a.x, a.y + 15 * a.s, 18 * a.s, 6 * a.s, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(a.x, a.y + 15 * a.s, 18 * a.s, 6 * a.s, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
     glyph(ctx, it.icon, a.x, a.y, 34 * a.s);
     ctx.restore();
@@ -450,12 +599,27 @@ export function openHouse(game, house) {
     ctx.save();
     ctx.translate(who.x, who.y);
     ctx.scale(2.6 * who.s, 2.6 * who.s);
-    drawVillager(ctx, {
-      id: who.v.id, name: who.v.name, colour: who.v.colour, kid: who.v.kid,
-      x: 0, y: 0, facing: 1, moving: -999, hearts: -999,
-      said: null, carrying: null, mood: 'ok', poorly: 0,
-      act: who.act ? { kind: who.act, until: 1e9, with: null } : null,
-    }, t, tick);
+    drawVillager(
+      ctx,
+      {
+        id: who.v.id,
+        name: who.v.name,
+        colour: who.v.colour,
+        kid: who.v.kid,
+        x: 0,
+        y: 0,
+        facing: 1,
+        moving: -999,
+        hearts: -999,
+        said: null,
+        carrying: null,
+        mood: 'ok',
+        poorly: 0,
+        act: who.act ? { kind: who.act, until: 1e9, with: null } : null,
+      },
+      t,
+      tick,
+    );
     ctx.restore();
   }
 }
@@ -465,7 +629,9 @@ export function openHouse(game, house) {
 /* ------------------------------------------------------------------ */
 
 const RES_ICON = { wood: '🪵', plank: '🪚', stone: '🪨', wheat: '🌾', food: '🍞', wool: '🧶' };
-function resIcon(k) { return RES_ICON[k] || '·'; }
+function resIcon(k) {
+  return RES_ICON[k] || '·';
+}
 
 /** Which of the five words this room has earned. */
 export function feelLevel(b) {

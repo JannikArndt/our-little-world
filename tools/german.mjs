@@ -9,14 +9,23 @@ const BASE = process.env.BASE || 'http://localhost:8099';
 const out = new URL('./shots/', import.meta.url).pathname;
 const errs = [];
 const b = await chromium.launch();
-const c = await b.newContext({ viewport: { width: 1024, height: 768 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true, locale: 'de-DE' });
+const c = await b.newContext({
+  viewport: { width: 1024, height: 768 },
+  deviceScaleFactor: 2,
+  hasTouch: true,
+  isMobile: true,
+  locale: 'de-DE',
+});
 const p = await c.newPage();
 p.on('pageerror', e => errs.push('pageerror: ' + e.message));
-p.on('console', m => { if (m.type() === 'error' && !/404/.test(m.text())) errs.push(m.text()); });
+p.on('console', m => {
+  if (m.type() === 'error' && !/404/.test(m.text())) errs.push(m.text());
+});
 
 // any text that still looks like a key is a hole in the tables
-const KEYISH = /\b(?:ui|w|msg|sum|guide|chop|saw|mill|bridge|house|care|road|herd|notice|say|give|teach|ask|verb|res|cap|next|app|role|start|day|menu|over|deed)\.[a-zA-Z][a-zA-Z0-9_.]*\b/;
-const scan = async (where) => {
+const KEYISH =
+  /\b(?:ui|w|msg|sum|guide|chop|saw|mill|bridge|house|care|road|herd|notice|say|give|teach|ask|verb|res|cap|next|app|role|start|day|menu|over|deed)\.[a-zA-Z][a-zA-Z0-9_.]*\b/;
+const scan = async where => {
   const txt = await p.evaluate(() => document.body.innerText);
   const m = txt.match(KEYISH);
   if (m) errs.push('untranslated key at ' + where + ': ' + m[0]);
@@ -26,7 +35,8 @@ await p.goto(BASE + '/?room=de' + Math.random().toString(36).slice(2, 6));
 await p.waitForTimeout(500);
 await scan('start');
 await p.screenshot({ path: out + '60-de-start.png' });
-if (!/Unsere kleine Welt/.test(await p.textContent('.start-card'))) throw new Error('start screen is not German');
+if (!/Unsere kleine Welt/.test(await p.textContent('.start-card')))
+  throw new Error('start screen is not German');
 
 // the whole way in — starting a world, being invited, looking for one — in German
 await p.click('text=Eine neue Welt');
@@ -38,7 +48,8 @@ await scan('invite card');
 const welt = await p.textContent('.w-name');
 console.log('neue Welt:', welt);
 await p.screenshot({ path: out + '60b-de-welt.png' });
-if (!/Wartet auf/.test(await p.textContent('.w-line'))) throw new Error('the invite card is not German');
+if (!/Wartet auf/.test(await p.textContent('.w-line')))
+  throw new Error('the invite card is not German');
 await p.click('text=Zurück');
 await p.waitForTimeout(200);
 await p.click('text=Bei einer Welt mitmachen');
@@ -62,7 +73,8 @@ await p.waitForTimeout(300);
 await scan('menu');
 const meinMenue = await p.textContent('.menu');
 if (!/Was zu tun ist/.test(meinMenue)) throw new Error('the jobs are not behind your own chip');
-if (!/Was du geschafft hast/.test(meinMenue)) throw new Error('the tally is not behind your own chip');
+if (!/Was du geschafft hast/.test(meinMenue))
+  throw new Error('the tally is not behind your own chip');
 await p.click('.menu .menu-item:not(.off) >> nth=0');
 await p.waitForTimeout(900);
 await scan('guide');
@@ -78,7 +90,8 @@ await p.waitForTimeout(300);
 await scan('world menu');
 await p.screenshot({ path: out + '61b-de-weltmenue.png' });
 const weltMenue = await p.textContent('.menu');
-if (!/Zurück zum Startbildschirm/.test(weltMenue)) throw new Error('the world menu is not behind the day');
+if (!/Zurück zum Startbildschirm/.test(weltMenue))
+  throw new Error('the world menu is not behind the day');
 if (!/Deutsch/.test(weltMenue)) throw new Error('the language picker did not move with it');
 // shut it the way a finger does — a tap anywhere that is not the menu
 await p.evaluate(() => document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
@@ -97,8 +110,10 @@ const api = (fn, a) => p.evaluate(fn, a);
  */
 const tapWorld = async (fn, wants) => {
   for (let attempt = 0; attempt < 6; attempt++) {
-    if (wants && await p.$('text=' + wants)) return;
-    await api(() => { if (window.OLW.setMode) window.OLW.setMode(null); });   // put a wrong bubble away
+    if (wants && (await p.$('text=' + wants))) return;
+    await api(() => {
+      if (window.OLW.setMode) window.OLW.setMode(null);
+    }); // put a wrong bubble away
     const pt = await api(fn);
     await p.waitForTimeout(250);
     if (pt) await p.mouse.click(pt.x, pt.y);
@@ -109,7 +124,10 @@ const tapWorld = async (fn, wants) => {
 };
 
 /** The tile a getter names, as a place on screen nothing else is answering for. */
-const pointAt = (getter) => new Function('return (' + `() => {
+const pointAt = getter =>
+  new Function(
+    'return (' +
+      `() => {
   const g = window.OLW, w = g.world;
   const o = (${getter})(w);
   const canvas = document.getElementById('world');
@@ -134,10 +152,17 @@ const pointAt = (getter) => new Function('return (' + `() => {
     return { x: px, y: py };
   }
   return fallback;
-}` + ')')();
+}` +
+      ')',
+  )();
 
 // a tree, and the whole felling panel
-await tapWorld(pointAt('(w) => { const t = w.trees.find(t => t.state === "standing"); return [t.x + 0.5, t.y + 0.5]; }'), 'Diesen Baum fällen');
+await tapWorld(
+  pointAt(
+    '(w) => { const t = w.trees.find(t => t.state === "standing"); return [t.x + 0.5, t.y + 0.5]; }',
+  ),
+  'Diesen Baum fällen',
+);
 await scan('tree bubble');
 await p.screenshot({ path: out + '62-de-bubble.png' });
 await p.click('text=Diesen Baum fällen');
@@ -157,8 +182,16 @@ await p.waitForTimeout(2600);
 await scan('after chop');
 
 // the workshop, both machines
-await api(() => { window.OLW.world.players.A.res.wood = 6; window.OLW.world.players.A.res.wheat = 4; });
-await tapWorld(pointAt('(w) => { const b = w.buildings.find(b => b.type === "workshop"); return [b.x + b.w / 2, b.y + b.h - 0.4]; }'), 'Holz zu Brettern sägen');
+await api(() => {
+  window.OLW.world.players.A.res.wood = 6;
+  window.OLW.world.players.A.res.wheat = 4;
+});
+await tapWorld(
+  pointAt(
+    '(w) => { const b = w.buildings.find(b => b.type === "workshop"); return [b.x + b.w / 2, b.y + b.h - 0.4]; }',
+  ),
+  'Holz zu Brettern sägen',
+);
 await p.click('text=Holz zu Brettern sägen');
 await p.waitForTimeout(500);
 await scan('sawmill');
@@ -166,8 +199,15 @@ await p.screenshot({ path: out + '64-de-saw.png' });
 await p.click('text=Jetzt nicht');
 
 // the bridge
-await api(() => { const w = window.OLW.world; w.players.A.res.plank = 9; w.players.A.res.stone = 9; });
-await tapWorld(pointAt('(w) => [(w.bridge.site.x0 + w.bridge.site.x1) / 2 + 0.5, w.bridge.site.row + 1]'), 'Hier eine Brücke bauen');
+await api(() => {
+  const w = window.OLW.world;
+  w.players.A.res.plank = 9;
+  w.players.A.res.stone = 9;
+});
+await tapWorld(
+  pointAt('(w) => [(w.bridge.site.x0 + w.bridge.site.x1) / 2 + 0.5, w.bridge.site.row + 1]'),
+  'Hier eine Brücke bauen',
+);
 await p.click('text=Hier eine Brücke bauen');
 await p.waitForTimeout(500);
 await scan('bridge');
@@ -175,8 +215,17 @@ await p.screenshot({ path: out + '65-de-bridge.png' });
 await p.click('text=Später');
 
 // the house: putting it up, and then the room and the writing
-await api(() => { const w = window.OLW.world; w.players.A.res.plank = 9; w.players.A.res.stone = 9; });
-await tapWorld(pointAt('(w) => { const b = w.buildings.find(b => b.state === "site"); return [b.x + 1.5, b.y + 1]; }'), 'Hier ein Haus bauen');
+await api(() => {
+  const w = window.OLW.world;
+  w.players.A.res.plank = 9;
+  w.players.A.res.stone = 9;
+});
+await tapWorld(
+  pointAt(
+    '(w) => { const b = w.buildings.find(b => b.state === "site"); return [b.x + 1.5, b.y + 1]; }',
+  ),
+  'Hier ein Haus bauen',
+);
 await p.click('text=Hier ein Haus bauen');
 await p.waitForTimeout(500);
 await scan('house');
@@ -187,7 +236,8 @@ await p.waitForTimeout(400);
 await scan('house room');
 const zimmer = await p.textContent('.readout');
 console.log('das Zimmer sagt:', zimmer.replace(/\s+/g, ' ').trim().slice(0, 80));
-if (!/Hier drin ist es/.test(zimmer)) throw new Error('the room does not say how it feels in German');
+if (!/Hier drin ist es/.test(zimmer))
+  throw new Error('the room does not say how it feels in German');
 
 // a thing is written into being, and the word it asks for is the German one
 await p.click('.tools .tool:has-text("Stuhl")');
@@ -206,7 +256,10 @@ await p.waitForTimeout(300);
 await p.click('.p-rows button:has-text("Schließen")');
 
 // an animal
-await api(() => { window.OLW.role = 'B'; window.OLW.other = 'A'; });
+await api(() => {
+  window.OLW.role = 'B';
+  window.OLW.other = 'A';
+});
 await tapWorld(pointAt('(w) => [w.sheep[0].x, w.sheep[0].y]'), 'Um sie kümmern');
 await scan('sheep bubble');
 await p.click('text=Um sie kümmern');
@@ -216,30 +269,48 @@ await p.screenshot({ path: out + '67-de-care.png' });
 await p.click('text=Fertig');
 
 // sharing, from the bottom resource bar
-await p.click('.res'); await p.waitForTimeout(300); await scan('share');
+await p.click('.res');
+await p.waitForTimeout(300);
+await scan('share');
 await p.screenshot({ path: out + '68-de-share.png' });
 await p.click('text=Schließen');
 
 // teaching now lives behind the OTHER role's chip, not your own
-await api(() => { window.OLW.world.players.B.done.care = 3; });
-await p.click('#roleBar button[data-role="A"]'); await p.waitForTimeout(300); await scan('role menu');
+await api(() => {
+  window.OLW.world.players.B.done.care = 3;
+});
+await p.click('#roleBar button[data-role="A"]');
+await p.waitForTimeout(300);
+await scan('role menu');
 await p.screenshot({ path: out + '69-de-role.png' });
 await p.click('text=Ihnen Tiere versorgen zeigen');
 await p.waitForTimeout(300);
 
 // the end of the block: the next day begins on its own, and says nothing
 const dayBefore = await api(() => window.OLW.world.day);
-await api(() => { const w = window.OLW.world; w.block.startTick = w.tick - w.block.length + 20; });
-await p.waitForFunction((d) => window.OLW.world.block.active && window.OLW.world.day > d,
-  dayBefore, { timeout: 15000 })
-  .catch(() => { throw new Error('the next day did not begin on its own'); });
+await api(() => {
+  const w = window.OLW.world;
+  w.block.startTick = w.tick - w.block.length + 20;
+});
+await p
+  .waitForFunction(d => window.OLW.world.block.active && window.OLW.world.day > d, dayBefore, {
+    timeout: 15000,
+  })
+  .catch(() => {
+    throw new Error('the next day did not begin on its own');
+  });
 await p.waitForTimeout(1000);
 await scan('new day');
 await p.screenshot({ path: out + '70-de-new-day.png' });
-const quiet = await p.evaluate(() => document.getElementById('overlay').classList.contains('hidden'));
+const quiet = await p.evaluate(() =>
+  document.getElementById('overlay').classList.contains('hidden'),
+);
 console.log('Nichts zum Tagesende, Overlay versteckt:', quiet);
 if (!quiet) throw new Error('something was put on screen at the end of the day');
 
 await b.close();
-if (errs.length) { console.log('\nPROBLEMS:\n' + errs.join('\n')); process.exit(1); }
+if (errs.length) {
+  console.log('\nPROBLEMS:\n' + errs.join('\n'));
+  process.exit(1);
+}
 console.log('\nGerman pass: all good');

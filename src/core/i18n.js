@@ -16,20 +16,31 @@ export const LANGUAGES = [
 
 let lang = 'en';
 
-export function currentLang() { return lang; }
+export function currentLang() {
+  return lang;
+}
 
 export function setLang(l) {
   lang = TABLES[l] ? l : 'en';
-  try { localStorage.setItem('olw.lang', lang); } catch (e) { /* fine */ }
+  try {
+    localStorage.setItem('olw.lang', lang);
+  } catch {
+    /* fine */
+  }
   return lang;
 }
 
 /** Remembered choice, otherwise whatever the device is set to. */
 export function detectLang() {
   let saved = null;
-  try { saved = localStorage.getItem('olw.lang'); } catch (e) { /* fine */ }
+  try {
+    saved = localStorage.getItem('olw.lang');
+  } catch {
+    /* fine */
+  }
   if (saved && TABLES[saved]) return setLang(saved);
-  const nav = (typeof navigator !== 'undefined' && (navigator.language || navigator.userLanguage)) || 'en';
+  const nav =
+    (typeof navigator !== 'undefined' && (navigator.language || navigator.userLanguage)) || 'en';
   return setLang(nav.toLowerCase().indexOf('de') === 0 ? 'de' : 'en');
 }
 
@@ -54,4 +65,6 @@ export function trn(key, n, vars) {
 }
 
 /** For a stored {key, vars} pair. */
-export function tk(o) { return o && o.key ? tr(o.key, o.vars) : (o && o.text) || ''; }
+export function tk(o) {
+  return o && o.key ? tr(o.key, o.vars) : (o && o.text) || '';
+}

@@ -22,19 +22,21 @@ import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PROJECTS } from '../src/core/content.js';
 
-const KEEP_DAYS = 500;        // daily rows kept: well over a year, a few KB
-const ACTIVE_DAYS = 40;       // days remembered per world; it only lives for 14
-const TICKS_PER_MIN = 600;    // 100 ms a tick
-const DAY_CAP = 30;           // days-reached histogram: 30 and then "30+"
+const KEEP_DAYS = 500; // daily rows kept: well over a year, a few KB
+const ACTIVE_DAYS = 40; // days remembered per world; it only lives for 14
+const TICKS_PER_MIN = 600; // 100 ms a tick
+const DAY_CAP = 30; // days-reached histogram: 30 and then "30+"
 const MIN_BUCKETS = [0, 5, 10, 15, 20, 30, 45, 60, 90, 120];
 
 // A project added to the table is a milestone from then on, without a line
 // changing here. The workshop and the mill are not: the village starts with
 // them, and something everybody has is not something anybody reached.
-const PROJECT_TYPES = Object.keys(PROJECTS).map((k) => PROJECTS[k].type);
+const PROJECT_TYPES = Object.keys(PROJECTS).map(k => PROJECTS[k].type);
 
 /** The calendar day (UTC) a moment falls in. Nothing finer is ever kept. */
-export function dayKey(t) { return new Date(t).toISOString().slice(0, 10); }
+export function dayKey(t) {
+  return new Date(t).toISOString().slice(0, 10);
+}
 
 export class Stats {
   /**
@@ -56,7 +58,9 @@ export class Stats {
     try {
       const raw = JSON.parse(await readFile(this.file, 'utf8'));
       if (raw && raw.days) this.ledger = normalise(raw);
-    } catch (e) { /* no ledger yet, or half a ledger: start counting again */ }
+    } catch {
+      /* no ledger yet, or half a ledger: start counting again */
+    }
     return this;
   }
 
@@ -71,7 +75,10 @@ export class Stats {
       // the same read-only disk the worlds cope with. Counting is the least
       // important thing here, so it fails quietly and the game carries on.
       await unlink(tmp).catch(() => {});
-      if (!this.warned) { this.warned = true; console.warn('stats: cannot write ' + this.file + ' (' + e.code + ')'); }
+      if (!this.warned) {
+        this.warned = true;
+        console.warn('stats: cannot write ' + this.file + ' (' + e.code + ')');
+      }
     }
   }
 
@@ -92,8 +99,14 @@ export class Stats {
     const k = dayKey(this.now());
     if (!w.active) w.active = {};
     const r = row(this.ledger, k);
-    if (w.active[k] === undefined) { w.active[k] = ''; r.played++; }
-    if (role && w.active[k].indexOf(role) < 0) { w.active[k] += role; r.spots++; }
+    if (w.active[k] === undefined) {
+      w.active[k] = '';
+      r.played++;
+    }
+    if (role && w.active[k].indexOf(role) < 0) {
+      w.active[k] += role;
+      r.spots++;
+    }
     trim(w.active, ACTIVE_DAYS);
     trim(this.ledger.days, KEEP_DAYS);
     this.dirty = true;
@@ -149,15 +162,23 @@ export class Stats {
     const keys = Object.keys(this.ledger.days).sort();
     for (const k of keys.slice(-90)) {
       const r = this.ledger.days[k];
-      days.push({ d: k, started: r.started, played: r.played, spots: r.spots, minutes: Math.round(r.ticks / TICKS_PER_MIN) });
+      days.push({
+        d: k,
+        started: r.started,
+        played: r.played,
+        spots: r.spots,
+        minutes: Math.round(r.ticks / TICKS_PER_MIN),
+      });
     }
 
     const week = { started: 0, played: 0, spots: 0, minutes: 0 };
     const since = dayKey(this.now() - 6 * 86400000);
     for (const d of days) {
       if (d.d < since) continue;
-      week.started += d.started; week.played += d.played;
-      week.spots += d.spots; week.minutes += d.minutes;
+      week.started += d.started;
+      week.played += d.played;
+      week.spots += d.spots;
+      week.minutes += d.minutes;
     }
 
     // how far worlds got: the ones already forgotten, and the ones still here
@@ -168,10 +189,11 @@ export class Stats {
     };
     const marks = copy(this.ledger.gone.marks);
     const deeds = copy(this.ledger.gone.deeds);
-    let openSpots = 0, alive = 0;
-    for (const w of (worlds || [])) {
+    let openSpots = 0,
+      alive = 0;
+    for (const w of worlds || []) {
       alive++;
-      openSpots += w.roles.filter((r) => !w.slots[r]).length;
+      openSpots += w.roles.filter(r => !w.slots[r]).length;
       const f = w.far;
       if (!f || (!f.day && !f.tick)) continue;
       far.worlds++;
@@ -219,11 +241,12 @@ export function marksOf(w) {
     // a house somebody put up carries the tick it went up on, which can be
     // tick zero on the first morning; the ones the village started with have
     // no such field at all
-    if (b.type === 'house') { if (b.builtTick !== undefined) m.house = 1; }
-    else if (PROJECT_TYPES.indexOf(b.type) >= 0) m[b.type] = 1;
+    if (b.type === 'house') {
+      if (b.builtTick !== undefined) m.house = 1;
+    } else if (PROJECT_TYPES.indexOf(b.type) >= 0) m[b.type] = 1;
   }
   const vs = Array.isArray(w.villagers) ? w.villagers : [];
-  if (vs.length && vs.every((v) => !!v.homeId)) m.housed = 1;
+  if (vs.length && vs.every(v => !!v.homeId)) m.housed = 1;
   return m;
 }
 
@@ -233,7 +256,7 @@ export function deedsOf(w) {
   const ps = w.players && typeof w.players === 'object' ? w.players : {};
   for (const r in ps) {
     const done = ps[r] && ps[r].done;
-    for (const k in (done || {})) out[k] = (out[k] || 0) + num(done[k]);
+    for (const k in done || {}) out[k] = (out[k] || 0) + num(done[k]);
   }
   return out;
 }
@@ -246,14 +269,19 @@ function emptyLedger() {
 
 function normalise(raw) {
   const l = emptyLedger();
-  for (const k in (raw.days || {})) {
+  for (const k in raw.days || {}) {
     const r = raw.days[k];
-    l.days[k] = { started: num(r.started), played: num(r.played), spots: num(r.spots), ticks: num(r.ticks) };
+    l.days[k] = {
+      started: num(r.started),
+      played: num(r.played),
+      spots: num(r.spots),
+      ticks: num(r.ticks),
+    };
   }
   const g = raw.gone || {};
   l.gone.worlds = num(g.worlds);
   for (const part of ['days', 'minutes', 'marks', 'deeds'])
-    for (const k in (g[part] || {})) l.gone[part][String(k)] = num(g[part][k]);
+    for (const k in g[part] || {}) l.gone[part][String(k)] = num(g[part][k]);
   return l;
 }
 
@@ -262,9 +290,18 @@ function row(l, k) {
   return l.days[k];
 }
 
-function bump(o, k, by) { o[k] = (o[k] || 0) + (by === undefined ? 1 : by); }
-function copy(o) { const out = {}; for (const k in o) out[k] = o[k]; return out; }
-function num(n) { n = Number(n); return isFinite(n) && n > 0 ? Math.floor(n) : 0; }
+function bump(o, k, by) {
+  o[k] = (o[k] || 0) + (by === undefined ? 1 : by);
+}
+function copy(o) {
+  const out = {};
+  for (const k in o) out[k] = o[k];
+  return out;
+}
+function num(n) {
+  n = Number(n);
+  return isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
 
 function mergeMax(a, b) {
   const out = a || {};
@@ -282,7 +319,10 @@ function trim(o, n) {
 
 function minuteBucket(mins) {
   let last = MIN_BUCKETS[0];
-  for (const b of MIN_BUCKETS) { if (mins < b) break; last = b; }
+  for (const b of MIN_BUCKETS) {
+    if (mins < b) break;
+    last = b;
+  }
   const next = MIN_BUCKETS[MIN_BUCKETS.indexOf(last) + 1];
   return next === undefined ? last + '+' : last + '-' + (next - 1);
 }
@@ -301,5 +341,9 @@ function median(hist) {
   return 0;
 }
 
-function low(k) { return parseInt(String(k), 10) || 0; }
-function byLow(a, b) { return low(a) - low(b); }
+function low(k) {
+  return parseInt(String(k), 10) || 0;
+}
+function byLow(a, b) {
+  return low(a) - low(b);
+}

@@ -1047,6 +1047,78 @@ async function main() {
     await over.close();
   }
 
+  /* ---------- 1c. the welcome-back screen (law 10) ---------- */
+  // Two different people, two different times: A does something, then leaves
+  // entirely, and only afterwards does B open the same world for the first
+  // time. Separate contexts, so nothing but the server remembers either of
+  // them — the same shape two devices in two places would actually have.
+  {
+    const room = 'wb' + Math.floor(Math.random() * 1e6);
+
+    const ctxA = await browser.newContext({ viewport: { width: 900, height: 700 } });
+    const pA = await ctxA.newPage();
+    watch(pA, 'welcome-a');
+    await pA.goto(BASE + '/?world=' + room + '&role=A', { waitUntil: 'load' });
+    await pA.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 15000 });
+    await pA.evaluate(() => {
+      const w = window.OLW.world;
+      w.players.A.res.wood = 5;
+      window.OLW.dispatch({ type: 'give', from: 'A', to: 'B', res: 'wood', n: 3 });
+      window.OLW.session.checkpoint();
+    });
+    await pA.waitForTimeout(1200); // give the server a moment to hear about it
+    await ctxA.close();
+
+    const ctxB = await browser.newContext({ viewport: { width: 900, height: 700 } });
+    const pB = await ctxB.newPage();
+    watch(pB, 'welcome-b');
+    await pB.goto(BASE + '/?world=' + room + '&role=B', { waitUntil: 'load' });
+    await pB.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 15000 });
+    await pB
+      .waitForFunction(
+        () => !document.getElementById('overlay').classList.contains('hidden'),
+        null,
+        {
+          timeout: 8000,
+        },
+      )
+      .catch(() => {
+        throw new Error('the welcome-back screen never appeared for the player coming back');
+      });
+    const wbText = (await pB.textContent('.panel')).replace(/\s+/g, ' ').trim();
+    console.log('the welcome-back screen says:', wbText);
+    if (!/wood/i.test(wbText))
+      throw new Error('what the other player did is not on the welcome-back screen');
+    await pB.click('text=Off to the village');
+    await pB.waitForTimeout(300);
+    const stillUp = await pB.evaluate(
+      () => !document.getElementById('overlay').classList.contains('hidden'),
+    );
+    if (stillUp) throw new Error('the welcome-back screen did not put itself away');
+    const left = await pB.evaluate(() => window.OLW.world.ext.since.B.length);
+    if (left !== 0) throw new Error('putting it away did not clear the since-list');
+
+    // and it does not come back on its own — coming back in finds nothing new.
+    // A fresh page rather than reload(): a plain reload() would hit the
+    // address bar as it is now, and joining strips `&role=` from it (see
+    // main.js), and closing first (as the start-over check above does too)
+    // rather than navigating the live page away avoids blaming this page for
+    // whatever request its own background saving still had in flight.
+    await pB.evaluate(() => window.OLW.session.checkpoint());
+    await pB.waitForTimeout(600);
+    await pB.close();
+    const pB2 = await ctxB.newPage();
+    watch(pB2, 'welcome-b-again');
+    await pB2.goto(BASE + '/?world=' + room + '&role=B', { waitUntil: 'load' });
+    await pB2.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 15000 });
+    await pB2.waitForTimeout(600);
+    const backAgain = await pB2.evaluate(
+      () => !document.getElementById('overlay').classList.contains('hidden'),
+    );
+    if (backAgain) throw new Error('the welcome-back screen reappeared on its own');
+    await ctxB.close();
+  }
+
   /* ---------- 2. two browsers, one world ---------- */
   if (!QUICK) {
     const ctxA = await browser.newContext({ viewport: { width: 900, height: 700 } });

@@ -15,6 +15,7 @@ import { newerBuild, watchForNewer, reloadNow, whenQuiet } from './core/fresh.js
 import { startScreen } from './ui/start.js';
 import { openInvite } from './ui/invite.js';
 import { showChangelog, VERSION } from './ui/whatsnew.js';
+import { showWelcomeBack } from './ui/welcome.js';
 
 const qs = new URLSearchParams(location.search);
 const dir = new Directory(apiBase(qs));
@@ -552,6 +553,11 @@ async function startGame(choice) {
   // The day starts with the game. If the world is already in the middle of
   // one — the other player got here first — we simply join it.
   if (!session.world.block.active) game.startDay(session.world.block.endedAt !== null);
+
+  // Coming back explains itself (law 10) — but only once, after the day's own
+  // panels are out of the way, and only when there is something to tell.
+  const since = (session.world.ext.since && session.world.ext.since[chosenRole]) || [];
+  if (since.length) showWelcomeBack(game, since);
 
   window.OLW = game; // handy when poking at it from a console
 }

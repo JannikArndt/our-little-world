@@ -364,6 +364,13 @@ export function ensureWorld(w) {
 
   // a role the scenario plays that this world has never heard of gets a seat
   for (const id of scen.roles || ['A', 'B']) if (!w.players[id]) w.players[id] = newPlayer(id);
+  // the welcome-back screen's own memory: one list per seat of things it has
+  // not shown yet. It cannot use the journal — block.start clears that every
+  // day — so it keeps its own, in w.ext where nothing bumps the schema.
+  // Walking w.players rather than the role list means a third role gets a
+  // list for free too.
+  if (!w.ext.since || typeof w.ext.since !== 'object') w.ext.since = {};
+  for (const id in w.players) if (!Array.isArray(w.ext.since[id])) w.ext.since[id] = [];
   for (const r of scen.regions || [])
     if (!w.regions[r.id]) w.regions[r.id] = r.open === false ? 'later' : 'open';
   cacheRegions(w);

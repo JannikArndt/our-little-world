@@ -51,7 +51,37 @@ export { note };
 export function journal(w, icon, key, vars) {
   w.journal.push({ icon, key, vars: vars || null, tick: w.tick });
   if (w.journal.length > 40) w.journal.shift();
+  addSince(w, icon, key, vars);
 }
+
+const SINCE_CAP = 12; // the anti-list: nothing grows the more you play
+
+/**
+ * The welcome-back screen's own memory (law 10). The journal is cleared every
+ * in-game day, so it cannot tell somebody what happened while they were away —
+ * this can, because it lives in `w.ext` and nobody empties it but the `seen`
+ * action below. `actingRole`, stashed once per `applyAction()` call, says
+ * whose doing this was; a fact with nobody behind it (the simulation, not a
+ * player) goes on nobody's list, and a role never gets told about its own
+ * doing.
+ */
+function addSince(w, icon, key, vars) {
+  if (!actingRole) return;
+  if (!w.ext.since || typeof w.ext.since !== 'object') w.ext.since = {};
+  for (const role in w.players) {
+    if (role === actingRole) continue;
+    if (!Array.isArray(w.ext.since[role])) w.ext.since[role] = [];
+    const list = w.ext.since[role];
+    list.push({ icon, key, vars: vars || null, by: actingRole, tick: w.tick });
+    if (list.length > SINCE_CAP) list.shift();
+  }
+}
+
+// Whichever role is behind the action being applied right now, so journal()
+// — called deep inside the reducer — knows who to credit without every one of
+// its call sites having to say so itself. Set once at the top of
+// applyAction() and read from nowhere else.
+let actingRole = null;
 
 /**
  * What a villager is up to right now, purely for the telling — a dance, a
@@ -115,6 +145,20 @@ const POKE_ANSWERS = ['wave', 'wink', 'hop', 'shy'];
 /* ---- the reducer ---------------------------------------------------- */
 
 export function applyAction(w, a) {
+  // Put back exactly what was found rather than simply cleared: a boat is a
+  // project.build underneath, so these nest. And between actions the village
+  // journals things of its own — somebody moving into a house — which belong
+  // to nobody and must not be credited to whoever happened to act last.
+  const wasActing = actingRole;
+  actingRole = a.role || a.from || null;
+  try {
+    return applyOne(w, a);
+  } finally {
+    actingRole = wasActing;
+  }
+}
+
+function applyOne(w, a) {
   switch (a.type) {
     /* ---------------- the play block ---------------- */
     case 'block.start': {
@@ -546,7 +590,7 @@ export function applyAction(w, a) {
       if (n <= 0) return false;
       from.res[a.res] -= n;
       to.res[a.res] = (to.res[a.res] || 0) + n;
-      journal(w, '🤝', 'j.shared', { n: n });
+      journal(w, '🤝', 'j.shared', { n: n, res: a.res });
       return true;
     }
     case 'larder.give': {
@@ -599,6 +643,17 @@ export function applyAction(w, a) {
     }
     case 'notice.dismiss': {
       w.notices = w.notices.filter(n => n.id !== a.id);
+      return true;
+    }
+    /**
+     * The welcome-back screen has been read: empty that seat's list. Safe to
+     * apply twice — an empty list has nothing left to clear — which is what
+     * law 12 asks of every action here.
+     */
+    case 'seen': {
+      const list = w.ext.since && w.ext.since[a.role];
+      if (!list || !list.length) return false;
+      w.ext.since[a.role] = [];
       return true;
     }
     case 'world.event': {

@@ -9,33 +9,7 @@ on the live site. Delete an item when it lands — this file should get shorter.
 
 ---
 
-## 1. 🎁 The welcome-back screen
-
-**Law 10.** Nothing tells you what the other player did while you were away.
-The largest piece here; worth sketching before writing.
-
-- **A mark for "when I was last here", per seat.** The two players are away at
-  different times, so this is per role, not per world. `w.ext` is the right home
-  — namespaced, survives save, load and the network, no schema bump. Something
-  like `w.ext.seen = { A: tick, B: tick }`, written when a player leaves and
-  when the world is saved.
-- **A list worth reading**, derived from what the world already keeps: the
-  journal (capped at 40), the `players[].done` tallies, the buildings, and
-  `w.notices`. New buildings, gifts received ("5 wool, 2 planks"), resources
-  gathered, problems solved.
-- **Derived, never sent.** Law 4 holds absolutely: the other player composes
-  nothing. Everything on the screen is computed from world state.
-- **Not a summons.** No notification, no badge, no "come back" (anti-list). It
-  appears only after somebody has already opened the game, and one tap puts it
-  away into the village.
-- Nothing on it when nothing happened — a screen that says "nothing happened"
-  is worse than no screen.
-- Strings in every language table. A step in `tools/smoke.mjs`: play as A,
-  leave, play as B, come back as A, read the list.
-
----
-
-## 2. 🌱 Kind things while nobody is there
+## 1. 🌱 Kind things while nobody is there
 
 **Law 9.** The world is frozen between visits; saplings only grow while somebody
 is watching, because `SAPLING_TICKS` counts play ticks.
@@ -56,7 +30,7 @@ is watching, because `SAPLING_TICKS` counts play ticks.
 
 ---
 
-## 3. 🧹 The modern-JavaScript sweep
+## 2. 🧹 The modern-JavaScript sweep
 
 House style says modern JS everywhere; the code still avoids optional chaining,
 `??` and flexbox `gap` from when the floor was Safari 12.

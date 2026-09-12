@@ -11,7 +11,7 @@ import {
   isDusk,
 } from '../src/core/world.js';
 import { SCENARIOS } from '../src/core/content.js';
-import { applyAction } from '../src/core/actions.js';
+import { applyAction, journal } from '../src/core/actions.js';
 import { tick } from '../src/core/sim.js';
 import { maybeEvent } from '../src/core/events.js';
 import { findPath } from '../src/core/pathfind.js';
@@ -540,4 +540,71 @@ test('a day only ever begins because somebody asked for one', () => {
   assert.equal(w.block.active, false);
   run(w, 600);
   assert.equal(w.block.active, false, 'and nothing starts the next one by itself either');
+});
+
+/* ---- the welcome-back screen's own memory (law 10) --------------------- */
+
+test("what one role did lands in the other role's since-list, not their own", () => {
+  const w = createWorld(61);
+  w.players.A.res.wood = 5;
+  applyAction(w, { type: 'give', from: 'A', to: 'B', res: 'wood', n: 3 });
+  assert.equal(w.ext.since.A.length, 0, 'nobody has to be told about their own doing');
+  assert.equal(w.ext.since.B.length, 1);
+  const entry = w.ext.since.B[0];
+  assert.equal(entry.key, 'j.shared');
+  assert.equal(entry.by, 'A');
+  assert.deepEqual(entry.vars, { n: 3, res: 'wood' });
+});
+
+test('a since-list is capped at 12, oldest dropped first', () => {
+  const w = createWorld(62);
+  w.players.A.res.wood = 200; // more than the 1+2+...+15 given away below
+  for (let i = 1; i <= 15; i++) {
+    applyAction(w, { type: 'give', from: 'A', to: 'B', res: 'wood', n: i });
+  }
+  const list = w.ext.since.B;
+  assert.equal(list.length, 12, 'twelve is the most a seat ever carries');
+  // the first three gifts (n: 1, 2, 3) should have been the ones let go of
+  assert.equal(list[0].vars.n, 4);
+  assert.equal(list[list.length - 1].vars.n, 15);
+});
+
+test('what the village does itself belongs to nobody, even right after an action', () => {
+  // somebody moving into a house is journalled by the simulation, between
+  // actions and outside applyAction(). If the last actor were still held on
+  // to, "Ted moved in" would turn up on the other player's screen as
+  // something *you* did.
+  const w = createWorld(64);
+  w.players.A.res.wood = 5;
+  applyAction(w, { type: 'give', from: 'A', to: 'B', res: 'wood', n: 2 });
+  assert.equal(w.ext.since.B.length, 1, "the gift is B's to hear about");
+
+  journal(w, '🔑', 'j.movedIn', { name: 'Ted' });
+  assert.equal(w.ext.since.B.length, 1, 'the village moving somebody in is not A doing it');
+  assert.deepEqual(w.ext.since.A, [], 'and it is not B doing it either');
+});
+
+test('seen empties a since-list, and doing it twice is a no-op', () => {
+  const w = createWorld(63);
+  w.players.A.res.wood = 5;
+  applyAction(w, { type: 'give', from: 'A', to: 'B', res: 'wood', n: 2 });
+  assert.equal(w.ext.since.B.length, 1);
+  assert.equal(applyAction(w, { type: 'seen', role: 'B' }), true);
+  assert.deepEqual(w.ext.since.B, []);
+  // applying it again finds nothing left to clear, and says so rather than
+  // pretending it did something
+  assert.equal(applyAction(w, { type: 'seen', role: 'B' }), false);
+  assert.deepEqual(w.ext.since.B, []);
+});
+
+test('a new day clears the journal but never the since-list — that is the whole point', () => {
+  const w = createWorld(64);
+  w.players.A.res.wood = 5;
+  applyAction(w, { type: 'give', from: 'A', to: 'B', res: 'wood', n: 2 });
+  assert.equal(w.journal.length, 1);
+  assert.equal(w.ext.since.B.length, 1);
+  applyAction(w, { type: 'block.start', newDay: true });
+  assert.equal(w.journal.length, 0, 'the journal is cleared every in-game day');
+  assert.equal(w.ext.since.B.length, 1, 'but the welcome-back screen still remembers');
+  assert.equal(w.ext.since.B[0].key, 'j.shared');
 });

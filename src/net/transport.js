@@ -3,9 +3,10 @@
 // LocalTransport for the WsTransport is the whole of "adding multiplayer".
 
 /*  message shapes
-    { t:'hello',  peer }                     – I just arrived
+    { t:'hello',  peer }                     – I just arrived (or came back)
     { t:'snap',   peer, world }              – here is the whole world
-    { t:'act',    peer, action, seq }        – somebody did something
+    { t:'act',    peer, action }             – somebody did something (action.id names it)
+    { t:'ack',    peer, id }                 – the host says one of ours landed
     { t:'bye',    peer }
 */
 

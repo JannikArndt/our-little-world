@@ -748,6 +748,24 @@ async function main() {
     return w.terrain[10 * 40 + 25] === 3;
   }, null, { timeout: 8000 }).catch(() => { throw new Error('the road did not appear on the other screen'); });
   console.log('building is visible to the other player: yes');
+
+  // Appearing once used to be no guarantee: a snapshot that predated the road
+  // could reach the builder and reconcile() would swap in the whole world it
+  // carried, quietly taking the road back out from under the very player who
+  // just laid it. A few seconds on, it has to still be standing on both screens.
+  await pb.waitForTimeout(2500);
+  const roadTiles = () => {
+    const w = window.OLW.world;
+    let n = 0;
+    for (let x = 22; x < 28; x++) if (w.terrain[10 * 40 + x] === 3) n++;
+    return n;
+  };
+  const onBuilder = await pb.evaluate(roadTiles);
+  const onOther = await pa.evaluate(roadTiles);
+  console.log('the road a couple of seconds later — builder sees:', onBuilder, 'tiles, the other player sees:', onOther);
+  if (onBuilder < 6) throw new Error('the road vanished on the screen that built it');
+  if (onOther < 6) throw new Error('the road vanished on the other screen');
+
   await pa.screenshot({ path: SHOTS + '28-player-a.png' });
   await pb.screenshot({ path: SHOTS + '29-player-b.png' });
   await ctxA.close(); await ctxB.close();

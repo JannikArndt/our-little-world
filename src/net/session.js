@@ -22,6 +22,7 @@ const SNAP_EVERY = 12;          // ticks between snapshots to the other player (
 const SAVE_EVERY = 50;          // ticks between saves to this device (5 s)
 const UPLOAD_EVERY = 300;       // ticks between saves to the server (30 s)
 const HOST_WAIT  = 900;         // ms to listen before claiming the host role
+const PENDING_MS = 5000;        // how long we carry an unacknowledged action of our own
 
 export class Session {
   constructor(opts) {
@@ -40,6 +41,11 @@ export class Session {
     this.lastSave = 0;
     this.lastUpload = 0;
     this.status = this.solo ? 'solo' : 'waiting';
+    this.seq = 1;                        // numbers our own actions, for acks to name
+    this.pending = [];                   // our own actions the host has not confirmed yet
+    this.seenPeers = null;               // who has said hello, so we only echo once each
+    this.lowestPeer = null;              // the smallest peer id we have heard say hello
+    this.everOnline = false;             // tells a first connect from a reconnect
   }
 
   on(fn) { this.listeners.push(fn); return () => { this.listeners = this.listeners.filter(f => f !== fn); }; }
@@ -48,7 +54,11 @@ export class Session {
   async start() {
     // ask the server for the world while we listen for the other player
     const fromServer = this.remote ? this.remote.load() : Promise.resolve(null);
-    await this.transport.connect((m) => this.receive(m));
+    const connecting = this.transport.connect((m) => this.receive(m));
+    // A drop and reconnect otherwise never says hello again, so nothing tells
+    // the other player we are worth a fresh snapshot after we come back.
+    this.transport.onStatus = (s) => this.onTransportStatus(s);
+    await connecting;
 
     if (this.solo) {
       this.world = await this.bestWorld(fromServer);
@@ -56,8 +66,17 @@ export class Session {
       return;
     }
 
+    this.seenPeers = new Set();
     this.transport.send({ t: 'hello', peer: this.peer });
     await new Promise(r => setTimeout(r, HOST_WAIT));
+    // Somebody with a lower id said hello back before we decided anything —
+    // they are about to claim the clock (the same rule the tie-break below
+    // uses), so give their snapshot a little longer to arrive instead of
+    // grabbing the clock out from under them and losing whatever they did
+    // while both of us thought we were in charge.
+    if (!this.world && this.lowestPeer !== null && this.lowestPeer < this.peer) {
+      await new Promise(r => setTimeout(r, HOST_WAIT));
+    }
     if (!this.world) {
       this.world = await this.bestWorld(fromServer);
       this.becomeHost();
@@ -92,14 +111,30 @@ export class Session {
     if (this.remote) this.upload();
   }
 
+  /** The transport telling us how the connection itself is doing. */
+  onTransportStatus(status) {
+    if (status === 'online' && this.everOnline && !this.solo)
+      this.transport.send({ t: 'hello', peer: this.peer });
+    if (status === 'online') this.everOnline = true;
+  }
+
   /* ---------------- messages ---------------- */
 
   receive(m) {
     if (!m || m.peer === this.peer) return;
     switch (m.t) {
-      case 'hello':
+      case 'hello': {
+        const firstTime = this.seenPeers && !this.seenPeers.has(m.peer);
+        if (this.seenPeers) this.seenPeers.add(m.peer);
+        if (this.lowestPeer === null || m.peer < this.lowestPeer) this.lowestPeer = m.peer;
         if (this.isHost) this.snapshot();
+        // Say it back the first time: two peers connecting in the same
+        // instant can each miss the other's very first hello — a relay has
+        // nobody yet to hand it to — and without an echo both go on to
+        // claim the clock deaf to each other.
+        else if (!this.world && firstTime) this.transport.send({ t: 'hello', peer: this.peer });
         break;
+      }
       case 'kept': {
         // the relay's memory of this room. Not a live host: just a world.
         const w = deserialize(m.world);
@@ -122,7 +157,15 @@ export class Session {
       }
       case 'act':
         if (!this.world) return;
-        if (applyAction(this.world, m.action)) this.emit('acted', m.action);
+        if (applyAction(this.world, m.action)) {
+          this.emit('acted', m.action);
+          // tell whoever sent it that it landed, so they can stop carrying
+          // it against the chance a snapshot undoes it
+          if (this.isHost && m.action.id) this.transport.send({ t: 'ack', peer: this.peer, id: m.action.id });
+        }
+        break;
+      case 'ack':
+        this.pending = this.pending.filter(p => p.id !== m.id);
         break;
       default: break;
     }
@@ -144,6 +187,15 @@ export class Session {
       incoming.sheep.forEach(blend);
       incoming.fx = this.world.fx || [];       // our own little sparkles stay ours
     }
+    // Whatever we did that the host has not acknowledged yet might not be in
+    // this snapshot — it could have been taken before our action reached the
+    // host, or be a moment behind. Play it again on top, so "I just did that"
+    // never quietly vanishes. Anything old enough to have been settled one
+    // way or the other, we let go of, so a genuinely rejected action does not
+    // haunt every snapshot for ever.
+    const now = Date.now();
+    this.pending = this.pending.filter(p => now - p.at < PENDING_MS);
+    for (const p of this.pending) applyAction(incoming, p.action);
     this.world = incoming;
   }
 
@@ -160,9 +212,18 @@ export class Session {
 
   dispatch(action) {
     if (!this.world) return false;
+    // A name for this one action, so an ack can say which of ours landed.
+    if (!this.solo && action.id == null) action.id = this.peer + ':' + (this.seq++);
     const ok = applyAction(this.world, action);
     if (!ok) return false;
-    if (!this.solo) this.transport.send({ t: 'act', peer: this.peer, action });
+    if (!this.solo) {
+      // We are not the authority, so hold onto this until the host says it
+      // landed — a snapshot crossing it in flight must not be able to undo
+      // it. Recorded before it is sent: an ack could in principle come back
+      // before this line otherwise, and then never find anything to clear.
+      if (!this.isHost) this.pending.push({ id: action.id, action, at: Date.now() });
+      this.transport.send({ t: 'act', peer: this.peer, action });
+    }
     this.emit('acted', action);
     return true;
   }
@@ -216,6 +277,7 @@ export class Session {
     this.world = createWorld(hashSeed(this.room));
     this.kept = null;
     this.isHost = true;
+    this.pending = [];                   // nothing from the old world is owed a reply
     this.lastSnap = 0; this.lastSave = 0; this.lastUpload = 0;
     save(this.room, this.world);
     if (!this.solo) this.snapshot();          // the relay's memory, and the other player

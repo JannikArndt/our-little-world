@@ -8,6 +8,7 @@ import { tr } from './i18n.js';
 import {
   SCENARIOS, DEFAULT_SCENARIO, scenarioOf, ROLES, PROJECTS,
   HUNGER_RISE, LOAF_RELIEF,
+  HOUSE_STUFF, HOUSE_WALL, HOUSE_ALL,
 } from './content.js';
 import { runMigrations } from './migrate.js';
 
@@ -290,6 +291,12 @@ export function ensureWorld(w) {
   // fields that later versions expect to find on things that already exist
   for (const t of w.trees) { if (!t.state) t.state = 'standing'; }
   for (const b of w.buildings) { if (!b.residents) b.residents = []; if (b.beds == null) b.beds = 0; }
+  // a house has furniture now, and an old one keeps what it was already doing
+  for (const b of w.buildings) {
+    if (b.type !== 'house' || b.state !== 'built') continue;
+    if (!Array.isArray(b.stuff)) b.stuff = inheritedStuff(b);
+    houseFit(b);
+  }
   for (const v of w.villagers) { if (v.kid === undefined) v.kid = false; if (!v.poorly) v.poorly = 0; }
 
   ensurePeople(w, scen);
@@ -331,6 +338,86 @@ function ensurePlans(w, scen) {
       state: 'plan', name: spec.name, walkable: !!spec.walkable,
     });
   }
+}
+
+/* --------------------------------------------------------------------- */
+/* what is in a house                                                    */
+/* --------------------------------------------------------------------- */
+
+/** Is this a slot that exists, and is it the right sort for this thing? */
+export function slotFits(slot, where) {
+  if (!(slot >= 0 && slot < HOUSE_ALL) || slot !== (slot | 0)) return false;
+  return where === 'wall' ? slot < HOUSE_WALL : slot >= HOUSE_WALL;
+}
+
+/**
+ * Everything a house is comes from what is standing in it. Beds are what you
+ * can sleep in, a stove is what makes it warm, a window or a lamp is what
+ * makes it light — and comfort is everything added up, because a room somebody
+ * keeps bringing things to really is a nicer place to be.
+ *
+ * Nothing else writes these fields, so they can never drift from the furniture.
+ */
+export function houseFit(b) {
+  if (!Array.isArray(b.stuff)) b.stuff = [];
+  let beds = 0, warm = false, light = false, flame = false, comfort = 0;
+  for (const s of b.stuff) {
+    const def = HOUSE_STUFF[s.kind];
+    if (!def) continue;
+    comfort += def.comfort || 0;
+    if (def.gives === 'bed') beds++;
+    if (def.gives === 'warm') { warm = true; flame = true; }
+    if (def.gives === 'light') { light = true; if (s.kind === 'lamp') flame = true; }
+  }
+  b.beds = beds;
+  b.warm = warm;
+  b.light = light;
+  // whether there is anything in here to light. `lamp` is the simulation's,
+  // and means one is burning this minute — it needs something to burn.
+  b.flame = flame;
+  b.comfort = comfort;
+  return b;
+}
+
+/** Put a list of things in the first slots that will take them. */
+export function placeStuff(kinds) {
+  const out = [], taken = {};
+  for (const kind of kinds) {
+    const def = HOUSE_STUFF[kind];
+    if (!def) continue;
+    const from = def.where === 'wall' ? 0 : HOUSE_WALL;
+    const to = def.where === 'wall' ? HOUSE_WALL : HOUSE_ALL;
+    for (let i = from; i < to; i++) {
+      if (taken[i]) continue;
+      taken[i] = 1;
+      out.push({ kind: kind, slot: i });
+      break;
+    }
+  }
+  return out;
+}
+
+/** What a house has the day it goes up: light to see by and a bed to sleep in. */
+export function newHouseStuff() { return placeStuff(['window', 'bed']); }
+
+/**
+ * A house built before there was anything to put in one. It keeps exactly what
+ * it already behaved as though it had — every bed it was sleeping people in,
+ * its window, its stove — so nobody opens their village to find it emptied.
+ */
+function inheritedStuff(b) {
+  const plan = b.plan && typeof b.plan === 'object' ? b.plan : null;
+  const inPlan = (kind) => {
+    let n = 0;
+    for (const k in (plan || {})) if (plan[k] === kind) n++;
+    return n;
+  };
+  const want = [];
+  for (let i = 0; i < Math.max(1, b.beds || 0); i++) want.push('bed');
+  for (let i = 0; i < Math.max(b.light === false ? 0 : 1, inPlan('window')); i++) want.push('window');
+  if (b.warm !== false || inPlan('stove')) want.push('stove');
+  for (let i = 0; i < inPlan('table'); i++) want.push('table');
+  return placeStuff(want);
 }
 
 /** Where a plan goes: a plain tile, or the nearest river bank to one. */

@@ -442,6 +442,8 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
   background: #fffdf8; border: 2px solid var(--line); border-radius: 14px; text-align: center;
 }
 .tool.on { border-color: var(--builder); background: #fff2e4; box-shadow: inset 0 0 0 2px #fff; }
+/* still tappable: tapping it shows what is missing, which is worth learning */
+.tool.poor { opacity: .55; }
 .tool .ico { display: block; font-size: 26px; line-height: 28px; }
 .tool .lab { display: block; font-size: 12px; font-weight: 700; margin-top: 2px; }
 .tool .cost { display: block; font-size: 11px; color: var(--ink-soft); }

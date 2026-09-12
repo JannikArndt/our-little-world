@@ -38,7 +38,7 @@ function fill(text, vars) {
   return text.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? String(vars[k]) : m));
 }
 
-/** tr('house.title') — falls back to English, then to the key itself. */
+/** tr('w.house') — falls back to English, then to the key itself. */
 export function tr(key, vars) {
   const table = TABLES[lang] || en;
   let text = table[key];

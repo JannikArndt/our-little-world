@@ -4,8 +4,11 @@
 // browsers share one world, and what lets the tests be meaningful.
 
 import { GW, GH, T, inBounds, setTile, tileAt, rebuildBlocked, walkable } from './grid.js';
-import { addBuilding, byId, newId, CAPS, capName, BLOCK_TICKS, cacheRegions, isDusk } from './world.js';
-import { PROJECTS, EAGER_AT } from './content.js';
+import {
+  addBuilding, byId, newId, CAPS, capName, BLOCK_TICKS, cacheRegions, isDusk,
+  houseFit, newHouseStuff, slotFits,
+} from './world.js';
+import { PROJECTS, EAGER_AT, HOUSE_SHELL, HOUSE_STUFF } from './content.js';
 import { findPath } from './pathfind.js';
 import { rndInt } from './rng.js';
 
@@ -205,24 +208,65 @@ export function applyAction(w, a) {
     }
 
     /* ---------------- houses ---------------- */
+    /**
+     * Raising the shell. One price, no design: four walls, a door, a window
+     * and a bed, so somebody can move in this afternoon. Everything better
+     * than that is bought a piece at a time afterwards, by either of you.
+     */
     case 'house.build': {
       const site = byId(w.buildings, a.siteId);
       if (!site || site.state !== 'site') return false;
-      if (!pay(w, a.role, { plank: a.planks, stone: a.stone })) return false;
+      if (!pay(w, a.role, HOUSE_SHELL)) return false;
       site.type = 'house';
       site.state = 'built';
-      site.plan = a.plan;
-      site.beds = a.beds;
-      site.warm = a.warm;
-      site.light = a.light;
-      site.roomy = a.roomy;
-      site.reachable = a.reachable;
+      site.stuff = newHouseStuff();
+      houseFit(site);
       site.name = 'a new house';
       site.builtTick = w.tick;
       rebuildBlocked(w);
       fx(w, 'sparkle', site.x + site.w / 2, site.y);
       tally(w, a.role, 'house');
-      journal(w, '🏠', 'j.house', { n: a.beds });
+      journal(w, '🏠', 'j.house', { n: site.beds });
+      return true;
+    }
+
+    /**
+     * One thing into one empty place in a house. Anybody may — the Builder has
+     * the planks and the Keeper has the wool and the flowers, and a house the
+     * two of them furnished together is the point of the whole game.
+     *
+     * The slot has to be empty, which is also what makes this safe to apply
+     * twice: the second time there is already something standing there.
+     */
+    case 'house.put': {
+      const b = byId(w.buildings, a.houseId);
+      if (!b || b.type !== 'house' || b.state !== 'built') return false;
+      const def = HOUSE_STUFF[a.kind];
+      if (!def || !slotFits(a.slot, def.where)) return false;
+      if (!Array.isArray(b.stuff)) b.stuff = [];
+      if (b.stuff.some(s => s.slot === a.slot)) return false;
+      if (!pay(w, a.role, def.cost)) return false;
+      b.stuff.push({ kind: a.kind, slot: a.slot });
+      houseFit(b);
+      tally(w, a.role, 'furnish');
+      fx(w, 'sparkle', b.x + b.w / 2, b.y);
+      return true;
+    }
+
+    /**
+     * Moving something you already own costs nothing. Pieces are named by the
+     * slot they stand in rather than an id of their own, because an id handed
+     * out on one device would not be the same id on the other.
+     */
+    case 'house.move': {
+      const b = byId(w.buildings, a.houseId);
+      if (!b || !Array.isArray(b.stuff) || a.from === a.to) return false;
+      const piece = b.stuff.filter(s => s.slot === a.from)[0];
+      if (!piece) return false;
+      const def = HOUSE_STUFF[piece.kind];
+      if (!def || !slotFits(a.to, def.where)) return false;
+      if (b.stuff.some(s => s.slot === a.to)) return false;
+      piece.slot = a.to;
       return true;
     }
 

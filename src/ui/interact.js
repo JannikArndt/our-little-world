@@ -12,7 +12,7 @@ import { el, message, renderCost, openPanel } from './overlay.js';
 import { openChop } from '../minigames/chop.js';
 import { openSawmill, openMill } from '../minigames/sawmill.js';
 import { openBridge, openRepair } from '../minigames/bridge.js';
-import { openHouse } from '../minigames/house.js';
+import { openHouse, openRaise } from '../minigames/house.js';
 import { openCare } from '../minigames/care.js';
 import { openFish } from '../minigames/fish.js';
 import { roadMode, sheepMode } from '../minigames/modes.js';
@@ -315,7 +315,7 @@ function actionsFor(game, h) {
       if (b.type === 'well' || b.type === 'privy' || b.type === 'fence') return projectBubble(game, b);
       if (b.state === 'site') {
         const mine = can(w, r, 'house');
-        if (mine) A.push({ label: tr('w.buildHouse'), fn: () => openHouse(game, b) });
+        if (mine) A.push({ label: tr('w.buildHouse'), fn: () => openRaise(game, b) });
         const siteHint = tr(b.newFamily ? 'w.siteNewFamily' : 'w.siteHint');
         return { title: tr('w.site'), hint: siteHint + (mine ? '' : theirs(game, ['house'])), actions: A };
       }
@@ -484,6 +484,13 @@ export function installInput(game, renderer, canvas) {
     }
     // and the basket has more to say than a bubble holds
     if (h.kind === 'larder') { closeBubble(); openBasket(game); return; }
+    // a house you can go into is a place, not a card: tapping it opens the
+    // room, the same way tapping the basket opens the basket
+    if (h.kind === 'building' && h.o.type === 'house' && h.o.state === 'built') {
+      closeBubble();
+      openHouse(game, h.o);
+      return;
+    }
     const opts = actionsFor(game, h);
     const r = canvas.getBoundingClientRect();
     showBubble(x - r.left, y - r.top, opts);

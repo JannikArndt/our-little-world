@@ -140,6 +140,33 @@ fill their slot; and every chart keeps its numbers in a table underneath, so no
 value is reachable only by hovering. `tools/stats.mjs` looks at it in a browser
 during `npm run verify`.
 
+## Adding something to a house
+
+A house is raised in one action and furnished for ever, which is the opposite
+of what it used to be. One row in `HOUSE_STUFF` in `src/core/content.js` is
+the whole cost of another thing to put in one: what it costs, whether it hangs
+on the wall or stands on the floor, the one plain thing it `gives`, and what
+it adds to `comfort`. Then its name in both language tables and its place in
+`HOUSE_SHELF`.
+
+- **Nothing else writes a house's `beds`, `warm`, `light`, `flame` or
+  `comfort`.** `houseFit()` in `world.js` derives all five from `b.stuff`, so
+  they can never drift from the furniture actually in the room. `ensureWorld()`
+  calls it on load, and a house saved before any of this existed gets the
+  furniture it was already behaving as though it had.
+- **`b.lamp` belongs to the simulation**, and means a lamp is burning this
+  minute. `b.flame` is the derived "there is something in here to light" that
+  it checks. Do not confuse them; that cost a round-trip test once.
+- **Furniture is named by the slot it stands in**, never by an id. An id handed
+  out on one device is not the same id on the other, and `house.move` has to
+  mean the same thing on both screens.
+- Both `house.put` and `house.move` refuse a slot that is already occupied,
+  which is also what makes them safe to apply twice — see *Never take back what
+  somebody just did*.
+- What somebody is doing in the room is worked out from the furniture and
+  `w.tick`, with no rng anywhere, so both screens show the same room doing the
+  same thing without exchanging a word about it.
+
 ## Adding a task to the guide
 
 One entry in `CONCERNS` in `src/core/guide.js`, in the order it matters, plus a

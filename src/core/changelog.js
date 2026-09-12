@@ -4,9 +4,28 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '2.0';
+export const VERSION = '2.1';
 
 export const CHANGELOG = [
+  {
+    v: '2.1', date: '2026-09-12',
+    en: [
+      'Building a house is a different thing now. Putting one up is one tap and cheap — four walls, a door, a window and a bed, so somebody can move in the same afternoon. No grid to fill in, and no rules to be told off about.',
+      'Then you furnish it, for as long as you like. Tap any house and the front wall comes off: the room is in there with the people who live in it, and a shelf of things to put in — a bed, a chair, a table, a candle, a stove, a blanket, flowers, a loaf on a shelf. One thing, one small price, whenever you have it. Pick something off the shelf, then say where it goes.',
+      'Both of you can bring something. The planks are the Builder\'s; the wool, the wheat and the loaf are the Keeper\'s. A house the two of you furnished together is rather the point of the whole thing.',
+      'Everything does something as well as being nice to have. A bed is somebody sleeping there, a candle or a stove is what makes the windows glow from outside at dusk, and the more there is in a room the better everybody in it sleeps.',
+      'Move things about whenever you like: pick a thing up, tap somewhere else, put it down. Moving what you already own is free.',
+      'Houses you already have keep everything they had — the same beds, the same window, the same stove, already standing in the room.',
+    ],
+    de: [
+      'Ein Haus bauen geht jetzt anders. Hinstellen ist ein Tipp und billig — vier Wände, eine Tür, ein Fenster und ein Bett, damit noch am selben Nachmittag jemand einziehen kann. Kein Raster zum Ausfüllen und keine Regeln, gegen die man verstoßen kann.',
+      'Danach richtest du es ein, so lange du magst. Tipp ein Haus an, und die Vorderwand ist weg: drinnen ist das Zimmer mit den Leuten, die dort wohnen, und ein Regal voller Sachen zum Hineinstellen — Bett, Stuhl, Tisch, Kerze, Ofen, Decke, Blumen, ein Brot auf dem Brett. Ein Stück, ein kleiner Preis, wann immer du ihn hast. Nimm etwas vom Regal, dann sag, wohin damit.',
+      'Mitbringen darf jeder von euch beiden. Die Bretter gehören dem Baumeister, die Wolle, der Weizen und das Brot dem Tierhüter. Ein Haus, das ihr zusammen eingerichtet habt, ist der eigentliche Sinn der Sache.',
+      'Alles ist nicht nur hübsch, sondern tut auch etwas. Ein Bett ist jemand, der dort schläft; eine Kerze oder ein Ofen lässt abends die Fenster nach draußen leuchten. Und je mehr im Zimmer steht, desto besser schlafen alle darin.',
+      'Umstellen kannst du jederzeit: etwas hochnehmen, woanders hintippen, hinstellen. Was dir schon gehört, umzustellen kostet nichts.',
+      'Häuser, die es schon gibt, behalten alles — dieselben Betten, dasselbe Fenster, denselben Ofen, schon im Zimmer.',
+    ],
+  },
   {
     v: '2.0', date: '2026-09-12',
     en: [

@@ -37,6 +37,64 @@ export const ROLES = {
 };
 
 /* --------------------------------------------------------------------- */
+/* a house, and everything that goes in one                              */
+/* --------------------------------------------------------------------- */
+
+/**
+ * What it costs to raise the shell. Deliberately small: the house has to be
+ * able to go up on the afternoon somebody needs a bed, not after a week of
+ * saving. It comes with a door, a window and one bed — a home, barely — and
+ * everything better than that is bought one piece at a time afterwards.
+ */
+export const HOUSE_SHELL = { plank: 3, stone: 2 };
+
+/**
+ * Where things can go. The wall is behind, the floor is in front of it in two
+ * rows, and that is the whole geometry — the mini-game draws it, the reducer
+ * only needs to know how many there are so it can refuse a slot that is not
+ * really there.
+ */
+export const HOUSE_SLOTS = { wall: 5, cols: 6, rows: 2 };
+export const HOUSE_WALL = HOUSE_SLOTS.wall;
+export const HOUSE_ALL = HOUSE_SLOTS.wall + HOUSE_SLOTS.cols * HOUSE_SLOTS.rows;
+
+/**
+ * Everything you can put in a house. One row each, which is the whole cost of
+ * adding another: a row here, a picture in the mini-game's drawing table, and
+ * its name in both languages.
+ *
+ * `gives` is the one plain thing it does — a bed is somewhere to sleep, a
+ * stove makes the house warm, a window or a lamp makes it light. `comfort` is
+ * the other half: everything adds a little, so a room somebody has been adding
+ * to for a week is a nicer place to be than a room with a bed in it.
+ *
+ * The costs are split on purpose. Planks are the Builder's and wool, wheat and
+ * stone are usually the Keeper's, so furnishing a house is something the two
+ * of them do together rather than a bill one of them picks up.
+ */
+export const HOUSE_STUFF = {
+  window:  { icon: '🪟', where: 'wall',  cost: { plank: 1 }, gives: 'light', comfort: 2 },
+  lamp:    { icon: '🕯️', where: 'wall',  cost: { plank: 1 }, gives: 'light', comfort: 1 },
+  shelf:   { icon: '🍞', where: 'wall',  cost: { food: 1 },                  comfort: 1 },
+  bed:     { icon: '🛏️', where: 'floor', cost: { plank: 2 }, gives: 'bed',   comfort: 2 },
+  stove:   { icon: '🔥', where: 'floor', cost: { stone: 2 }, gives: 'warm',  comfort: 3 },
+  table:   { icon: '🍽️', where: 'floor', cost: { plank: 1 }, gives: 'table', comfort: 2 },
+  chair:   { icon: '🪑', where: 'floor', cost: { plank: 1 }, gives: 'sit',   comfort: 1 },
+  blanket: { icon: '🧶', where: 'floor', cost: { wool: 2 },                  comfort: 2 },
+  flowers: { icon: '🌷', where: 'floor', cost: { wheat: 1 },                 comfort: 1 },
+};
+
+/** The order they stand on the shelf: a bed first, because that is why a house. */
+export const HOUSE_SHELF = ['bed', 'window', 'chair', 'table', 'lamp', 'stove', 'blanket', 'flowers', 'shelf'];
+
+/**
+ * How a room feels, as five words rather than a number. An entry is the
+ * comfort you have to have earned to reach it, so a new house — one window and
+ * one bed — is already past 'bare' and has somewhere to go.
+ */
+export const HOUSE_FEEL = [0, 4, 9, 15, 22];
+
+/* --------------------------------------------------------------------- */
 /* projects: the things a village builds for itself                      */
 /* --------------------------------------------------------------------- */
 

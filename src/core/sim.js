@@ -376,7 +376,18 @@ function goToBed(w, v) {
 }
 
 function tickVillager(w, v) {
-  if (v.inside) { v.hunger = Math.min(100, v.hunger + 0.004); return; }
+  if (v.inside) {
+    // A night indoors is a rest, and how much of a rest depends on the room.
+    // A blanket and a lit stove are the difference between waking up hungry
+    // and waking up ready — which is the whole reason for furnishing a house
+    // rather than just putting a bed in it. No rng anywhere: the same room on
+    // the same tick eases the same amount on both screens.
+    const home = v.homeId ? byId(w.buildings, v.homeId) : null;
+    const ease = home ? Math.min(0.6, (home.comfort || 0) * 0.04) : 0;
+    v.hunger = Math.min(100, v.hunger + 0.004 * (1 - ease));
+    if (v.poorly > 0 && home && home.warm) v.poorly -= 2;   // warm beats a chill
+    return;
+  }
 
   v.hunger = Math.min(100, v.hunger + HUNGER_RISE);
   if (v.poorly > 0) v.poorly--;
@@ -595,7 +606,9 @@ function tickPlaces(w) {
     const lived = b.residents && b.residents.length;
     b.smoke = b.warm && lived ? 1 : 0;
     // a window is only warm once somebody is home and the light has gone
-    b.lamp = lived && isDusk(w) ? 1 : 0;
+    // a candle or a lit stove is what makes the windows glow at dusk, so
+    // the thing you bought is the thing you can see from outside
+    b.lamp = lived && isDusk(w) && b.flame ? 1 : 0;
   }
 }
 

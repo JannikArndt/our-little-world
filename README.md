@@ -363,7 +363,8 @@ Three things keep that card honest:
 | 🪓 **Fell a tree** | Pick which way it falls, then swing the axe by tapping the trunk. It goes where you cut it — unless you drop it into the wind, and then it goes wherever it likes. |
 | 🪚 **Saw a log** | Every log arrives with an order — three pieces of four, two of six, four of three — drawn above the log at the same scale. Pieces that match become planks and land on the stack; the rest is kindling. Each log is measured on its own. Cut three logs perfectly and the drawn example goes: what is left is **4 × 3** and the ruler under the log. |
 | 🌉 **Build the bridge** | Stand piers in the river. A beam reaches two gaps on its own; three sags; four goes in the water, taking a villager with it. Try it before you build it — trying costs nothing. |
-| 🏠 **Design a house** | Put a door, windows, beds, a stove and a table on a floor plan. The family stands outside and tells you, with their faces, what living there would be like — dark, freezing, cramped, or a bed nobody can reach. |
+| 🏠 **Put a house up** | One tap and a small price: four walls, a door, a window and a bed. Somebody can move in the same afternoon. |
+| 🛏️ **Furnish a house** | Tap a house and the front wall comes off. A shelf of things to put in, one small price each, and the people who live there are in the room using what you gave them. It never finishes, and either player can bring something. |
 | 👋 **Tap a person** | Their name floats up and they wave, wink, hop, or go bashful and trot off. No card, nothing to read. Two of them squabbling stop when either is tapped. |
 | 🐑 **Look after a sheep** | She does not say what she wants. She droops, or eyes the river, or gets very woolly. Drag over what you think she needs. Wrong guesses are funny and free. |
 | 🛤️ **Lay a road** | Drag across the ground. One stone for every two steps, counted as you drag. People immediately start using it. |

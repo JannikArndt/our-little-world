@@ -464,20 +464,73 @@ async function main() {
   await step(page, '21-site-bubble', 400);
   await page.click('text=Build a house here');
   await step(page, '22-house-plan', 600);
-  const hcv = await page.$('.panel canvas');
-  const hbox = await hcv.boundingBox();
-  const cell = (c, r) => ({ x: hbox.x + hbox.width * ((34 + c * 56 + 28) / 514), y: hbox.y + hbox.height * ((40 + r * 56 + 28) / 300) });
-  await page.mouse.click(cell(2, 3).x, cell(2, 3).y);            // door on the bottom wall
-  await page.click('text=window'); await page.mouse.click(cell(0, 1).x, cell(0, 1).y);
-  await page.click('text=bed');    await page.mouse.click(cell(4, 1).x, cell(4, 1).y);
-  await page.mouse.click(cell(5, 1).x, cell(5, 1).y);
-  await page.click('text=stove');  await page.mouse.click(cell(1, 1).x, cell(1, 1).y);
-  await step(page, '23-house-designed', 400);
-  await page.click('text=Build it');
-  await step(page, '24-house-built', 1800);
+  await page.click('text=Put it up');
+  await page.waitForTimeout(900);
   const houses = await api(() => window.OLW.world.buildings.filter(b => b.type === 'house' && b.state === 'built').length);
   console.log('houses:', houses);
   if (houses < 3) throw new Error('the house was not built');
+
+  // It opens on the inside by itself, because the inside is the point: a house
+  // is raised in one tap and then furnished for ever, a piece at a time.
+  await page.waitForSelector('.tools .tool', { timeout: 5000 });
+  const newHouse = () => api(() => {
+    const b = window.OLW.world.buildings.filter(x => x.type === 'house' && x.builtTick != null)[0];
+    return { id: b.id, stuff: b.stuff.length, comfort: b.comfort, beds: b.beds, flame: !!b.flame };
+  });
+  const roomWas = await newHouse();
+  console.log('a new house starts with:', JSON.stringify(roomWas));
+  if (roomWas.stuff !== 2 || roomWas.beds !== 1) throw new Error('a new house is not a window and a bed');
+
+  const hcv = await page.$('.panel canvas');
+  const hbox = await hcv.boundingBox();
+  const spot = (lx, ly) => ({ x: hbox.x + hbox.width * (lx / 514), y: hbox.y + hbox.height * (ly / 300) });
+
+  // something on the floor: pick it off the shelf, then say where it goes
+  await page.click('.tools .tool:has-text("chair")');
+  const asking = await page.textContent('.readout');
+  if (!/Where shall the chair go/.test(asking)) throw new Error('it does not ask where the chair goes');
+  await page.mouse.click(spot(216, 246).x, spot(216, 246).y);      // a front-row floor slot
+  await page.waitForTimeout(400);
+
+  // and something on the wall, which is what lights the windows from outside
+  await page.click('.tools .tool:has-text("lamp")');
+  await page.mouse.click(spot(140, 88).x, spot(140, 88).y);        // a wall slot
+  await page.waitForTimeout(400);
+  await step(page, '23-house-designed', 400);
+
+  const roomNow = await newHouse();
+  console.log('after furnishing it:', JSON.stringify(roomNow));
+  if (roomNow.stuff !== roomWas.stuff + 2) throw new Error('the chair and the lamp did not go in');
+  if (!(roomNow.comfort > roomWas.comfort)) throw new Error('furnishing it did not make it nicer');
+  if (!roomNow.flame) throw new Error('a lamp is something to light');
+
+  // a thing cannot go where it does not belong, and says so rather than sulking
+  await page.click('.tools .tool:has-text("bed")');
+  await page.mouse.click(spot(220, 88).x, spot(220, 88).y);        // a bed, at the wall
+  await page.waitForTimeout(300);
+  const told = await page.textContent('.readout');
+  if (!/stands on the floor/.test(told)) throw new Error('putting a bed on the wall said nothing');
+  await page.click('text=Never mind');
+  const feels = await page.textContent('.readout');
+  console.log('the room says:', feels.replace(/\s+/g, ' ').trim().slice(0, 90));
+  if (!/It feels/.test(feels)) throw new Error('the room does not say how it feels');
+  await page.click('.p-rows button:has-text("Close")');
+  await step(page, '24-house-built', 1200);
+
+  // and tapping the house again goes back in, because it is a place now
+  const housePt = await api(() => {
+    const g = window.OLW, b = g.world.buildings.filter(x => x.type === 'house' && x.builtTick != null)[0];
+    g.look(b.x + b.w / 2, b.y + b.h / 2, 2.2);
+    const p = g.renderer.toScreen((b.x + b.w / 2) * 24, (b.y + b.h / 2) * 24);
+    const r = document.getElementById('world').getBoundingClientRect();
+    return { x: r.left + p.x, y: r.top + p.y };
+  });
+  await page.waitForTimeout(300);
+  await page.mouse.click(housePt.x, housePt.y);
+  await page.waitForSelector('.tools .tool', { timeout: 5000 });
+  console.log('tapping a built house opens the room again: good');
+  await page.click('.p-rows button:has-text("Close")');
+  await page.waitForTimeout(300);
 
   // the Keeper cannot fell trees: the tree still says what it is, and says
   // whose job it is, and offers no button that would only send a message

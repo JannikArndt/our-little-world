@@ -357,6 +357,7 @@ Three things keep that card honest:
 | 🪚 **Saw a log** | Every log arrives with an order — three pieces of four, two of six, four of three — drawn above the log at the same scale. Pieces that match become planks and land on the stack; the rest is kindling. Each log is measured on its own. Cut three logs perfectly and the drawn example goes: what is left is **4 × 3** and the ruler under the log. |
 | 🌉 **Build the bridge** | Stand piers in the river. A beam reaches two gaps on its own; three sags; four goes in the water, taking a villager with it. Try it before you build it — trying costs nothing. |
 | 🏠 **Design a house** | Put a door, windows, beds, a stove and a table on a floor plan. The family stands outside and tells you, with their faces, what living there would be like — dark, freezing, cramped, or a bed nobody can reach. |
+| 👋 **Tap a person** | Their name floats up and they wave, wink, hop, or go bashful and trot off. No card, nothing to read. Two of them squabbling stop when either is tapped. |
 | 🐑 **Look after a sheep** | She does not say what she wants. She droops, or eyes the river, or gets very woolly. Drag over what you think she needs. Wrong guesses are funny and free. |
 | 🛤️ **Lay a road** | Drag across the ground. One stone for every two steps, counted as you drag. People immediately start using it. |
 | 🌱 **Work the field** | Sow, then carry water. The can holds three plots and the field has six. |
@@ -369,6 +370,7 @@ Three things keep that card honest:
 | 🛝 **Build the playground** | A swing, a slide and a sandpit on the green by the water. Lina and Sam go and use it, which is the whole point of it. |
 | 🌱 **Plant a sapling** | Every stump was a tree. Put a sapling in and it grows back into one while you play. |
 | 🤝 **Share** | Tap any resource to send some across. Or drop food in the village basket, where the hungry go looking. |
+| 🧺 **The basket** | Tapping it does the sum out loud: this many loaves, this many people, about this many a day — so about this many days. Somebody moving into a new house makes it fewer, which is the part worth seeing. The numbers come from the simulation's own constants, so the answer cannot drift away from what actually happens. |
 
 Anything that costs materials shows the cost as the materials themselves — one
 picture per plank and per stone, the ones you have in colour and the ones you
@@ -388,6 +390,13 @@ card to tap away, the village simply wakes up again a day older. The world is
 saved on the way past, exactly as it is, with nothing rotting while you are
 away.
 
+In between, the village gets on with itself. People dance, run, sit down, stop
+and natter in twos, walk over to the basket when bread turns up in it, and every
+so often two of them squabble until somebody taps them. None of it ever happens
+instead of something that matters — it is chosen after the bread, the bed and
+the log on the grass, and never before them. All of it comes out of the world's
+own seeded dice, so both screens are watching the same afternoon.
+
 ## The two rows
 
 The top row is the people playing: one chip per role, yours marked, the others
@@ -398,6 +407,13 @@ built a house, harvested six fields. Tapping theirs opens what you do together:
 giving them something, and teaching them anything you have done often enough to
 show. The language, starting over and the way back to the start screen sit
 behind the day, on the right. The bottom row is nothing but what we have.
+
+Between them sits **👥**, and it is a list of everybody who lives here: their
+name, whose house they are in, and what they want — with what they are doing
+this minute in its place when they are doing something worth saying, which is
+how a squabble asks to be broken up. The sheep are under a divider at the
+bottom, because they have names too and a child looks for them. Tapping any row
+takes the world to them and puts a ring round them while you look.
 
 The world can be pushed about further than it fills the screen — far enough to
 bring any corner of it into the middle — so anything at all can be tapped in

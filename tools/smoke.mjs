@@ -103,6 +103,43 @@ async function main() {
   await page.click('text=Right, got it');
   await step(page, '03-world', 1200);
 
+  // 👥 — everybody who lives here, by name, with whose house they are in
+  await page.click('#folkChip');
+  await page.waitForTimeout(300);
+  const folk = await page.textContent('.menu');
+  const someone = await page.evaluate(() => window.OLW.world.villagers[0]);
+  console.log('the village list starts:', folk.replace(/\s+/g, ' ').trim().slice(0, 160));
+  if (folk.indexOf(someone.name) < 0) throw new Error('the villagers menu does not name anybody');
+  if (!/Lives in|Nowhere to sleep/.test(folk)) throw new Error('the villagers menu does not say where they live');
+  if (folk.indexOf('Cloud') < 0) throw new Error('the sheep are not in the village list');
+  // tapping a row takes the world to them, and rings them while you look
+  await page.click('.menu .menu-item:not(.off) >> nth=0');
+  await page.waitForTimeout(400);
+  const ringed = await page.evaluate(() => !!window.OLW.spotlightAt());
+  console.log('tapping a name rings them in the world:', ringed);
+  if (!ringed) throw new Error('tapping a villager in the list does not show them');
+
+  // 🧺 — the basket, said as a sum rather than a number
+  await page.evaluate(() => { window.OLW.world.larder.food = 7; });
+  const basketPt = await page.evaluate(() => {
+    const g = window.OLW, w = g.world;
+    const canvas = document.getElementById('world');
+    const r = canvas.getBoundingClientRect();
+    g.look(w.larder.x, w.larder.y, 2.4);
+    const p = g.renderer.toScreen(w.larder.x * 24, w.larder.y * 24);
+    return { x: r.left + p.x, y: r.top + p.y };
+  });
+  await page.waitForTimeout(300);
+  await page.mouse.click(basketPt.x, basketPt.y);
+  await page.waitForSelector('.panel', { timeout: 5000 });
+  const basket = (await page.textContent('.panel')).replace(/\s+/g, ' ').trim();
+  console.log('the basket says:', basket.slice(0, 200));
+  if (!/loaves in the basket/.test(basket)) throw new Error('the basket does not say how much is inside');
+  if (!/people eat about/.test(basket)) throw new Error('the basket does not say what the village eats in a day');
+  if (!/days of meals/.test(basket)) throw new Error('the basket does not say how many days that lasts');
+  await page.click('.panel-foot >> text=Close');
+  await page.waitForTimeout(300);
+
   const api = async (fn, arg) => page.evaluate(fn, arg);
 
   /**

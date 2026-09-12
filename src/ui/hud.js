@@ -35,8 +35,88 @@ export class Hud {
     this.last = {};
     this.todos = { tick: -1, n: 0 };
     this.buildRoleBar();
+    this.buildFolkChip();
     this.buildDayBadge();
     this.buildResources();
+  }
+
+  /* ---------------- everybody who lives here ---------------- */
+
+  /**
+   * The village, as a list. A child looks for Lina by name long before he
+   * looks for "the one with nowhere to sleep", so this is names first: who
+   * they are, whose house they live in, and what they want. It carries no
+   * word of its own — the role chips carry the words, and on a phone this row
+   * has none to spare.
+   */
+  buildFolkChip() {
+    const chip = document.getElementById('folkChip');
+    if (!chip) return;
+    if (chip.openFolk) chip.removeEventListener('click', chip.openFolk);
+    chip.openFolk = () => this.openFolkMenu(chip);
+    chip.addEventListener('click', chip.openFolk);
+    this.folkChip = chip;
+  }
+
+  /** What somebody is up to this minute, when it is worth a line at all. */
+  doingLine(v) {
+    const act = v.act ? v.act.kind : null;
+    return DOING[act] ? tr(DOING[act]) : null;
+  }
+
+  /** Where they sleep, or that they have nowhere yet. */
+  homeLine(v) {
+    const w = this.game.world;
+    if (!v.homeId) return tr('villagers.nowhere');
+    const b = byId(w.buildings, v.homeId);
+    return tr('villagers.livesIn', { house: (b && b.name) || tr('w.house') });
+  }
+
+  /** What they want, in the words the game has always used for it. */
+  wantLine(v) {
+    if (v.poorly > 0) return tr('w.villagerPoorly', { name: v.name });
+    if (v.hunger > 72) return tr('w.villagerHungry');
+    if (!v.homeId) return tr('w.villagerHomeless', { name: v.name });
+    if (v.carrying) return tr('w.villagerCarrying');
+    return tr('w.villagerFine');
+  }
+
+  openFolkMenu(anchor) {
+    const g = this.game, w = g.world;
+    const items = [];
+
+    for (const v of w.villagers) {
+      // what they are doing right now outranks what they generally want:
+      // a squabble is the one line here that asks you to do something
+      const doing = this.doingLine(v);
+      items.push({
+        icon: v.kid ? '🧒' : '🧑',
+        label: v.name + (v.kid ? ' · ' + tr('villagers.kid') : ''),
+        note: this.homeLine(v) + ' · ' + (doing || this.wantLine(v)),
+        fn: () => g.showMe({
+          points: [[v.x, v.y]],
+          subject: { kind: 'villager', id: v.id },
+        }, 2.2),
+      });
+    }
+
+    if (w.sheep.length) {
+      items.push({ divider: true });
+      items.push({ icon: '🐑', disabled: true, label: tr('menu.sheepHere') });
+      for (const s of w.sheep) {
+        items.push({
+          icon: '🐑', sub: true, label: s.name,
+          note: tr(s.mood === 'hungry' ? 'w.sheepHungry' : s.mood === 'thirsty' ? 'w.sheepThirsty'
+            : s.mood === 'woolly' ? 'w.sheepWoolly' : 'w.sheepOk'),
+          fn: () => g.showMe({
+            points: [[s.x, s.y]],
+            subject: { kind: 'sheep', id: s.id },
+          }, 2.2),
+        });
+      }
+    }
+
+    openMenu(anchor, { title: '👥  ' + tr('menu.villagers'), items });
   }
 
   /* ---------------- the top row: who is playing ---------------- */
@@ -277,6 +357,7 @@ export class Hud {
    */
   relabel() {
     this.buildRoleBar();
+    this.buildFolkChip();
     this.last = {};
     this.todos = { tick: -1, n: 0 };
     this.update();
@@ -328,6 +409,15 @@ export class Hud {
           todo.classList.add('bump');
         }
         this.last['todo_' + id] = n;
+      }
+    }
+
+    // how many people live here — only touched when the number actually moves
+    if (this.folkChip) {
+      const n = w.villagers.length;
+      if (this.last.folk !== n) {
+        this.folkChip.querySelector('.f-n').textContent = String(n);
+        this.last.folk = n;
       }
     }
 
@@ -449,6 +539,21 @@ export class Hud {
  * bridge — and the menu should carry it once, not twice. Anything not in here
  * is news of its own and is listed after the jobs.
  */
+/**
+ * What somebody is doing, when it is worth saying out loud in the list. The
+ * answers to a tap — a wave, a wink — are over in a second and are not; a
+ * squabble is, because a tap breaks it up and somebody has to know it is
+ * happening.
+ */
+const DOING = {
+  dance: 'doing.dance',
+  run: 'doing.run',
+  chat: 'doing.chat',
+  sit: 'doing.sit',
+  eat: 'doing.eat',
+  squabble: 'doing.squabble',
+};
+
 const NOTICE_JOB = {
   hungry: 'hungry',
   homeless: 'homeless',

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 
 import {
   createWorld, serialize, deserialize, ensureWorld, SCHEMA, BLOCK_TICKS,
-  freeBed, project, otherRoles,
+  freeBed, project, otherRoles, loavesPerDay, basketDays,
 } from '../src/core/world.js';
 import { findPath } from '../src/core/pathfind.js';
 import { walkable } from '../src/core/grid.js';
@@ -218,4 +218,33 @@ test('the image carries everything the build id hashes', () => {
 
   for (const part of served)
     assert.ok(copied.indexOf(part) >= 0, part + ' is hashed into the build id but never copied into the image');
+});
+
+
+/* ---------------- how long the basket lasts ---------------- */
+
+// The basket panel does this sum in front of a child, so it has to be the
+// simulation's own arithmetic and not a number somebody typed in once.
+test('the basket lasts fewer days the more mouths there are', () => {
+  const w = createWorld(11);
+  w.larder.food = 7;
+  const six = basketDays(w);
+  assert.equal(w.villagers.length, 6, 'the valley starts with six people');
+  assert.ok(Math.round(loavesPerDay(w)) === 3, 'six people get through about three loaves a day');
+  assert.ok(Math.round(six) === 2, 'so seven loaves is about two days');
+
+  w.villagers.push(Object.assign({}, w.villagers[0], { id: 'v_extra' }));
+  assert.ok(basketDays(w) < six, 'one more neighbour is one more mouth');
+});
+
+test('a fuller basket lasts longer, and an empty world does not divide by zero', () => {
+  const w = createWorld(12);
+  w.larder.food = 1;
+  const thin = basketDays(w);
+  w.larder.food = 9;
+  assert.ok(basketDays(w) > thin, 'more bread, more days');
+
+  w.villagers.length = 0;
+  assert.equal(basketDays(w), null, 'nobody to eat it is not a number of days');
+  assert.equal(loavesPerDay(w), 0);
 });

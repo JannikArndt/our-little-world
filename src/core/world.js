@@ -5,7 +5,10 @@
 import { GW, GH, T, idx, inBounds, rebuildBlocked } from './grid.js';
 import { rnd, rndInt, rndRange } from './rng.js';
 import { tr } from './i18n.js';
-import { SCENARIOS, DEFAULT_SCENARIO, scenarioOf, ROLES, PROJECTS } from './content.js';
+import {
+  SCENARIOS, DEFAULT_SCENARIO, scenarioOf, ROLES, PROJECTS,
+  HUNGER_RISE, LOAF_RELIEF,
+} from './content.js';
 import { runMigrations } from './migrate.js';
 
 // The shape of a saved world. It only goes up when an existing field changes
@@ -375,6 +378,28 @@ export function freeBed(w) {
   return null;
 }
 export function homeless(w) { return w.villagers.filter(v => !v.homeId); }
+
+/**
+ * How much bread the village gets through in a day, and how long what is in
+ * the basket will last at that rate.
+ *
+ * Worked out from the very numbers the simulation runs on rather than a guess,
+ * so it cannot quietly drift away from what actually happens: everybody's
+ * hunger climbs by HUNGER_RISE every tick they are up and about, one loaf takes
+ * LOAF_RELIEF off it, and a day is BLOCK_TICKS long. More people therefore
+ * means fewer days out of the same basket, which is the part worth seeing.
+ */
+export function loavesPerDay(w) {
+  const perPerson = (BLOCK_TICKS * HUNGER_RISE) / LOAF_RELIEF;
+  return w.villagers.length * perPerson;
+}
+
+/** Days the basket holds out, or null when there is nobody to eat it. */
+export function basketDays(w) {
+  const eaten = loavesPerDay(w);
+  if (eaten <= 0) return null;
+  return w.larder.food / eaten;
+}
 export function poorly(w) { return w.villagers.filter(v => v.poorly > 0); }
 
 /** Whose turn it is not: everybody else at the table. */

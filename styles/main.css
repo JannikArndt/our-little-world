@@ -600,3 +600,17 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
   .res .num { font-size: 13px; }
   .partner { max-width: 32vw; font-size: 13px; }
 }
+
+/* the basket, said as a sum: what is in it, what a day costs, how long that
+   leaves. One line each, because three short lines are read and one long
+   sentence is not. */
+.basket-sums { margin-top: 8px; }
+.basket-line { margin: 6px 0 0; font-size: 15px; line-height: 1.45; color: var(--ink); }
+.basket-line b { font-size: 17px; }
+.basket-sums .cost-pips { margin-bottom: 6px; }
+
+/* everybody who lives here. No word on it: the role chips carry the words and
+   a phone row has none to spare, so it is a picture and a number. */
+.folk-chip { -webkit-box-flex: 0; -ms-flex: none; flex: none; padding: 0 10px; }
+.folk-chip .f-emoji { font-size: 17px; }
+.folk-chip .f-n { font-weight: 800; color: var(--ink-soft); }

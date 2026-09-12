@@ -3,11 +3,11 @@
 // player — which is usually the more interesting option.
 
 import { TILE, T, tileAt, toTileX, toTileY } from '../core/grid.js';
-import { ROLE, can, roleName, PROJECT, project, kids, hasWell } from '../core/world.js';
+import { ROLE, can, roleName, PROJECT, project, kids, hasWell, loavesPerDay, basketDays } from '../core/world.js';
 import { PROJECTS } from '../core/content.js';
 import { canPay } from '../core/actions.js';
 import { tr, trn } from '../core/i18n.js';
-import { el, message, renderCost } from './overlay.js';
+import { el, message, renderCost, openPanel } from './overlay.js';
 import { openChop } from '../minigames/chop.js';
 import { openSawmill, openMill } from '../minigames/sawmill.js';
 import { openBridge, openRepair } from '../minigames/bridge.js';
@@ -55,6 +55,71 @@ function showBubble(sx, sy, opts) {
   b.style.left = x + 'px';
   b.style.top = y + 'px';
   bubble = b;
+}
+
+/* ------------------------------------------------------------------ */
+/* the village basket                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What is in the basket, how much the village eats, and how long that leaves —
+ * the three questions in the order somebody asks them. The middle one is the
+ * point: a basket does not last a fixed number of days, it lasts fewer of them
+ * every time somebody new moves in, and that is a sum worth seeing done.
+ */
+export function openBasket(game) {
+  const w = game.world, r = game.role;
+  const p = openPanel({ title: tr('basket.title'), lead: tr('basket.lead') });
+
+  const sums = el('div', 'basket-sums');
+  p.body.appendChild(sums);
+
+  function draw() {
+    // one picture per loaf, so it can be counted rather than read
+    const pips = el('div', 'cost-pips');
+    const show = Math.min(w.larder.food, 14);
+    for (let i = 0; i < show; i++) pips.appendChild(el('span', 'pip', '🍞'));
+    if (w.larder.food > show) pips.appendChild(el('span', 'pip more', '…'));
+
+    const eaten = loavesPerDay(w);
+    const days = basketDays(w);
+    const people = w.villagers.length;
+
+    const lines = [];
+    lines.push(trn('basket.inside', w.larder.food, { n: w.larder.food }));
+    if (!people) {
+      lines.push(tr('basket.nobody'));
+    } else {
+      lines.push(trn('basket.eats', people, { n: people, loaves: Math.max(1, Math.round(eaten)) }));
+      if (w.larder.food <= 0) lines.push(tr('basket.empty'));
+      else if (days < 1) lines.push(tr('basket.lastsShort'));
+      else lines.push(trn('basket.lasts', Math.round(days), { n: Math.round(days) }));
+      lines.push(tr('basket.more'));
+    }
+
+    sums.innerHTML = '';
+    if (w.larder.food > 0) sums.appendChild(pips);
+    for (const t of lines) {
+      const row = el('p', 'basket-line');
+      row.innerHTML = t;
+      sums.appendChild(row);
+    }
+  }
+  draw();
+
+  const row = p.row();
+  const mine = () => w.players[r].res.food;
+  if (mine() > 0) {
+    const put = p.button(tr('w.larderPut', { n: Math.min(3, mine()) }), 'go', () => {
+      game.dispatch({ type: 'larder.give', from: r, n: Math.min(3, mine()) });
+      p.close();
+      openBasket(game);              // reopen, so the sum is the new one
+    });
+    row.appendChild(put);
+  }
+  row.appendChild(p.button(tr(mine() > 0 ? 'w.shareDifferently' : 'w.shareSomething'), 'soft', () => { p.close(); openGive(game); }));
+  row.appendChild(p.button(tr('ui.close'), 'soft', () => p.close()));
+  return p;
 }
 
 /* ------------------------------------------------------------------ */
@@ -187,16 +252,8 @@ function actionsFor(game, h) {
           : [],
       };
 
-    case 'larder': {
-      const mine = w.players[r].res.food;
-      return {
-        title: tr('w.larder'), hint: tr('w.larderHint', { n: w.larder.food }),
-        actions: mine > 0
-          ? [{ label: tr('w.larderPut', { n: Math.min(3, mine) }), fn: () => game.dispatch({ type: 'larder.give', from: r, n: Math.min(3, mine) }) },
-             { label: tr('w.shareDifferently'), cls: 'soft', fn: () => openGive(game) }]
-          : [{ label: tr('w.shareSomething'), cls: 'soft', fn: () => openGive(game) }],
-      };
-    }
+    // the basket answers with a whole panel now — see openBasket, which
+    // installInput reaches before actionsFor is ever called
 
     case 'sheep': {
       const s = h.o;
@@ -405,6 +462,8 @@ export function installInput(game, renderer, canvas) {
       game.dispatch({ type: 'villager.poke', role: game.role, id: h.o.id });
       return;
     }
+    // and the basket has more to say than a bubble holds
+    if (h.kind === 'larder') { closeBubble(); openBasket(game); return; }
     const opts = actionsFor(game, h);
     const r = canvas.getBoundingClientRect();
     showBubble(x - r.left, y - r.top, opts);

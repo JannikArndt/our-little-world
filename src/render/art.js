@@ -166,55 +166,144 @@ export function drawLog(ctx, l) {
 
 const MOOD_GLYPH = { hungry: '🍞', sad: '🛏️', poorly: '🤒' };
 
+// the four things a tap can get out of somebody — the only case where a name
+// floats over their head instead of a word or a want
+const TAP_ANSWER = { wave: true, wink: true, hop: true, shy: true };
+
+/** Who that just was: the only answer a tap needs now. Plain letters with a
+ *  light outline round them — the same trick drawFx uses for floating
+ *  numbers — so a name reads on grass or water alike, no bubble needed. */
+function nameTag(ctx, x, y, name) {
+  ctx.font = '700 11px -apple-system, system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,253,248,.92)';
+  ctx.strokeText(name, x, y);
+  ctx.fillStyle = C.ink;
+  ctx.fillText(name, x, y);
+}
+
 export function drawVillager(ctx, v, time, tick) {
+  const act = v.act ? v.act.kind : null;
   const x = v.x * TILE, y = v.y * TILE;
   const walking = (tick - (v.moving || -99)) < 3;
-  const bob = walking ? Math.abs(Math.sin(time * 0.012 + v.x)) * 1.6 : 0;
-  const lean = walking ? Math.sin(time * 0.012 + v.x) * 0.08 : 0;
+  const running = act === 'run', dancing = act === 'dance', sitting = act === 'sit';
+  const eating = act === 'eat', chatting = act === 'chat', squabbling = act === 'squabble';
+  const shy = act === 'shy', winking = act === 'wink', waving = act === 'wave', hopping = act === 'hop';
   const small = v.kid ? 0.72 : 1;                 // the children are smaller
+
+  // which way they are looking: usually the arrow they last walked in, but
+  // the two-person acts turn them toward each other — decided by comparing
+  // the two ids, so both screens turn the same pair the same way without
+  // either of them knowing where the other one actually stands
+  let facing = v.facing === -1 ? -1 : 1;
+  if ((chatting || squabbling) && v.act.with) facing = v.id < v.act.with ? 1 : -1;
+
+  const hop = hopping ? Math.abs(Math.sin(time * 0.014)) * 3.4 : 0;
+  const stride = sitting ? 0
+    : running ? Math.sin(time * 0.024 + v.x) * 3.6
+    : walking ? Math.sin(time * 0.012 + v.x) * 2.2 : 0.8;
+
+  let bob = walking ? Math.abs(Math.sin(time * 0.012 + v.x)) * 1.6 : 0;
+  if (running) bob = Math.abs(Math.sin(time * 0.02 + v.x)) * 2.2;    // a proper bound, not a wander
+  if (dancing) bob = Math.abs(Math.sin(time * 0.006 + v.x)) * 1.1;   // swaying more than bouncing
+  if (sitting) bob = 0;
+  bob += hop;
+
+  let lean = walking ? Math.sin(time * 0.012 + v.x) * 0.08 : 0;
+  if (dancing) lean = Math.sin(time * 0.005 + v.x) * 0.24;
+  if (squabbling) lean = facing * 0.16;                              // leaning in at each other
+  if (chatting) lean = facing * 0.05;
+
+  const shiftX = dancing ? Math.sin(time * 0.005 + v.x) * 1.6
+    : squabbling ? facing * 1.1 : 0;
+  const sitDrop = sitting ? 3.2 : 0;                                 // settled lower, knees bent
+
   shadow(ctx, x, y + 4, 6.5 * small, 2.8 * small);
 
   ctx.save();
-  ctx.translate(x, y - bob);
+  ctx.translate(x + shiftX, y - bob + sitDrop);
   if (small !== 1) ctx.scale(small, small);
   ctx.rotate(lean);
 
   // legs
   ctx.strokeStyle = '#6b5540'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
-  const stride = walking ? Math.sin(time * 0.012 + v.x) * 2.2 : 0.8;
-  ctx.beginPath(); ctx.moveTo(-1.6, 0); ctx.lineTo(-1.6 - stride, 4.4);
-  ctx.moveTo(1.6, 0); ctx.lineTo(1.6 + stride, 4.4); ctx.stroke();
+  ctx.beginPath();
+  if (sitting) {
+    // knees bent, legs stretched out in front of them rather than under them
+    ctx.moveTo(-1.6, -1); ctx.lineTo(-1.6 + 5.5 * facing, 1.4);
+    ctx.moveTo(1.2, -0.4); ctx.lineTo(1.2 + 4.5 * facing, 2.4);
+  } else {
+    ctx.moveTo(-1.6, 0); ctx.lineTo(-1.6 - stride, 4.4);
+    ctx.moveTo(1.6, 0); ctx.lineTo(1.6 + stride, 4.4);
+  }
+  ctx.stroke();
 
   // body
+  const bodyTop = sitting ? -5.4 : -8.5, bodyH = sitting ? 6.4 : 9.5;
   ctx.fillStyle = v.colour || '#d96a5f';
-  rr(ctx, -4.6, -8.5, 9.2, 9.5, 3.6); ctx.fill();
+  rr(ctx, -4.6, bodyTop, 9.2, bodyH, 3.6); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,.18)';
-  rr(ctx, -4.6, -8.5, 4, 9.5, 3.2); ctx.fill();
+  rr(ctx, -4.6, bodyTop, 4, bodyH, 3.2); ctx.fill();
 
   // arms
   ctx.strokeStyle = v.colour || '#d96a5f'; ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(-4.2, -6); ctx.lineTo(-6.4 + stride * 0.5, -2.2);
-  ctx.moveTo(4.2, -6); ctx.lineTo(6.4 - stride * 0.5, -2.2);
-  ctx.stroke();
+  if (waving) {
+    // one arm stays put; the other goes up by the head and wags side to side
+    const wag = Math.sin(time * 0.018) * 1.8;
+    ctx.moveTo(-4.2 * facing, -6); ctx.lineTo(-6 * facing, -2.2);
+    ctx.moveTo(4.2 * facing, -6); ctx.lineTo((5.6 + wag) * facing, -12);
+    ctx.stroke();
+    ctx.fillStyle = v.colour || '#d96a5f';
+    ctx.beginPath(); ctx.arc((5.6 + wag) * facing, -12, 1.1, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.moveTo(-4.2, -6); ctx.lineTo(-6.4 + stride * 0.5, -2.2);
+    ctx.moveTo(4.2, -6); ctx.lineTo(6.4 - stride * 0.5, -2.2);
+    ctx.stroke();
+  }
 
   // head
+  const headY = sitting ? -9.6 : -12.6;
   ctx.fillStyle = '#f0d0ac';
-  ctx.beginPath(); ctx.arc(0, -12.6, 4.7, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, headY, 4.7, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = 'rgba(70,50,35,.85)';
-  ctx.beginPath(); ctx.arc(0, -13.6, 4.7, Math.PI * 1.03, Math.PI * 1.97); ctx.fill();
+  ctx.beginPath();
+  if (shy) ctx.arc(0, headY, 4.9, 0, Math.PI * 2);                        // hair only: turned right away
+  else ctx.arc(0, headY - 1, 4.7, Math.PI * 1.03, Math.PI * 1.97);
+  ctx.fill();
 
   // face
-  const f = v.facing === -1 ? -1 : 1;
-  ctx.fillStyle = C.ink;
-  ctx.beginPath(); ctx.arc(-1.4 * f + 0.5 * f, -12.4, 0.72, 0, Math.PI * 2);
-  ctx.arc(1.6 * f + 0.5 * f, -12.4, 0.72, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = C.ink; ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  if (v.mood === 'happy') ctx.arc(0.5 * f, -10.8, 1.8, 0.15 * Math.PI, 0.85 * Math.PI);
-  else if (v.mood === 'hungry' || v.mood === 'sad' || v.mood === 'poorly') ctx.arc(0.5 * f, -9.4, 1.8, 1.15 * Math.PI, 1.85 * Math.PI);
-  else { ctx.moveTo(-1 + 0.5 * f, -10.6); ctx.lineTo(1.8 + 0.5 * f, -10.6); }
-  ctx.stroke();
+  if (shy) {
+    ctx.fillStyle = 'rgba(230,150,140,.55)';                              // a little blush is all that shows
+    ctx.beginPath(); ctx.ellipse(3.4 * facing, headY + 1.2, 1.3, 0.9, 0, 0, Math.PI * 2); ctx.fill();
+  } else {
+    const f = facing;
+    const eye1 = -0.9 * f, eye2 = 2.1 * f;
+    ctx.fillStyle = C.ink;
+    if (winking) {
+      ctx.beginPath(); ctx.arc(eye1, headY + 0.2, 0.72, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 0.9;
+      ctx.beginPath(); ctx.arc(eye2, headY + 0.6, 1, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke();
+      const twinkle = 0.5 + Math.sin(time * 0.02) * 0.5;                  // a little sparkle by the shut eye
+      ctx.strokeStyle = 'rgba(255,209,110,' + (0.35 + twinkle * 0.5) + ')'; ctx.lineWidth = 0.9;
+      const sx = eye2 + 2.2 * f, sy = headY - 1.6;
+      ctx.beginPath();
+      ctx.moveTo(sx - 1.4, sy); ctx.lineTo(sx + 1.4, sy);
+      ctx.moveTo(sx, sy - 1.4); ctx.lineTo(sx, sy + 1.4);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(eye1, headY + 0.2, 0.72, 0, Math.PI * 2);
+      ctx.arc(eye2, headY + 0.2, 0.72, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    if (v.mood === 'happy' || dancing || hopping || waving || winking) ctx.arc(0.5 * f, headY + 1.8, 1.8, 0.15 * Math.PI, 0.85 * Math.PI);
+    else if (v.mood === 'hungry' || v.mood === 'sad' || v.mood === 'poorly') ctx.arc(0.5 * f, headY + 3.2, 1.8, 1.15 * Math.PI, 1.85 * Math.PI);
+    else { ctx.moveTo(-1 + 0.5 * f, headY + 2); ctx.lineTo(1.8 + 0.5 * f, headY + 2); }
+    ctx.stroke();
+  }
   ctx.restore();
 
   if (v.carrying) {
@@ -224,7 +313,43 @@ export function drawVillager(ctx, v, time, tick) {
     ctx.restore();
   }
 
+  // touches that ride the ground rather than lean and bob along with them
+  if (running) {
+    for (let i = 0; i < 3; i++) {
+      const p = (time * 0.006 + i * 0.33) % 1;
+      ctx.fillStyle = 'rgba(180,160,120,' + (0.32 * (1 - p)) + ')';
+      ctx.beginPath(); ctx.arc(x - facing * (6 + p * 10), y + 3 - p * 3, 1.6 + p * 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  if (squabbling) {
+    for (let i = 0; i < 3; i++) {
+      const p = (time * 0.008 + i * 0.3) % 1;
+      ctx.fillStyle = 'rgba(180,160,120,' + (0.3 * (1 - p)) + ')';
+      ctx.beginPath(); ctx.arc(x + (i - 1) * 4, y + 2 - p * 5, 1.8 + p * 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+    bubble(ctx, x + facing * 9, y - 20, '💢', 11);
+  }
+  if (dancing) {
+    for (let i = 0; i < 2; i++) {
+      const p = (time * 0.0016 + v.x + i * 0.5) % 1;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - p);
+      glyph(ctx, i ? '🎵' : '🎶', x + (i ? 10 : -10), y - 24 - p * 8, 9);
+      ctx.restore();
+    }
+  }
+  if (eating) {
+    ctx.save(); ctx.translate(x + facing * 4.5, y - 12);
+    ctx.fillStyle = '#e2b268';
+    ctx.beginPath(); ctx.ellipse(0, 0, 3.2, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+    const p = (time * 0.006) % 1;                                         // a crumb, falling and fading
+    ctx.fillStyle = 'rgba(226,178,104,' + (1 - p) + ')';
+    ctx.beginPath(); ctx.arc(-facing * 2, 3 + p * 4, 0.8, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
   if (v.said) speech(ctx, x, y - 22, tr(v.said));
+  else if (TAP_ANSWER[act]) nameTag(ctx, x, y - 20, v.name);
   else if (MOOD_GLYPH[v.mood]) bubble(ctx, x + 9, y - 18, MOOD_GLYPH[v.mood], 12);
 }
 
@@ -806,7 +931,9 @@ export function drawPortrait(ctx, kind, o, cx, cy, scale, time, tick) {
   if (kind === 'sheep') {
     drawSheep(ctx, Object.assign({}, o, at), time, tick, true);
   } else {
-    drawVillager(ctx, Object.assign({}, o, at, { said: null, carrying: null }), time, tick);
+    // a portrait is a face on a job card, not a scene — a dance or a chat
+    // needs a partner or a lean that only makes sense out in the world
+    drawVillager(ctx, Object.assign({}, o, at, { said: null, carrying: null, act: null }), time, tick);
   }
   ctx.restore();
 }

@@ -208,18 +208,8 @@ function actionsFor(game, h) {
       return { title: s.name, hint: wants, actions: A };
     }
 
-    case 'villager': {
-      const v = h.o;
-      const hint = v.poorly > 0 ? tr('w.villagerPoorly', { name: v.name })
-        : v.hunger > 72 ? tr('w.villagerHungry')
-        : !v.homeId ? tr('w.villagerHomeless', { name: v.name })
-        : v.carrying ? tr('w.villagerCarrying')
-        : tr('w.villagerFine');
-      if (!v.homeId) A.push({ label: tr('w.findPlot'), cls: 'soft', fn: () => game.pointAtSite() });
-      if (v.hunger > 72 && w.players[r].res.food > 0)
-        A.push({ label: tr('w.putFood'), fn: () => game.dispatch({ type: 'larder.give', from: r, n: Math.min(2, w.players[r].res.food) }) });
-      return { title: v.name, hint, actions: A };
-    }
+    // a tap on a villager never reaches here any more — installInput answers
+    // it directly with villager.poke, before actionsFor is ever called
 
     case 'deer':
       return { title: tr('w.deer'), hint: tr('w.deerHint'), actions: [] };
@@ -408,6 +398,13 @@ export function installInput(game, renderer, canvas) {
     const p = worldFrom(x, y);
     if (p.x < 0 || p.y < 0) { closeBubble(); return; }
     const h = hit(game.world, p.x, p.y);
+    // a tap on a person gets no bubble at all: just poke them and see what
+    // they do — their name floats up in the world instead of a card here
+    if (h.kind === 'villager') {
+      closeBubble();
+      game.dispatch({ type: 'villager.poke', role: game.role, id: h.o.id });
+      return;
+    }
     const opts = actionsFor(game, h);
     const r = canvas.getBoundingClientRect();
     showBubble(x - r.left, y - r.top, opts);

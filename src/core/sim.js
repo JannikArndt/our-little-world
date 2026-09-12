@@ -7,12 +7,32 @@ import {
   byId, freeBed, blockProgress, isDusk, project, hasWell, riverClean, fieldFenced,
   SAPLING_TICKS,
 } from './world.js';
-import { POORLY_TICKS, POORLY_CHANCE } from './content.js';
+import {
+  POORLY_TICKS, POORLY_CHANCE, HUNGER_RISE, HUNGRY_AT, EAGER_AT, LOAF_RELIEF,
+} from './content.js';
 import { rnd, rndInt } from './rng.js';
-import { fx, journal, note } from './actions.js';
+import { fx, journal, note, setAct, clearAct } from './actions.js';
 
 const DT = 0.1;                      // seconds per tick
 const BASE_SPEED = 2.2;              // tiles per second on a road
+const RUN_SPEED = 1.6;               // a trot is faster than a wander
+
+// A life of their own: how often each thing happens, and how long it lasts.
+// All rare enough that the village still reads as calm, not as a fairground.
+const DANCE_CHANCE = 0.03;
+const DANCE_CHANCE_HAPPY = 0.08;     // happier feet dance more often
+const DANCE_TICKS = 30;              // plus a little more, picked at random
+const RUN_CHANCE = 0.04;
+const RUN_CHANCE_KID = 0.10;         // children run about more than the grown-ups
+const RUN_RADIUS = 11;               // further off than an ordinary wander
+const RUN_SAFETY_TICKS = 150;        // clears the act if the trot never quite arrives
+const CHAT_CHANCE = 0.15;
+const CHAT_TICKS = 40;
+const SIT_CHANCE = 0.20;
+const SIT_TICKS = 80;
+const SQUABBLE_CHANCE = 0.01;        // rare on purpose — this is not that kind of village
+const SQUABBLE_TICKS = 40;
+const EAT_TICKS = 18;                // a bite or two before the loaf is gone
 
 /* --------------------------------------------------------------------- */
 /* movement                                                              */
@@ -92,8 +112,8 @@ function chooseVillagerTask(w, v) {
     const home = byId(w.buildings, v.homeId);
     if (home && goTo(w, v, home.door.x, home.door.y, 1)) { v.task = { kind: 'rest' }; return; }
   }
-  // 1. hungry, and there is bread in the basket
-  if (v.hunger > 62) {
+  // 1. a full basket is worth walking over for; a bare one only gets a look
+  if (v.hunger > HUNGRY_AT || (w.larder.food > 0 && v.hunger > EAGER_AT)) {
     if (w.larder.food > 0) {
       if (goTo(w, v, Math.floor(w.larder.x), Math.floor(w.larder.y), 1)) { v.task = { kind: 'eat' }; return; }
     } else if (rnd(w) < 0.25) {
@@ -130,10 +150,95 @@ function chooseVillagerTask(w, v) {
     const bank = nearestBank(w, v);
     if (bank && goTo(w, v, bank.x, bank.y, 0)) { v.task = { kind: 'stare' }; return; }
   }
-  // 6. potter about
+  // 6. a life of their own, once the day is actually under way — never
+  //    instead of anything above, never as likely as any of it
+  if (w.block.active && livingItUp(w, v)) return;
+
+  // 7. potter about
   const t = randomNearbyTile(w, v, 5);
   if (t && goTo(w, v, t.x, t.y)) v.task = { kind: 'wander' };
   else v.wait = 10 + rndInt(w, 20);
+}
+
+/** Two villagers, close enough and neither already busy with something. */
+function nearbyFree(w, v, dist) {
+  return w.villagers.filter(o => o.id !== v.id && !o.act && !o.task && !o.carrying &&
+    !o.inside && o.poorly <= 0 && (!o.path || !o.path.length) &&
+    Math.abs(o.x - v.x) + Math.abs(o.y - v.y) <= dist);
+}
+
+/** Somewhere nice to sit: the playground, the well, or your own front door. */
+function sitSpot(w, v) {
+  const spots = [];
+  const pg = project(w, 'play');
+  if (pg && pg.state === 'built') spots.push({ x: pg.x + 1, y: pg.y + pg.h });
+  const well = project(w, 'well');
+  if (well && well.state === 'built') spots.push({ x: well.x, y: well.y + 1 });
+  if (v.homeId) {
+    const home = byId(w.buildings, v.homeId);
+    if (home) spots.push({ x: home.door.x, y: home.door.y });
+  }
+  if (!spots.length) return null;
+  const s = spots[rndInt(w, spots.length)];
+  return inBounds(s.x, s.y) && walkable(w, s.x, s.y) ? s : null;
+}
+
+/**
+ * The village's own life, once nothing more pressing needs doing: a dance, a
+ * run, a natter, a sit down, and every now and then a little squabble that a
+ * tap breaks up. Returns true when it has set something going, so
+ * chooseVillagerTask knows not to fall through to a plain potter.
+ */
+function livingItUp(w, v) {
+  // a squabble: rare, gentle, and never a grown-up against a child
+  if (rnd(w) < SQUABBLE_CHANCE) {
+    const other = nearbyFree(w, v, 2).find(o => o.kid === v.kid);
+    if (other) {
+      const ticks = SQUABBLE_TICKS + rndInt(w, SQUABBLE_TICKS);
+      setAct(w, v, 'squabble', ticks, other.id);
+      setAct(w, other, 'squabble', ticks, v.id);
+      v.path = []; v.task = null; v.wait = ticks;
+      other.path = []; other.task = null; other.wait = ticks;
+      note(w, 'squabble_' + v.id, '💢', 'notice.squabble', { name: v.name, other: other.name }, 'calm');
+      return true;
+    }
+  }
+  // a natter: two of them standing close enough to talk
+  if (rnd(w) < CHAT_CHANCE) {
+    const other = nearbyFree(w, v, 2)[0];
+    if (other) {
+      const ticks = CHAT_TICKS + rndInt(w, CHAT_TICKS);
+      setAct(w, v, 'chat', ticks, other.id);
+      setAct(w, other, 'chat', ticks, v.id);
+      v.path = []; v.task = null; v.wait = ticks;
+      other.path = []; other.task = null; other.wait = ticks;
+      say(w, v, 'say.natter', ticks);
+      return true;
+    }
+  }
+  // a sit down somewhere that invites it
+  if (rnd(w) < SIT_CHANCE) {
+    const spot = sitSpot(w, v);
+    if (spot && goTo(w, v, spot.x, spot.y, 1)) { v.task = { kind: 'sitdown' }; return true; }
+  }
+  // a dance, more often when the day is going well
+  if (rnd(w) < (v.mood === 'happy' ? DANCE_CHANCE_HAPPY : DANCE_CHANCE)) {
+    const ticks = DANCE_TICKS + rndInt(w, DANCE_TICKS);
+    setAct(w, v, 'dance', ticks);
+    v.wait = ticks;
+    say(w, v, 'say.laLa', ticks);
+    return true;
+  }
+  // a run — the children more than the grown-ups
+  if (rnd(w) < (v.kid ? RUN_CHANCE_KID : RUN_CHANCE)) {
+    const t = randomNearbyTile(w, v, RUN_RADIUS);
+    if (t && goTo(w, v, t.x, t.y)) {
+      setAct(w, v, 'run', RUN_SAFETY_TICKS);
+      v.task = { kind: 'run' };
+      return true;
+    }
+  }
+  return false;
 }
 
 function nearestBank(w, v) {
@@ -153,14 +258,39 @@ function finishVillagerTask(w, v) {
   if (!t) return;
   switch (t.kind) {
     case 'eat':
+      // arrived at the basket — a moment of actually eating before the
+      // loaf is gone, so it never happens instantly on arrival
+      if (w.larder.food > 0) {
+        setAct(w, v, 'eat', EAT_TICKS);
+        v.task = { kind: 'eatDone' };
+        v.wait = EAT_TICKS;
+      } else {
+        v.wait = 10;      // the basket ran out while they were walking over
+      }
+      break;
+    case 'eatDone':
+      // only now does the loaf actually leave the basket, so two people
+      // arriving together can never both take the last one
       if (w.larder.food > 0) {
         w.larder.food -= 1;
-        v.hunger = Math.max(0, v.hunger - 70);
+        v.hunger = Math.max(0, v.hunger - LOAF_RELIEF);
         v.hearts = w.tick;
         fx(w, 'hearts', v.x, v.y - 0.7);
         say(w, v, 'say.mmm', 25);
       }
+      clearAct(v);
       v.wait = 15;
+      break;
+    case 'sitdown': {
+      const ticks = SIT_TICKS + rndInt(w, SIT_TICKS);
+      setAct(w, v, 'sit', ticks);
+      v.wait = ticks;
+      say(w, v, 'say.sitDown', ticks);
+      break;
+    }
+    case 'run':
+      clearAct(v);
+      v.wait = 20 + rndInt(w, 30);
       break;
     case 'movein': {
       const b = byId(w.buildings, t.id);
@@ -248,20 +378,24 @@ function goToBed(w, v) {
 function tickVillager(w, v) {
   if (v.inside) { v.hunger = Math.min(100, v.hunger + 0.004); return; }
 
-  v.hunger = Math.min(100, v.hunger + 0.012);
+  v.hunger = Math.min(100, v.hunger + HUNGER_RISE);
   if (v.poorly > 0) v.poorly--;
   v.mood = villagerMood(w, v);
   if (v.saidUntil && w.tick > v.saidUntil) { v.said = null; v.saidUntil = 0; }
+  // an act runs its course on its own once its time is up
+  if (v.act && w.tick > v.act.until) clearAct(v);
 
   if (isDusk(w)) {
     if (v.task && v.task.kind !== 'gohome') { v.task = null; v.path = []; }
+    if (v.act) clearAct(v);       // bedtime outranks a dance
     if (goToBed(w, v)) return;
     if (v.path && v.path.length) { if (advance(w, v, 1.15)) goToBed(w, v); return; }
     return;
   }
 
   if (v.path && v.path.length) {
-    if (advance(w, v, v.poorly > 0 ? 0.6 : 1)) finishVillagerTask(w, v);
+    const mult = v.poorly > 0 ? 0.6 : (v.task && v.task.kind === 'run' ? RUN_SPEED : 1);
+    if (advance(w, v, mult)) finishVillagerTask(w, v);
     return;
   }
   if (v.wait > 0) { v.wait--; return; }

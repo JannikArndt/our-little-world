@@ -109,6 +109,15 @@ export const REPLANT_GOAL = 3;       // stumps worth replanting before the fores
 export const POORLY_TICKS = 900;     // ~90 s of resting, then up again
 export const POORLY_CHANCE = 0.06;   // per check, and only one person at a time
 
+// Hunger: how fast it climbs, when it counts as properly hungry, when a full
+// basket is worth walking over for, and how much one loaf takes off. Kept
+// here rather than buried in the simulation so that working out how many
+// days a basket will last never means guessing these.
+export const HUNGER_RISE = 0.012;    // per tick, while up and about
+export const HUNGRY_AT = 62;         // hungry enough to mind an empty basket
+export const EAGER_AT = 45;          // hungry enough to go and eat, once there is bread going
+export const LOAF_RELIEF = 70;       // how much one loaf takes off
+
 /* --------------------------------------------------------------------- */
 /* the valley: the one world there is, so far                            */
 /* --------------------------------------------------------------------- */

@@ -452,6 +452,7 @@ export const en = {
   'notice.movedIn': '{name} moved into the new house.',
   'notice.treeGrown': 'A sapling has grown into a proper tree.',
   'notice.poorly': '{name} has a poorly tummy from the river water.',
+  'notice.squabble': '{name} and {other} are having a little squabble.',
 
   /* ---- villager speech ---- */
   'say.emptyBasket': 'the basket is empty…',
@@ -463,6 +464,9 @@ export const en = {
   'say.madeIt': 'made it across!',
   'say.wheee': 'wheeee!',
   'say.restingUp': 'just going to sit down…',
+  'say.natter': 'did you hear…?',
+  'say.laLa': 'la la la!',
+  'say.sitDown': 'just sitting a while',
 
   /* ---- the guide ---- */
   'guide.who.A': 'Builder',

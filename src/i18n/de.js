@@ -452,6 +452,7 @@ export const de = {
   'notice.movedIn': '{name} ist ins neue Haus eingezogen.',
   'notice.treeGrown': 'Aus einem Setzling ist ein richtiger Baum geworden.',
   'notice.poorly': '{name} hat Bauchweh vom Flusswasser.',
+  'notice.squabble': '{name} und {other} zanken sich ein bisschen.',
 
   /* ---- Was die Leute sagen ---- */
   'say.emptyBasket': 'der Korb ist leer…',
@@ -463,6 +464,9 @@ export const de = {
   'say.madeIt': 'geschafft!',
   'say.wheee': 'juhuuu!',
   'say.restingUp': 'ich setz mich mal kurz…',
+  'say.natter': 'hast du das gehört…?',
+  'say.laLa': 'lalala!',
+  'say.sitDown': 'ich sitz hier mal',
 
   /* ---- Der Wegweiser ---- */
   'guide.who.A': 'Baumeister',

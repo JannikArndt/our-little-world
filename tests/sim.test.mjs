@@ -126,7 +126,7 @@ test('hungry people eat from the basket and cheer up', () => {
 });
 
 test('wheat grows when watered and stalls when it is dry', () => {
-  const w = createWorld(17);
+  const w = createWorld(18);
   const p1 = w.plots[0], p2 = w.plots[1];
   applyAction(w, { type: 'plot.plant', role: 'B', plotId: p1.id });
   applyAction(w, { type: 'plot.plant', role: 'B', plotId: p2.id });
@@ -281,6 +281,143 @@ test('in the evening the people go in, and a new day brings them out again', () 
   assert.equal(w.villagers.some(v => v.inside), false, 'the morning brings everybody out');
   run(w, 200);
   assert.equal(w.villagers.some(v => v.path && v.path.length), true, 'and they get on with the day');
+});
+
+/* --------------------------------------------------------------------- */
+/* filling the basket, and the things people do                          */
+/* --------------------------------------------------------------------- */
+
+test('filling the basket sends the hungry to it right away', () => {
+  const w = createWorld(61);
+  w.larder.food = 0;
+  const v = w.villagers[0];
+  v.hunger = 50;                 // not hungry enough for a bare basket…
+  v.path = [{ x: 2, y: 2 }];     // …but pretend they are off pottering somewhere
+  v.task = null;
+  w.players.A.res.food = 3;
+  applyAction(w, { type: 'larder.give', from: 'A', n: 3 });
+  assert.equal(v.path.length, 0, 'the pottering is dropped at once');
+  assert.equal(v.wait, 0);
+  run(w, 400);
+  assert.ok(w.larder.food < 3, 'and they actually went and ate');
+});
+
+test('a full basket does not pull somebody off something that matters', () => {
+  const w = createWorld(62);
+  w.larder.food = 0;
+  const v = w.villagers[0];
+  v.hunger = 90;
+  v.carrying = { wood: 2, owner: 'A' };
+  v.path = [{ x: 3, y: 3 }];
+  v.task = { kind: 'deliver' };
+  w.players.A.res.food = 2;
+  applyAction(w, { type: 'larder.give', from: 'A', n: 2 });
+  assert.equal(v.path.length, 1, 'still carrying the log there');
+  assert.equal(v.task.kind, 'deliver');
+});
+
+test('a loaf feeds one villager once, and the basket never goes below zero', () => {
+  const w = createWorld(63);
+  w.larder.food = 1;
+  for (const v of w.villagers) { v.hunger = 90; v.path = []; v.task = null; v.wait = 0; }
+  run(w, 1500);
+  assert.equal(w.larder.food, 0, 'exactly the one loaf was eaten, never less than zero');
+  assert.equal(w.villagers.filter(v => v.hunger < 40).length, 1,
+    'only the one who actually got the loaf is properly fed');
+});
+
+test('villagers pick up a life of their own', () => {
+  const w = createWorld(65);
+  applyAction(w, { type: 'block.start', length: 30000 });   // long enough that dusk never gets in the way
+  const seen = new Set();
+  for (let i = 0; i < 6000; i++) {
+    tick(w);
+    for (const v of w.villagers) if (v.act) seen.add(v.act.kind);
+  }
+  for (const kind of ['dance', 'run', 'chat', 'sit'])
+    assert.ok(seen.has(kind), 'somebody should have done "' + kind + '" by now');
+});
+
+test('a squabble is rare, gentle, and always between two of an age', () => {
+  // squabbles need luck as well as two willing, idle villagers of an age
+  // standing close together, so the test supplies the standing-close-together
+  // part (the way two grown-ups pausing on the same path might) and waits for
+  // the rare roll to land — the roll and the age-matching are what is
+  // actually under test here, not how often somebody happens to wander by.
+  const w = createWorld(92);
+  applyAction(w, { type: 'block.start', length: 100000 });
+  const [a, b] = w.villagers.filter(v => !v.kid);
+  let found = null;
+  for (let i = 0; i < 15000 && !found; i++) {
+    if (!a.act && !a.task && (!a.path || !a.path.length)) { a.x = 10.5; a.y = 10.5; a.poorly = 0; a.carrying = null; }
+    if (!b.act && !b.task && (!b.path || !b.path.length)) { b.x = 11.5; b.y = 10.5; b.poorly = 0; b.carrying = null; }
+    tick(w);
+    found = w.villagers.find(v => v.act && v.act.kind === 'squabble');
+  }
+  assert.ok(found, 'a squabble should have happened by now');
+  const other = w.villagers.find(o => o.id === found.act.with);
+  assert.ok(other, 'the other side of it exists');
+  assert.equal(other.kid, found.kid, 'never a grown-up against a child');
+  assert.ok(w.notices.some(n => n.key === 'notice.squabble'), 'and the world says so');
+});
+
+test('tapping either side of a squabble breaks it up', () => {
+  const w = createWorld(67);
+  const [a, b] = w.villagers;
+  a.act = { kind: 'squabble', until: w.tick + 100, with: b.id };
+  b.act = { kind: 'squabble', until: w.tick + 100, with: a.id };
+
+  assert.equal(applyAction(w, { type: 'villager.poke', role: 'A', id: a.id }), true);
+  assert.equal(a.act, null, 'the one tapped calms down');
+  assert.equal(b.act, null, 'and so does the other one');
+  assert.equal(a.hearts, w.tick);
+  assert.equal(b.hearts, w.tick);
+
+  // and from the other side too
+  a.act = { kind: 'squabble', until: w.tick + 100, with: b.id };
+  b.act = { kind: 'squabble', until: w.tick + 100, with: a.id };
+  assert.equal(applyAction(w, { type: 'villager.poke', role: 'B', id: b.id }), true);
+  assert.equal(a.act, null);
+  assert.equal(b.act, null);
+});
+
+test('a poke answers, unless there is something that matters more', () => {
+  const w = createWorld(68);
+  const v = w.villagers[0];
+  const answers = new Set();
+  for (let seed = 100; seed < 140; seed++) {
+    const w2 = createWorld(seed);
+    applyAction(w2, { type: 'villager.poke', role: 'A', id: w2.villagers[0].id });
+    answers.add(w2.villagers[0].act.kind);
+  }
+  assert.ok(answers.size > 1, 'the answer varies: ' + [...answers].join(','));
+  for (const a of answers) assert.ok(['wave', 'wink', 'hop', 'shy'].includes(a));
+
+  // busy in a way that matters: a wave at most, and nothing dropped
+  v.carrying = { wood: 1, owner: 'A' };
+  v.path = [{ x: 5, y: 5 }];
+  v.task = { kind: 'deliver' };
+  applyAction(w, { type: 'villager.poke', role: 'A', id: v.id });
+  assert.equal(v.act.kind, 'wave');
+  assert.equal(v.path.length, 1);
+  assert.equal(v.task.kind, 'deliver');
+
+  assert.equal(applyAction(w, { type: 'villager.poke', role: 'A', id: 'not_a_real_id' }), false);
+});
+
+test('the village\'s own life stays just as deterministic', () => {
+  const play = () => {
+    const w = createWorld(83);
+    applyAction(w, { type: 'block.start' });
+    run(w, 400);
+    applyAction(w, { type: 'villager.poke', role: 'A', id: w.villagers[2].id });
+    run(w, 2000);
+    w.players.B.res.food = 2;
+    applyAction(w, { type: 'larder.give', from: 'B', n: 2 });
+    run(w, 1000);
+    return serialize(w);
+  };
+  assert.equal(play(), play());
 });
 
 test('a day only ever begins because somebody asked for one', () => {

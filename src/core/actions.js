@@ -3,9 +3,11 @@
 // same action it always produces the same result. That is what lets two
 // browsers share one world, and what lets the tests be meaningful.
 
-import { GW, GH, T, inBounds, setTile, tileAt, rebuildBlocked } from './grid.js';
-import { addBuilding, byId, newId, CAPS, capName, BLOCK_TICKS, cacheRegions } from './world.js';
-import { PROJECTS } from './content.js';
+import { GW, GH, T, inBounds, setTile, tileAt, rebuildBlocked, walkable } from './grid.js';
+import { addBuilding, byId, newId, CAPS, capName, BLOCK_TICKS, cacheRegions, isDusk } from './world.js';
+import { PROJECTS, EAGER_AT } from './content.js';
+import { findPath } from './pathfind.js';
+import { rndInt } from './rng.js';
 
 /* ---- small helpers -------------------------------------------------- */
 
@@ -29,6 +31,31 @@ export { note };
 export function journal(w, icon, key, vars) {
   w.journal.push({ icon, key, vars: vars || null, tick: w.tick });
   if (w.journal.length > 40) w.journal.shift();
+}
+
+/**
+ * What a villager is up to right now, purely for the telling — a dance, a
+ * chat, an answer to a tap. `until` is the tick it wears off; `with` names
+ * the other villager for the two-person ones. Additive, so an older saved
+ * world just has none of these yet.
+ */
+export function setAct(w, v, kind, ticks, withId) {
+  v.act = { kind, until: w.tick + ticks, with: withId || null };
+  return v.act;
+}
+export function clearAct(v) { v.act = null; }
+
+/** A few tiles off, wherever the ground allows it. Used to send someone shy scurrying away. */
+function trotAway(w, v, tiles) {
+  const sx = Math.floor(v.x), sy = Math.floor(v.y);
+  for (let i = 0; i < 10; i++) {
+    const x = sx + rndInt(w, tiles * 2 + 1) - tiles;
+    const y = sy + rndInt(w, tiles * 2 + 1) - tiles;
+    if (!inBounds(x, y) || !walkable(w, x, y)) continue;
+    const p = findPath(w, sx, sy, x, y);
+    if (p && p.length) { v.path = p; return true; }
+  }
+  return false;
 }
 
 function pay(w, role, cost) {
@@ -59,6 +86,9 @@ function tally(w, role, what) {
 function clearAsk(w, cap, targetId) {
   w.asks = w.asks.filter(a => !(a.cap === cap && (!targetId || a.targetId === targetId)));
 }
+
+const POKE_TICKS = 25;                             // about two and a half seconds
+const POKE_ANSWERS = ['wave', 'wink', 'hop', 'shy'];
 
 /* ---- the reducer ---------------------------------------------------- */
 
@@ -318,6 +348,44 @@ export function applyAction(w, a) {
       return true;
     }
 
+    /* ---------------- a tap on somebody ---------------- */
+    case 'villager.poke': {
+      const v = byId(w.villagers, a.id);
+      if (!v) return false;
+
+      // squabbling, and somebody tapped either one of them: that is the end of it
+      if (v.act && v.act.kind === 'squabble') {
+        const other = byId(w.villagers, v.act.with);
+        clearAct(v);
+        v.hearts = w.tick;
+        fx(w, 'hearts', v.x, v.y - 0.7);
+        if (other) {
+          clearAct(other);
+          other.hearts = w.tick;
+          fx(w, 'hearts', other.x, other.y - 0.7);
+        }
+        return true;
+      }
+
+      // poorly, carrying a log, or walking home at dusk: a wave, and nothing dropped
+      if (v.poorly > 0 || v.carrying || isDusk(w)) {
+        setAct(w, v, 'wave', POKE_TICKS);
+        v.hearts = w.tick;
+        fx(w, 'hearts', v.x, v.y - 0.7);
+        return true;
+      }
+
+      // otherwise, an answer — the same one on both screens, since it comes
+      // from the world's own seeded rng rather than anything local
+      const answer = POKE_ANSWERS[rndInt(w, POKE_ANSWERS.length)];
+      v.path = []; v.task = null; v.wait = POKE_TICKS;
+      setAct(w, v, answer, POKE_TICKS);
+      v.hearts = w.tick;
+      fx(w, 'hearts', v.x, v.y - 0.7);
+      if (answer === 'shy') trotAway(w, v, 4);
+      return true;
+    }
+
     /* ---------------- the field ---------------- */
     case 'plot.plant': {
       const p = byId(w.plots, a.plotId);
@@ -387,6 +455,14 @@ export function applyAction(w, a) {
       fx(w, 'float', w.larder.x, w.larder.y - 0.6, '+' + n + ' 🍞');
       journal(w, '🧺', 'j.basket', { n: n });
       w.notices = w.notices.filter(x => x.id !== 'hungry');
+      // the hungry notice at once, rather than however long it takes them to
+      // wander past the basket on their own — unless they are in the middle
+      // of something that matters more than a snack
+      for (const v of w.villagers) {
+        if (v.hunger <= EAGER_AT) continue;
+        if (v.poorly > 0 || v.carrying || isDusk(w)) continue;
+        v.path = []; v.task = null; v.wait = 0;
+      }
       return true;
     }
 

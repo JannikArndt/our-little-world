@@ -4,9 +4,24 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '2.2';
+export const VERSION = '2.3';
 
 export const CHANGELOG = [
+  {
+    v: '2.3', date: '2026-09-12',
+    en: [
+      'Nothing in a house is bought with a tap any more. You make it: take a lamp off the shelf and the word LAMP comes up in big dotted letters to be written, one letter going green as you finish it. Then it is yours to put down wherever you like.',
+      'Or draw it instead. One button switches between the letters and the picture — a candle, a bed, a window to trace the outline of — and it remembers which you chose. Neither is harder than the other; they are just two different afternoons.',
+      'It is deliberately kind. Strokes can be drawn in any order, a lifted finger keeps everything already done, and nothing is ever marked wrong. A dot shows where to start and another shows where to go next.',
+      'The word is the word in the language you are playing: LAMP in English, KERZE in German, and the letters are the ones a hand makes rather than the shapes a printer prints.',
+    ],
+    de: [
+      'Nichts im Haus wird mehr mit einem Tipp gekauft. Du machst es: Nimm eine Kerze vom Regal, und das Wort KERZE erscheint in großen gepunkteten Buchstaben zum Nachschreiben — jeder fertige Buchstabe wird grün. Danach gehört es dir, und du stellst es hin, wohin du magst.',
+      'Oder mal es stattdessen. Ein Knopf schaltet zwischen Buchstaben und Bild um — eine Kerze, ein Bett, ein Fenster zum Nachfahren —, und er merkt sich, was du gewählt hast. Keins ist schwerer als das andere; es sind einfach zwei verschiedene Nachmittage.',
+      'Es ist mit Absicht nachsichtig. Die Striche dürfen in beliebiger Reihenfolge kommen, ein abgehobener Finger behält alles schon Geschaffte, und nichts wird je als falsch angestrichen. Ein Punkt zeigt, wo es losgeht, ein zweiter, wo es weitergeht.',
+      'Das Wort ist das Wort in der Sprache, in der ihr spielt: KERZE auf Deutsch, LAMP auf Englisch. Und die Buchstaben sind die, die eine Hand schreibt, nicht die, die ein Drucker druckt.',
+    ],
+  },
   {
     v: '2.2', date: '2026-09-12',
     en: [

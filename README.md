@@ -372,6 +372,7 @@ Three things keep that card honest:
 | 🌉 **Build the bridge** | Stand piers in the river. A beam reaches two gaps on its own; three sags; four goes in the water, taking a villager with it. Try it before you build it — trying costs nothing. |
 | 🏠 **Put a house up** | One tap and a small price: four walls, a door, a window and a bed. Somebody can move in the same afternoon. |
 | 🛏️ **Furnish a house** | Tap a house and the front wall comes off. A shelf of things to put in, one small price each, and the people who live there are in the room using what you gave them. It never finishes, and either player can bring something. |
+| ✏️ **Make the thing** | Nothing is bought with a tap. Take a lamp off the shelf and write LAMP, letter by letter, each one going green as it is finished — or switch to the picture and trace a candle instead. Any stroke order, no wrong answers, and the word is in whichever language you are playing. |
 | 👋 **Tap a person** | Their name floats up and they wave, wink, hop, or go bashful and trot off. No card, nothing to read. Two of them squabbling stop when either is tapped. |
 | 🐑 **Look after a sheep** | She does not say what she wants. She droops, or eyes the river, or gets very woolly. Drag over what you think she needs. Wrong guesses are funny and free. |
 | 🛤️ **Lay a road** | Drag across the ground. One stone for every two steps, counted as you drag. People immediately start using it. |

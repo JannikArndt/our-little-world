@@ -169,13 +169,36 @@ await scan('bridge');
 await p.screenshot({ path: out + '65-de-bridge.png' });
 await p.click('text=Später');
 
-// the house
+// the house: putting it up, and then the room and the writing
+await api(() => { const w = window.OLW.world; w.players.A.res.plank = 9; w.players.A.res.stone = 9; });
 await tapWorld(pointAt('(w) => { const b = w.buildings.find(b => b.state === "site"); return [b.x + 1.5, b.y + 1]; }'), 'Hier ein Haus bauen');
 await p.click('text=Hier ein Haus bauen');
 await p.waitForTimeout(500);
 await scan('house');
 await p.screenshot({ path: out + '66-de-house.png' });
-await p.click('text=Später');
+await p.click('text=Hinstellen');
+await p.waitForSelector('.tools .tool', { timeout: 8000 });
+await p.waitForTimeout(400);
+await scan('house room');
+const zimmer = await p.textContent('.readout');
+console.log('das Zimmer sagt:', zimmer.replace(/\s+/g, ' ').trim().slice(0, 80));
+if (!/Hier drin ist es/.test(zimmer)) throw new Error('the room does not say how it feels in German');
+
+// a thing is written into being, and the word it asks for is the German one
+await p.click('.tools .tool:has-text("Stuhl")');
+await p.waitForFunction(() => window.OLW.tracing, null, { timeout: 5000 });
+await p.waitForTimeout(300);
+await scan('tracing');
+const schreib = await p.textContent('.readout');
+console.log('zum Schreiben:', schreib.replace(/\s+/g, ' ').trim().slice(0, 60));
+if (!/Schreib es/.test(schreib)) throw new Error('the tracing card is not German');
+const buchstaben = await p.evaluate(() => window.OLW.tracing.strokes.length);
+console.log('STUHL, in Strichen:', buchstaben);
+if (buchstaben < 5) throw new Error('STUHL should be more strokes than that');
+await p.screenshot({ path: out + '66b-de-house-room.png' });
+await p.click('text=Doch nicht');
+await p.waitForTimeout(300);
+await p.click('.p-rows button:has-text("Schließen")');
 
 // an animal
 await api(() => { window.OLW.role = 'B'; window.OLW.other = 'A'; });

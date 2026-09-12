@@ -413,6 +413,10 @@ export const de = {
   'bridge.mendNoPlank': 'Du hast keine Bretter. Im Sägewerk wird Holz zu Brettern.',
 
   /* ---- Haus ---- */
+  'trace.write': 'Schreib es, dann gehört es dir: <b>{what}</b>',
+  'trace.draw': 'Mal es, dann gehört es dir: <b>{what}</b>',
+  'trace.asWord': '🔤 Buchstaben',
+  'trace.asShape': '✏️ Bild',
   'house.raiseTitle': '🏠 Hier ein Haus',
   'house.raiseLead': 'Vier Wände, eine Tür, ein Fenster und ein Bett. Alles andere kommt danach rein, Stück für Stück — und mitbringen darf es jeder von euch.',
   'house.raise': '🏠 Hinstellen',

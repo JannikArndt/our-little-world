@@ -508,15 +508,44 @@ async function main() {
   const hbox = await hcv.boundingBox();
   const spot = (lx, ly) => ({ x: hbox.x + hbox.width * (lx / 514), y: hbox.y + hbox.height * (ly / 300) });
 
-  // something on the floor: pick it off the shelf, then say where it goes
-  await page.click('.tools .tool:has-text("chair")');
+  /**
+   * Nothing is bought with a tap: a thing is written or drawn into being
+   * first. So follow the line it puts up — the only way to know its shape is
+   * to ask the tracer, which is what `OLW.tracing` is there for.
+   */
+  const startTrace = async (label) => {
+    await page.click('.tools .tool:has-text("' + label + '")');
+    await page.waitForFunction(() => window.OLW.tracing, null, { timeout: 5000 });
+  };
+  const followTrace = async () => {
+    const strokes = await api(() => window.OLW.tracing.strokes.map(s => s.pts.map(p => [p.x, p.y])));
+    for (const pts of strokes) {
+      const first = spot(pts[0][0], pts[0][1]);
+      await page.mouse.move(first.x, first.y);
+      await page.mouse.down();
+      for (const [lx, ly] of pts) { const q = spot(lx, ly); await page.mouse.move(q.x, q.y); }
+      await page.mouse.up();
+    }
+    await page.waitForFunction(() => !window.OLW.tracing, null, { timeout: 5000 });
+    return { strokes: strokes.length, points: strokes.reduce((k, p) => k + p.length, 0) };
+  };
+  const traceIt = async (label) => { await startTrace(label); return followTrace(); };
+
+  // something on the floor: write it, then say where it goes
+  const wrote = await traceIt('chair');
+  console.log('writing CHAIR:', JSON.stringify(wrote));
   const asking = await page.textContent('.readout');
-  if (!/Where shall the chair go/.test(asking)) throw new Error('it does not ask where the chair goes');
+  console.log('and then it asks:', asking.replace(/\s+/g, ' ').trim().slice(0, 60));
+  if (!/Where shall the chair go/.test(asking)) throw new Error('writing it did not put it in your hand');
   await page.mouse.click(spot(216, 246).x, spot(216, 246).y);      // a front-row floor slot
   await page.waitForTimeout(400);
 
-  // and something on the wall, which is what lights the windows from outside
-  await page.click('.tools .tool:has-text("lamp")');
+  // and one drawn rather than written, which is the other way to earn it
+  await startTrace('lamp');
+  await page.click('.p-rows button:has-text("Picture")');
+  await page.waitForTimeout(200);
+  const drew = await followTrace();
+  console.log('drawing a lamp instead of writing it:', JSON.stringify(drew));
   await page.mouse.click(spot(140, 88).x, spot(140, 88).y);        // a wall slot
   await page.waitForTimeout(400);
   await step(page, '23-house-designed', 400);
@@ -528,7 +557,10 @@ async function main() {
   if (!roomNow.flame) throw new Error('a lamp is something to light');
 
   // a thing cannot go where it does not belong, and says so rather than sulking
-  await page.click('.tools .tool:has-text("bed")');
+  await startTrace('bed');
+  await page.click('.p-rows button:has-text("Letters")');          // back to writing
+  await page.waitForTimeout(200);
+  await followTrace();
   await page.mouse.click(spot(220, 88).x, spot(220, 88).y);        // a bed, at the wall
   await page.waitForTimeout(300);
   const told = await page.textContent('.readout');

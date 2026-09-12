@@ -193,6 +193,27 @@ it adds to `comfort`. Then its name in both language tables and its place in
   `w.tick`, with no rng anywhere, so both screens show the same room doing the
   same thing without exchanging a word about it.
 
+## Tracing something into being
+
+Furniture is written or drawn before it can be placed, because a tap is free
+and free is the wrong price — at five the effort worth spending is learning to
+write. `src/minigames/trace.js` does the following; `src/core/letters.js` is
+the alphabet, as the strokes a hand makes rather than shapes a printer prints.
+
+- **Both ways have to exist for every thing.** A row in `HOUSE_STUFF` needs a
+  row in `SHAPES` in `trace.js` as well as its name in both language tables,
+  or the picture half has nothing to show. The play-through traces one of each.
+- The word traced is `tr('house.' + kind)` uppercased, so it is the word in
+  the language being played. A letter with no strokes is skipped rather than
+  blocking, and a word with no traceable letters at all simply hands the thing
+  over.
+- **It forgives on purpose.** Every unfinished stroke is offered every point
+  the finger passes, so strokes can be done in any order; a lifted finger keeps
+  its progress; the gap between two frames is filled in; and nothing is ever
+  marked wrong. Changing that changes what the game is for.
+- `game.tracing` is the live tracer, and exists only so a test can follow a
+  line whose shape it has no other way of knowing. Nothing in the game reads it.
+
 ## Adding a task to the guide
 
 One entry in `CONCERNS` in `src/core/guide.js`, in the order it matters, plus a

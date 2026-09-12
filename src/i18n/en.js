@@ -413,6 +413,10 @@ export const en = {
   'bridge.mendNoPlank': 'You have no planks. The sawmill turns wood into planks.',
 
   /* ---- house ---- */
+  'trace.write': 'Write it and it is yours: <b>{what}</b>',
+  'trace.draw': 'Draw it and it is yours: <b>{what}</b>',
+  'trace.asWord': '🔤 Letters',
+  'trace.asShape': '✏️ Picture',
   'house.raiseTitle': '🏠 A house here',
   'house.raiseLead': 'Four walls, a door, a window and a bed. Everything else goes in afterwards, a bit at a time, and either of you can bring it.',
   'house.raise': '🏠 Put it up',

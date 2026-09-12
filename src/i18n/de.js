@@ -155,11 +155,7 @@ export const de = {
   'cap.farm': 'Feldarbeit',
 
   /* ---- Fragen und Zeigen ---- */
-  'ask.label': '🙋 {role} fragen: {what}',
-  'ask.sent': '{role} ist gefragt. Sag es auch laut — das macht mehr Spaß.',
-  'ask.notice': '{role} fragt: Kannst du {what}?',
-  'ask.forParts': '🙋 Danach fragen',
-  'ask.askedForParts': 'Nach dem Fehlenden gefragt.',
+  'w.theirJob': 'Nur {role} kann {what}.',
   'verb.fell': 'den Baum fällen',
   'verb.saw': 'Bretter sägen',
   'verb.bridge': 'dich um die Brücke kümmern',
@@ -313,7 +309,6 @@ export const de = {
   'msg.gaveAcross': '🤝 {n} sind zu {role} gegangen.',
   'msg.inBasket': '🍞 {n} im Korb. Die Hungrigen kommen bestimmt.',
   'msg.plotHere': 'Hier ist ein Bauplatz, bereit für ein Haus.',
-  'msg.roadLaid': '🛤️ {n} Schritte Weg. Schau, wie sie ihn benutzen.',
   'msg.cannotStand': 'Da kann sie nicht stehen.',
   'msg.houseUp': '🏠 Das Dach ist drauf. Gleich kommt jemand.',
   'msg.bridgeStrong': '🌉 Sie hält. Bombenfest.',

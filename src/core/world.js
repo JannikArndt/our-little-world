@@ -63,11 +63,29 @@ export function newId(prefix) { return prefix + '_' + (nextId++); }
 /* --------------------------------------------------------------------- */
 
 function riverCentre(y) { return 18.6 + Math.sin(y * 0.40) * 1.9; }
-function riverHalfWidth(y) { return 1.95 + 0.45 * Math.sin(y * 0.85 + 1); }
+
+/**
+ * How wide the river is at a row: an hourglass, narrowest at the crossing and
+ * opening out towards both ends of the map.
+ *
+ * It used to be a plain wave, which pinched tighter at the top and the bottom
+ * of the map than it did at the crossing — so the one place the village is
+ * told to build a bridge was visibly not the easiest place to build one, and
+ * that is a fair thing for somebody to notice and object to. Now the narrowest
+ * water really is where the bridge goes, and the river is widest where it runs
+ * off the map, which is also how a river usually looks.
+ *
+ * The wiggle that gives the banks their character fades out towards the
+ * crossing, so it can never quietly pinch the river somewhere else instead.
+ */
+function riverHalfWidth(y, crossY) {
+  const d = Math.abs(y - crossY) / (GH / 2);       // 0 at the crossing, about 1 at the edge
+  return 1.8 + 2.0 * d * d + 0.5 * d * Math.sin(y * 0.85 + 1);
+}
 
 const PAINTERS = { valley: paintValley };
 
-function paintValley(w) {
+function paintValley(w, scen) {
   const t = w.terrain;
   for (let i = 0; i < GW * GH; i++) t[i] = T.GRASS;
 
@@ -76,9 +94,10 @@ function paintValley(w) {
     for (let x = 0; x < 13; x++)
       if (y + x * 0.35 < 11) t[idx(x, y)] = T.FOREST;
 
-  // the river, north to south
+  // the river, north to south, at its narrowest where the bridge belongs
+  const crossY = (scen && scen.crossingRow != null ? scen.crossingRow : 12) + 0.5;
   for (let y = 0; y < GH; y++) {
-    const cx = riverCentre(y), hw = riverHalfWidth(y);
+    const cx = riverCentre(y), hw = riverHalfWidth(y, crossY);
     for (let x = 0; x < GW; x++) {
       const d = Math.abs(x + 0.5 - cx);
       if (d < hw) t[idx(x, y)] = T.WATER;
@@ -131,7 +150,6 @@ export function createWorld(seed, scenarioId) {
     larder: { x: scen.larder.x, y: scen.larder.y, food: scen.larder.food },
     players: {},
     regions: {},
-    asks: [],
     notices: [],
     journal: [],
     flags: {},        // one-off switches: what has been seen, what is unlocked
@@ -142,7 +160,7 @@ export function createWorld(seed, scenarioId) {
   for (const id of scen.roles) w.players[id] = newPlayer(id);
   for (const r of scen.regions || []) w.regions[r.id] = r.open === false ? 'later' : 'open';
 
-  (PAINTERS[scen.terrain] || paintValley)(w);
+  (PAINTERS[scen.terrain] || paintValley)(w, scen);
 
   // ---- what stands in the village ------------------------------------
   for (const h of scen.houses)
@@ -255,7 +273,7 @@ export function ensureWorld(w) {
   const scen = scenarioOf(w);
 
   for (const k of ['trees', 'logs', 'buildings', 'plots', 'sheep', 'villagers',
-                   'stones', 'visitors', 'asks', 'notices', 'journal']) {
+                   'stones', 'visitors', 'notices', 'journal']) {
     if (!Array.isArray(w[k])) w[k] = [];
   }
   if (!w.flags || typeof w.flags !== 'object') w.flags = {};

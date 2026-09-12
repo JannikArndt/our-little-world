@@ -4,9 +4,26 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '1.9';
+export const VERSION = '2.0';
 
 export const CHANGELOG = [
+  {
+    v: '2.0', date: '2026-09-12',
+    en: [
+      'Tap anything and it still tells you what it needs — but when it is the other player\'s job, it says so instead of offering to send them a message. Two people in the same room can just say it out loud, and that is rather the point of playing this together.',
+      'Pinching to zoom stays where you put it. Two fingers coming off a pinch looked exactly like the double tap that means "show me the whole world", so the zoom you had just chosen was thrown straight away — which is why it only worked sometimes. The world now also grows out of the spot between your fingers rather than the middle of the screen.',
+      'Tapping the green past the edge of the map no longer offers to build a road out there. It puts away whatever was open, which is what that tap is usually for.',
+      'The river is widest where it runs off the top and the bottom of the map, and narrowest where the bridge goes. It used to pinch tighter at the edges than at the crossing, so the one place you are told to build looked like the wrong one.',
+      'Nothing pops up after you lay a road. The road is right there on the ground.',
+    ],
+    de: [
+      'Tipp etwas an, und es sagt weiterhin, was es braucht — aber wenn es die Aufgabe des anderen ist, sagt es das, statt anzubieten, eine Nachricht rüberzuschicken. Zwei Leute in einem Zimmer können sich das einfach sagen, und genau darum spielt man das zusammen.',
+      'Der Zoom bleibt, wo du ihn hingezogen hast. Zwei Finger, die von einer Zoomgeste hochgehen, sahen genauso aus wie das Doppeltippen für „zeig mir die ganze Welt“ — deshalb ging der gerade gewählte Zoom sofort wieder verloren, und deshalb hat es nur manchmal geklappt. Außerdem wächst die Welt jetzt aus der Stelle zwischen deinen Fingern heraus statt aus der Bildmitte.',
+      'Ein Tipp ins Grüne jenseits des Kartenrands bietet nicht mehr an, dort draußen einen Weg zu bauen. Er schließt, was offen war — dafür tippt man da meistens hin.',
+      'Der Fluss ist oben und unten am Kartenrand am breitesten und genau dort am schmalsten, wo die Brücke hin soll. Vorher war er an den Rändern enger als an der Furt, und damit sah die eine vorgesehene Stelle nach der falschen aus.',
+      'Nach einem gebauten Weg erscheint keine Meldung mehr. Der Weg liegt ja da.',
+    ],
+  },
   {
     v: '1.9', date: '2026-09-12',
     en: [

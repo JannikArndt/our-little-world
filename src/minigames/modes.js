@@ -73,11 +73,10 @@ export function roadMode(game) {
       ctx.restore();
     },
     buttons: [
+      // No toast when this lands: the road is right there on the ground.
       { label: tr('road.lay'), cls: 'go', enabled: () => tiles.length > 0 && cost() <= has(), fn() {
         if (!tiles.length || cost() > has()) return;
-        if (game.dispatch({ type: 'road.build', role: game.role, tiles: tiles.slice() })) {
-          message(tr('msg.roadLaid', { n: tiles.length }));
-        }
+        game.dispatch({ type: 'road.build', role: game.role, tiles: tiles.slice() });
         game.setMode(null);
       } },
       { label: tr('ui.startOver'), cls: 'soft', fn() { tiles.length = 0; for (const k in seen) delete seen[k]; } },

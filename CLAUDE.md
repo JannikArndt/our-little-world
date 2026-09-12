@@ -153,14 +153,28 @@ the rest step up as those are finished. So a new concern's place in the list
 decides whether anybody will see it this morning — put it where it belongs, not
 at the end.
 
+## Nobody sends anybody a message
+
+There used to be a button on every bubble you could not use yourself: *ask the
+Builder to fell that tree*. It has gone, and it is not coming back. The two
+people playing are in the same room; a line of text crossing the relay is a
+worse way of saying something than saying it. Tapping still explains everything
+— the field is thirsty, the sheep is woolly, the crossing is four tiles wide —
+and when the hands for it belong to the other player it says so in one line
+(`w.theirJob`, with the verb from `verb.*`) and offers no button.
+
+So a new thing to do needs a `verb.*` string in both languages, and its bubble
+adds `theirs(game, [verb])` to the hint when `can()` says no. Nothing is
+dispatched, nothing is queued, and nothing waits behind a chip.
+
 ## Nothing is laid over the world
 
 The village is the tap target, so nothing covers it. What needs doing lives
 behind your own role chip, with a red number on the chip counting it.
 
-- The number means **jobs**: what the other player asked you for, plus the two
-  active concerns. Never news. A player learns what the number means once, and
-  it has to keep meaning it.
+- The number means **jobs**: the two active concerns at the front of the
+  world's queue. Never news. A player learns what the number means once, and it
+  has to keep meaning it.
 - `w.notices` still exists and the simulation still raises them. They surface
   under *What has happened* in the same menu, except where `NOTICE_JOB` in
   `hud.js` says a concern already covers one — the empty bread basket is not

@@ -5,9 +5,9 @@ import { LocalTransport, WsTransport, SoloTransport } from './net/transport.js';
 import { Directory, apiBase } from './net/directory.js';
 import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
-import { installInput, renderModeBar, closeBubble, buildProject } from './ui/interact.js';
+import { installInput, renderModeBar, closeBubble } from './ui/interact.js';
 import { message, closePanel, closeMenu, clearMessages, isPanelOpen } from './ui/overlay.js';
-import { ROLE, otherRole, byId, can } from './core/world.js';
+import { ROLE, otherRole, byId } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
 import { deviceId, rememberWorld } from './core/persist.js';
@@ -15,12 +15,6 @@ import { newerBuild, watchForNewer, reloadNow, whenQuiet } from './core/fresh.js
 import { startScreen } from './ui/start.js';
 import { openInvite } from './ui/invite.js';
 import { showChangelog, VERSION } from './ui/whatsnew.js';
-import { openChop } from './minigames/chop.js';
-import { openSawmill, openMill } from './minigames/sawmill.js';
-import { openBridge, openRepair } from './minigames/bridge.js';
-import { openHouse } from './minigames/house.js';
-import { openCare } from './minigames/care.js';
-import { openFish } from './minigames/fish.js';
 
 const qs = new URLSearchParams(location.search);
 const dir = new Directory(apiBase(qs));
@@ -367,48 +361,6 @@ async function startGame(choice) {
       const p = at ? at() : null;
       if (p) game.look(p[0], p[1], 1.9);
       game.dispatch({ type: 'notice.dismiss', id: n.id });
-    },
-
-    goToAsk(a) {
-      const w = game.world;
-      // some asks are about one particular thing rather than a whole trade
-      const target = a.targetId ? byId(w.buildings, a.targetId) : null;
-      if (target && target.type === 'boat') {
-        game.look(target.x + target.w, target.y + 0.5, 2);
-        if (target.state === 'plan') { if (can(w, game.role, 'bridge')) buildProject(game, 'boat'); else message(tr('teach.cannot')); }
-        else if (can(w, game.role, 'farm')) openFish(game, target);
-        else message(tr('teach.cannot'));
-        return;
-      }
-      if (target && target.type === 'play') {
-        game.look(target.x + target.w / 2, target.y + target.h / 2, 2);
-        if (can(w, game.role, 'house')) buildProject(game, 'play');
-        else message(tr('teach.cannot'));
-        return;
-      }
-      if (a.cap === 'farm' && a.targetId && byId(w.trees, a.targetId)) {
-        const t = byId(w.trees, a.targetId);
-        game.look(t.x + 0.5, t.y + 0.5, 2);
-        if (!can(w, game.role, 'farm')) { message(tr('teach.cannot')); return; }
-        if (game.dispatch({ type: 'tree.plant', role: game.role, treeId: t.id })) message(tr('msg.planted'));
-        return;
-      }
-      const open = {
-        fell: () => { const t = byId(w.trees, a.targetId); if (t && t.state === 'standing') { game.look(t.x, t.y, 2); openChop(game, t); } },
-        saw: () => openSawmill(game),
-        mill: () => openMill(game),
-        bridge: () => { game.look((w.bridge.site.x0 + w.bridge.site.x1) / 2, w.bridge.site.row + 1, 1.8); w.bridge.damaged ? openRepair(game) : openBridge(game); },
-        house: () => { const b = byId(w.buildings, a.targetId) || w.buildings.find(x => x.state === 'site'); if (b) { game.look(b.x + 1.5, b.y + 1, 1.8); openHouse(game, b); } },
-        care: () => { const s = byId(w.sheep, a.targetId) || w.sheep[0]; if (s) { game.look(s.x, s.y, 2); openCare(game, s); } },
-        herd: () => { const s = byId(w.sheep, a.targetId) || w.sheep[0]; if (s) game.look(s.x, s.y, 2); },
-        road: () => game.setMode(null),
-        farm: () => { const p = w.plots[0]; if (p) game.look(p.x + 1, p.y + 1, 1.6); },
-      }[a.cap];
-      if (!w.players[game.role].caps[a.cap]) {
-        message(tr('teach.cannot'));
-        return;
-      }
-      if (open) open();
     },
 
     /** A day begins. Nothing else starts one; somebody has to want it. */

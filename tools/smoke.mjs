@@ -479,7 +479,8 @@ async function main() {
   console.log('houses:', houses);
   if (houses < 3) throw new Error('the house was not built');
 
-  // the Keeper cannot fell trees, and is offered a way to ask instead
+  // the Keeper cannot fell trees: the tree still says what it is, and says
+  // whose job it is, and offers no button that would only send a message
   const standingPt = await api(() => {
     const g = window.OLW, w = g.world;
     g.role = 'B'; g.other = 'A';
@@ -491,26 +492,22 @@ async function main() {
   });
   await page.waitForTimeout(300);
   await page.mouse.click(standingPt.x, standingPt.y);
+  await page.waitForSelector('.bubble', { timeout: 5000 });
+  const treeSays = (await page.textContent('.bubble')).replace(/\s+/g, ' ').trim();
+  console.log('the Keeper taps a tree:', treeSays.slice(0, 110));
+  if (!/Only the Builder can fell that tree/.test(treeSays))
+    throw new Error('the tree does not say whose job felling is');
+  if (await page.$('text=Ask the Builder to fell that tree'))
+    throw new Error('asking the other player is supposed to be gone');
+  await step(page, '25a-theirs', 300);
+  await page.click('.bubble button.ghost');            // its own Close, so nothing is left open
   await page.waitForTimeout(300);
-  const askTree = await page.$('text=Ask the Builder to fell that tree');
-  if (!askTree) throw new Error('the Keeper was not offered a way to ask');
-  await askTree.click();
-  await page.waitForTimeout(300);
-  const askMade = await api(() => window.OLW.world.asks.length);
-  if (!askMade) throw new Error('the ask was not recorded');
   await api(() => { window.OLW.role = 'A'; window.OLW.other = 'B'; });
   await page.waitForTimeout(700);
-  // it reaches them as a number on their chip and a line in their own menu
+
+  // the red number on your own chip is jobs from the village, and nothing else
   const counted = await page.textContent('#roleBar button.me .r-todo');
   if (!(Number(counted.replace('+', '')) > 0)) throw new Error('the chip does not count what is waiting');
-  await page.click('#roleBar button.me');
-  await page.waitForTimeout(300);
-  const askText = await page.textContent('.menu');
-  console.log('the other player sees:', askText.replace(/\s+/g, ' ').trim().slice(0, 90));
-  if (!/asks/.test(askText)) throw new Error('the ask did not reach the other player');
-  await step(page, '25a-ask', 300);
-  await page.evaluate(() => document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
-  await page.waitForTimeout(300);
 
   // teaching: having done it a few times, you can show the other player how.
   // This lives behind the OTHER role's chip now (yours is your own tools).
@@ -909,6 +906,66 @@ async function main() {
   // and there is a way back out of the world, with the village kept
   await ph.click('text=Right, got it');
   await ph.waitForTimeout(400);
+
+  // Pinching and having it stay pinched. Two fingers come off a pinch as two
+  // touchends a moment apart, which looked exactly like the double tap that
+  // means "show me the whole world" — so the zoom somebody had just chosen was
+  // thrown away, and only survived if the fingers happened to lift slowly.
+  // Hence "sometimes it works". The fingers here lift 60ms apart, which is
+  // well inside the double-tap window and used to fail every time.
+  const pinched = await ph.evaluate(async () => {
+    const cv = document.getElementById('world');
+    const r = cv.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const touch = (id, x, y) => new Touch({ identifier: id, target: cv, clientX: x, clientY: y });
+    const fire = (type, pts) => {
+      const t = pts.map((p, i) => touch(i, p[0], p[1]));
+      cv.dispatchEvent(new TouchEvent(type, {
+        touches: t, targetTouches: t, changedTouches: t, bubbles: true, cancelable: true,
+      }));
+    };
+    const wait = (ms) => new Promise(go => setTimeout(go, ms));
+    window.OLW.renderer.userZoom = true;
+    window.OLW.renderer.cam.zoom = 1.4;
+    const before = window.OLW.renderer.cam.zoom;
+    fire('touchstart', [[cx - 40, cy], [cx + 40, cy]]);
+    for (let i = 1; i <= 4; i++) { fire('touchmove', [[cx - 40 - i * 20, cy], [cx + 40 + i * 20, cy]]); await wait(16); }
+    const spread = window.OLW.renderer.cam.zoom;
+    fire('touchend', [[cx - 120, cy]]);          // one finger up
+    await wait(60);
+    fire('touchend', []);                        // and the other, well inside 320ms
+    await wait(120);
+    return { before: before, spread: spread, after: window.OLW.renderer.cam.zoom };
+  });
+  console.log('pinching: zoom', pinched.before.toFixed(2), '->', pinched.spread.toFixed(2),
+              '-> after the fingers lift', pinched.after.toFixed(2));
+  if (!(pinched.spread > pinched.before + 0.2)) throw new Error('pinching out did not zoom in');
+  if (Math.abs(pinched.after - pinched.spread) > 0.01) throw new Error('the pinch snapped back when the fingers lifted');
+
+  // A tap past the edge of the map is not a tap on the village. It used to
+  // offer to build a road out there in the empty green, which is nowhere.
+  await ph.evaluate(() => window.OLW.look(960, 576, 2.4));
+  await ph.waitForTimeout(250);
+  const offMap = await ph.evaluate(() => {
+    const r = document.getElementById('world').getBoundingClientRect();
+    return { x: r.left + r.width - 14, y: r.top + r.height - 14 };
+  });
+  await ph.mouse.click(offMap.x, offMap.y);
+  await ph.waitForTimeout(350);
+  if (await ph.$('.bubble')) throw new Error('a tap past the edge of the map still opened a bubble');
+  // and the same tap inside the map does open one, so that proved something
+  await ph.evaluate(() => window.OLW.look(22, 8, 2.4));
+  await ph.waitForTimeout(250);
+  const onMap = await ph.evaluate(() => {
+    const r = document.getElementById('world').getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  });
+  await ph.mouse.click(onMap.x, onMap.y);
+  await ph.waitForSelector('.bubble', { timeout: 5000 });
+  console.log('past the edge: nothing; inside the map: a bubble. good');
+  await ph.evaluate(() => document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
+  await ph.waitForTimeout(200);
+  await ph.evaluate(() => { window.OLW.renderer.userZoom = false; window.OLW.renderer.resize(); });
 
   // Dragging the world up and down is the one that broke. A phone frames the
   // world to cover the screen, which makes the vertical axis fit exactly, and

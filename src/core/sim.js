@@ -640,9 +640,10 @@ export function tick(w) {
   }
 
   // notices fade after a while so the screen stays calm
+  // 'ask' here is a notice that waits to be dealt with rather than fading —
+  // nothing to do with one player asking the other, which the game no longer has
   w.notices = w.notices.filter(n => n.kind === 'ask' || w.tick - n.born < 400);
   // an unanswered request quietly stops nagging after a couple of minutes
-  if (w.asks.length) w.asks = w.asks.filter(a => w.tick - a.born < 1200);
 
   if (w.block.active && w.tick - w.block.startTick >= w.block.length) {
     w.block.active = false;

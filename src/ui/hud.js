@@ -200,8 +200,8 @@ export class Hud {
   /**
    * What is waiting for you, in two piles.
    *
-   * `jobs` is work: what the other player asked for, then the two at the front
-   * of the world's queue. Two, because a village always wants half a dozen
+   * `jobs` is work: the two at the front of the world's queue.
+   * Two, because a village always wants half a dozen
    * things and a list of eight is a chore — the rest are next, not cancelled.
    * The whole queue is still read, so a notice about something further down —
    * the wheat is golden, and it will be somebody's job in a minute — is not
@@ -213,15 +213,6 @@ export class Hud {
   todoList() {
     const g = this.game, w = g.world;
     const jobs = [], news = [], covered = {};
-
-    for (const a of w.asks) {
-      if (a.to !== g.role) continue;
-      jobs.push({
-        icon: '🙋',
-        label: tr('ask.notice', { role: roleName(a.from), what: tr('verb.' + a.cap) }),
-        fn: () => { g.dispatch({ type: 'ask.clear', id: a.id }); g.goToAsk(a); },
-      });
-    }
 
     const queue = allProblems(w);
     for (const pr of queue) covered[pr.id] = 1;
@@ -450,9 +441,7 @@ export class Hud {
     // we counted, so anything but a small step forward counts again.
     if (this.todos.tick >= 0 && w.tick >= this.todos.tick && w.tick - this.todos.tick < 10) return this.todos.n;
     this.todos.tick = w.tick;
-    let n = 0;
-    for (const a of w.asks) if (a.to === g.role) n++;
-    n += Math.min(allProblems(w).length, MAX_ACTIVE);
+    const n = Math.min(allProblems(w).length, MAX_ACTIVE);
     this.todos.n = n;
     return n;
   }

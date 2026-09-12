@@ -73,7 +73,7 @@ export function openBridge(game) {
     const c = cost(), v = verdict();
     if (v === 'breaks' || built) return;
     const me = w.players[game.role].res;
-    if (me.plank < c.plank || me.stone < c.stone) { askForParts(); return; }
+    if (me.plank < c.plank || me.stone < c.stone) { p.readout(tr('bridge.notEnough')); return; }
     built = true;
     game.dispatch({
       type: 'bridge.build', role: game.role,
@@ -89,18 +89,6 @@ export function openBridge(game) {
   const back = p.button(tr('ui.later'), 'soft', () => { stop(); p.close(); });
   back.style.flex = '0 0 auto';
   row.appendChild(back);
-
-  function askForParts() {
-    p.readout(tr('bridge.notEnough'));
-    if (!p._askBtn) {
-      p._askBtn = p.button(tr('ask.forParts'), 'soft', () => {
-        game.dispatch({ type: 'ask', from: game.role, to: game.other, cap: 'bridge', targetId: null });
-        message(tr('ask.askedForParts'));
-      });
-      p._askBtn.style.flex = '0 0 auto';
-      row.insertBefore(p._askBtn, back);
-    }
-  }
 
   function update() {
     const c = cost(), v = verdict(), sp = spans();

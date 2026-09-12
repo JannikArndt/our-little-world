@@ -83,10 +83,6 @@ function tally(w, role, what) {
   const d = w.players[role].done;
   d[what] = (d[what] || 0) + 1;
 }
-function clearAsk(w, cap, targetId) {
-  w.asks = w.asks.filter(a => !(a.cap === cap && (!targetId || a.targetId === targetId)));
-}
-
 const POKE_TICKS = 25;                             // about two and a half seconds
 const POKE_ANSWERS = ['wave', 'wink', 'hop', 'shy'];
 
@@ -147,7 +143,6 @@ export function applyAction(w, a) {
       }
       tally(w, a.role, 'fell');
       journal(w, '🌳', 'j.felled');
-      clearAsk(w, 'fell', a.treeId);
       return true;
     }
 
@@ -162,7 +157,6 @@ export function applyAction(w, a) {
       // teaches the next level of the sawmill: see LEVEL2_AT in sawmill.js.
       if (a.pieces && a.planks === a.pieces) tally(w, a.role, 'sawPerfect');
       if (a.planks > 0) journal(w, '🪚', 'j.sawed', { n: a.planks });
-      clearAsk(w, 'saw', null);
       return true;
     }
 
@@ -174,7 +168,6 @@ export function applyAction(w, a) {
       if (ws) { ws.spin = w.tick; fx(w, 'float', ws.x + 2, ws.y - 0.2, '+' + a.food + ' 🍞'); }
       tally(w, a.role, 'mill');
       journal(w, '🍞', 'j.baked', { n: a.food });
-      clearAsk(w, 'mill', null);
       return true;
     }
 
@@ -197,7 +190,6 @@ export function applyAction(w, a) {
       tally(w, a.role, 'bridge');
       journal(w, '🌉', 'j.bridge');
       w.notices = w.notices.filter(n => n.id !== 'sheep_far' && n.id !== 'bridge_broken');
-      clearAsk(w, 'bridge', null);
       return true;
     }
     case 'bridge.repair': {
@@ -231,7 +223,6 @@ export function applyAction(w, a) {
       fx(w, 'sparkle', site.x + site.w / 2, site.y);
       tally(w, a.role, 'house');
       journal(w, '🏠', 'j.house', { n: a.beds });
-      clearAsk(w, 'house', a.siteId);
       return true;
     }
 
@@ -258,7 +249,6 @@ export function applyAction(w, a) {
       tally(w, a.role, def.type);
       journal(w, def.journal, 'j.' + def.type);
       w.notices = w.notices.filter(n => n.id !== 'poorly' && n.id !== 'sheep_in_field');
-      clearAsk(w, def.cap, plan.id);
       return true;
     }
     // the two projects that shipped before there was one action for all of them
@@ -276,7 +266,6 @@ export function applyAction(w, a) {
         journal(w, '🎣', 'j.fished', { n: n });
       }
       tally(w, a.role, 'fish');
-      clearAsk(w, 'farm', 'plan_boat');
       return true;
     }
 
@@ -302,7 +291,6 @@ export function applyAction(w, a) {
       fx(w, 'float', t.x + 0.5, t.y, '🌱');
       tally(w, a.role, 'plant');
       journal(w, '🌱', 'j.planted');
-      clearAsk(w, 'farm', a.treeId);
       return true;
     }
 
@@ -319,7 +307,6 @@ export function applyAction(w, a) {
       for (const s of w.sheep) s.path = [];
       tally(w, a.role, 'road');
       journal(w, '🛤️', 'j.road', { n: tiles.length });
-      clearAsk(w, 'road', null);
       return true;
     }
 
@@ -344,7 +331,6 @@ export function applyAction(w, a) {
       fx(w, 'hearts', s.x, s.y - 0.7);
       tally(w, a.role, 'care');
       journal(w, '🐑', 'j.sheep', { name: s.name });
-      clearAsk(w, 'care', a.sheepId);
       return true;
     }
 
@@ -467,22 +453,11 @@ export function applyAction(w, a) {
     }
 
     /* ---------------- talking to each other ---------------- */
-    case 'ask': {
-      if (w.asks.length > 3) w.asks.shift();
-      if (w.asks.some(x => x.cap === a.cap && x.targetId === a.targetId)) return false;
-      w.asks.push({ id: newId('ask'), from: a.from, to: a.to, cap: a.cap, targetId: a.targetId || null, born: w.tick });
-      return true;
-    }
-    case 'ask.clear': {
-      w.asks = w.asks.filter(x => x.id !== a.id);
-      return true;
-    }
     case 'teach': {
       if (!CAPS[a.cap]) return false;
       if (!w.players[a.from].caps[a.cap]) return false;
       if (w.players[a.to].caps[a.cap]) return false;
       w.players[a.to].caps[a.cap] = 1;
-      w.asks = w.asks.filter(x => x.cap !== a.cap);
       journal(w, '👐', 'j.taught');
       note(w, 'taught_' + a.cap, CAPS[a.cap].icon, 'teach.notice', { what: capName(a.cap) }, 'calm');
       return true;

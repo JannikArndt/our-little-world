@@ -1,8 +1,9 @@
 // Touching the world: panning, pinching, and tapping things to see what can
-// be done with them. If you cannot do it yourself, you can ask the other
-// player — which is usually the more interesting option.
+// be done with them. Anything can be tapped and anything will say what it
+// needs — but a job that belongs to the other player is theirs to do, and
+// saying so across the room beats a button that sends a message.
 
-import { TILE, T, tileAt, toTileX, toTileY } from '../core/grid.js';
+import { TILE, T, WORLD_W, WORLD_H, tileAt, toTileX, toTileY } from '../core/grid.js';
 import { ROLE, can, roleName, PROJECT, project, kids, hasWell, loavesPerDay, basketDays } from '../core/world.js';
 import { PROJECTS } from '../core/content.js';
 import { canPay } from '../core/actions.js';
@@ -155,15 +156,16 @@ function hit(w, wx, wy) {
 /* actions                                                            */
 /* ------------------------------------------------------------------ */
 
-function askAction(game, cap, targetId, verb) {
-  return {
-    label: tr('ask.label', { role: roleName(game.other), what: tr('verb.' + (verb || cap)) }),
-    cls: 'soft',
-    fn() {
-      game.dispatch({ type: 'ask', from: game.role, to: game.other, cap, targetId: targetId || null });
-      message(tr('ask.sent', { role: roleName(game.other) }));
-    },
-  };
+/**
+ * One line saying whose job this is. Tapping a thing always tells you what it
+ * wants — that is how a small person learns the field is thirsty — but when
+ * the hands for it belong to the other player, the answer is their name, not
+ * a button. Two people in a room can just say it.
+ */
+function theirs(game, verbs) {
+  if (!verbs.length) return '';
+  const what = verbs.map(v => tr('verb.' + v)).join(tr('w.and'));
+  return ' ' + tr('w.theirJob', { role: roleName(game.other), what: what });
 }
 
 /**
@@ -191,8 +193,7 @@ export function buildProject(game, type) {
 function projectActions(game, type, label) {
   const w = game.world, r = game.role;
   const def = PROJECTS[type];
-  const plan = project(w, type);
-  if (!can(w, r, def.cap)) return [askAction(game, def.cap, plan ? plan.id : null, def.verb)];
+  if (!can(w, r, def.cap)) return [];
   const cost = def.cost;
   const me = w.players[r].res;
   const bits = [];
@@ -208,10 +209,13 @@ function projectActions(game, type, label) {
 
 /** A project's own bubble: what it is, and the one thing to do with it. */
 function projectBubble(game, b) {
-  const t = (PROJECTS[b.type] || {}).text || {};
+  const def = PROJECTS[b.type] || {};
+  const t = def.text || {};
   if (b.state === 'plan') {
+    const mine = can(game.world, game.role, def.cap);
     return {
-      title: tr(t.plan), hint: tr(t.planHint),
+      title: tr(t.plan),
+      hint: tr(t.planHint) + (mine ? '' : theirs(game, [def.verb || def.cap])),
       actions: projectActions(game, b.type, tr(t.build)),
     };
   }
@@ -227,15 +231,15 @@ function actionsFor(game, h) {
       const tree = h.o;
       if (tree.state === 'sapling') return { title: tr('w.sapling'), hint: tr('w.saplingHint'), actions: [] };
       if (tree.state !== 'standing') {
-        if (can(w, r, 'farm')) A.push({ label: tr('w.plantHere'), fn: () => {
+        const mine = can(w, r, 'farm');
+        if (mine) A.push({ label: tr('w.plantHere'), fn: () => {
           if (game.dispatch({ type: 'tree.plant', role: r, treeId: tree.id })) message(tr('msg.planted'));
         } });
-        else A.push(askAction(game, 'farm', tree.id, 'plant'));
-        return { title: tr('w.stump'), hint: tr('w.stumpHint'), actions: A };
+        return { title: tr('w.stump'), hint: tr('w.stumpHint') + (mine ? '' : theirs(game, ['plant'])), actions: A };
       }
-      if (can(w, r, 'fell')) A.push({ label: tr('w.fell'), fn: () => openChop(game, tree) });
-      else A.push(askAction(game, 'fell', tree.id));
-      return { title: tr('w.tree'), hint: tr('w.treeHint'), actions: A };
+      const canFell = can(w, r, 'fell');
+      if (canFell) A.push({ label: tr('w.fell'), fn: () => openChop(game, tree) });
+      return { title: tr('w.tree'), hint: tr('w.treeHint') + (canFell ? '' : theirs(game, ['fell'])), actions: A };
     }
 
     case 'log':
@@ -259,10 +263,12 @@ function actionsFor(game, h) {
       const s = h.o;
       const wants = tr(s.mood === 'hungry' ? 'w.sheepHungry' : s.mood === 'thirsty' ? 'w.sheepThirsty'
         : s.mood === 'woolly' ? 'w.sheepWoolly' : 'w.sheepOk');
+      const missing = [];
       if (can(w, r, 'care')) A.push({ label: tr('w.care'), fn: () => openCare(game, s) });
-      else A.push(askAction(game, 'care', s.id));
+      else missing.push('care');
       if (can(w, r, 'herd')) A.push({ label: tr('w.herd'), cls: 'soft', fn: () => game.setMode(sheepMode(game, s)) });
-      return { title: s.name, hint: wants, actions: A };
+      else missing.push('herd');
+      return { title: s.name, hint: wants + theirs(game, missing), actions: A };
     }
 
     // a tap on a villager never reaches here any more — installInput answers
@@ -277,7 +283,7 @@ function actionsFor(game, h) {
         : p.state === 'ripe' ? tr('w.plotRipe')
         : p.water <= 8 ? tr('w.plotDry')
         : tr('w.plotGrowing', { n: Math.round(p.growth) });
-      if (!can(w, r, 'farm')) return { title: tr('w.plot'), hint, actions: [askAction(game, 'farm', p.id)] };
+      if (!can(w, r, 'farm')) return { title: tr('w.plot'), hint: hint + theirs(game, ['farm']), actions: [] };
       if (p.state === 'empty') A.push({ label: tr('w.sow'), fn: () => game.dispatch({ type: 'plot.plant', role: r, plotId: p.id, watered: false }) });
       if (p.state === 'ripe') A.push({ label: tr('w.reap'), fn: () => game.dispatch({ type: 'plot.harvest', role: r, plotId: p.id }) });
       if (p.state !== 'empty') {
@@ -296,9 +302,10 @@ function actionsFor(game, h) {
       if (b.type === 'boat') {
         if (b.state === 'plan') return projectBubble(game, b);
         const resting = (w.tick - (b.fishedTick || -9999)) < 600;
-        if (!can(w, r, 'farm')) A.push(askAction(game, 'farm', b.id, 'fish'));
-        else if (!resting) A.push({ label: tr('w.goFishing'), fn: () => openFish(game, b) });
-        return { title: tr('w.boat'), hint: resting ? tr('w.boatResting') : tr('w.boatHint'), actions: A };
+        const canFish = can(w, r, 'farm');
+        if (canFish && !resting) A.push({ label: tr('w.goFishing'), fn: () => openFish(game, b) });
+        const boatHint = resting ? tr('w.boatResting') : tr('w.boatHint');
+        return { title: tr('w.boat'), hint: boatHint + (canFish ? '' : theirs(game, ['fish'])), actions: A };
       }
       if (b.type === 'play') {
         if (b.state === 'plan') return projectBubble(game, b);
@@ -307,16 +314,18 @@ function actionsFor(game, h) {
       }
       if (b.type === 'well' || b.type === 'privy' || b.type === 'fence') return projectBubble(game, b);
       if (b.state === 'site') {
-        if (can(w, r, 'house')) A.push({ label: tr('w.buildHouse'), fn: () => openHouse(game, b) });
-        else A.push(askAction(game, 'house', b.id));
-        return { title: tr('w.site'), hint: tr(b.newFamily ? 'w.siteNewFamily' : 'w.siteHint'), actions: A };
+        const mine = can(w, r, 'house');
+        if (mine) A.push({ label: tr('w.buildHouse'), fn: () => openHouse(game, b) });
+        const siteHint = tr(b.newFamily ? 'w.siteNewFamily' : 'w.siteHint');
+        return { title: tr('w.site'), hint: siteHint + (mine ? '' : theirs(game, ['house'])), actions: A };
       }
       if (b.type === 'workshop') {
+        const missing = [];
         if (can(w, r, 'saw')) A.push({ label: tr('w.sawHere'), fn: () => openSawmill(game) });
-        else A.push(askAction(game, 'saw', null));
+        else missing.push('saw');
         if (can(w, r, 'mill')) A.push({ label: tr('w.millHere'), cls: 'soft', fn: () => openMill(game) });
-        else A.push(askAction(game, 'mill', null));
-        return { title: tr('w.workshop'), hint: tr('w.workshopHint'), actions: A };
+        else missing.push('mill');
+        return { title: tr('w.workshop'), hint: tr('w.workshopHint') + theirs(game, missing), actions: A };
       }
       const who = (b.residents || []).map(id => (w.villagers.find(v => v.id === id) || {}).name).filter(Boolean);
       const spare = (b.beds || 0) - (b.residents || []).length;
@@ -329,15 +338,22 @@ function actionsFor(game, h) {
     }
 
     case 'crossing': {
+      const canBridge = can(w, r, 'bridge');
       if (w.bridge.damaged) {
-        if (can(w, r, 'bridge')) A.push({ label: tr('w.mendBridge'), fn: () => openRepair(game) });
-        else A.push(askAction(game, 'bridge', null));
-        return { title: tr('w.bridge'), hint: tr('w.bridgeBrokenHint'), actions: A };
+        if (canBridge) A.push({ label: tr('w.mendBridge'), fn: () => openRepair(game) });
+        return {
+          title: tr('w.bridge'),
+          hint: tr('w.bridgeBrokenHint') + (canBridge ? '' : theirs(game, ['bridge'])),
+          actions: A,
+        };
       }
       if (w.bridge.built) return { title: tr('w.bridge'), hint: tr('w.bridgeFine'), actions: [] };
-      if (can(w, r, 'bridge')) A.push({ label: tr('w.buildBridge'), fn: () => openBridge(game) });
-      else A.push(askAction(game, 'bridge', null));
-      return { title: tr('w.crossing'), hint: tr('w.crossingHint', { n: w.bridge.site.span }), actions: A };
+      if (canBridge) A.push({ label: tr('w.buildBridge'), fn: () => openBridge(game) });
+      return {
+        title: tr('w.crossing'),
+        hint: tr('w.crossingHint', { n: w.bridge.site.span }) + (canBridge ? '' : theirs(game, ['bridge'])),
+        actions: A,
+      };
     }
 
     case 'water':
@@ -345,11 +361,11 @@ function actionsFor(game, h) {
 
     default: {
       const stone = w.players[r].res.stone;
-      if (can(w, r, 'road') && stone > 0) A.push({ label: tr('w.buildRoad'), fn: () => game.setMode(roadMode(game)) });
-      if (!can(w, r, 'road')) A.push(askAction(game, 'road', null));
+      const canRoad = can(w, r, 'road');
+      if (canRoad && stone > 0) A.push({ label: tr('w.buildRoad'), fn: () => game.setMode(roadMode(game)) });
       // Offering a button that cannot work teaches nothing; say what is missing.
-      const hint = can(w, r, 'road') && stone === 0 ? tr('w.roadNoStone') : tr('w.groundHint');
-      return { title: tr('w.ground'), hint, actions: A };
+      const hint = canRoad && stone === 0 ? tr('w.roadNoStone') : tr('w.groundHint');
+      return { title: tr('w.ground'), hint: hint + (canRoad ? '' : theirs(game, ['road'])), actions: A };
     }
   }
 }
@@ -414,6 +430,7 @@ export function installInput(game, renderer, canvas) {
   let dragging = false, moved = 0, startT = 0;
   let lastX = 0, lastY = 0;
   let pinch = null;
+  let pinched = false;      // two fingers were down at some point in this gesture
 
   const worldFrom = (clientX, clientY) => {
     const r = canvas.getBoundingClientRect();
@@ -453,7 +470,10 @@ export function installInput(game, renderer, canvas) {
     if (game.mode) { if (game.mode.up) game.mode.up(); renderModeBar(game); return; }
     if (moved > 12 || Date.now() - startT > 700) return;
     const p = worldFrom(x, y);
-    if (p.x < 0 || p.y < 0) { closeBubble(); return; }
+    // Past the edge of the map is not the village: there is nothing there to
+    // build a road on. It still puts away whatever was open, which is what a
+    // tap on the empty green either side of the world is usually for.
+    if (p.x < 0 || p.y < 0 || p.x >= WORLD_W || p.y >= WORLD_H) { closeBubble(); return; }
     const h = hit(game.world, p.x, p.y);
     // a tap on a person gets no bubble at all: just poke them and see what
     // they do — their name floats up in the world instead of a card here
@@ -472,11 +492,19 @@ export function installInput(game, renderer, canvas) {
   canvas.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
       dragging = false;
+      pinched = true;
       const [a, b] = e.touches;
-      pinch = { d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), z: renderer.cam.zoom };
+      const r = canvas.getBoundingClientRect();
+      pinch = {
+        d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
+        z: renderer.cam.zoom,
+        // the bit of world between the fingers, so it can stay between them
+        anchor: renderer.toWorld((a.clientX + b.clientX) / 2 - r.left, (a.clientY + b.clientY) / 2 - r.top),
+      };
       e.preventDefault();
       return;
     }
+    if (e.touches.length === 1) pinched = false;
     closeBubbleIfTapOutside(e);
     begin(e.touches[0].clientX, e.touches[0].clientY);
     e.preventDefault();
@@ -485,9 +513,15 @@ export function installInput(game, renderer, canvas) {
   canvas.addEventListener('touchmove', (e) => {
     if (pinch && e.touches.length === 2) {
       const [a, b] = e.touches;
+      const r = canvas.getBoundingClientRect();
       const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
       renderer.cam.zoom = Math.max(1, Math.min(renderer.maxZoom(), pinch.z * (d / pinch.d)));
       renderer.userZoom = true;
+      // whatever was between the fingers when they went down stays between
+      // them, so the village grows out of the spot being looked at
+      const mid = renderer.toWorld((a.clientX + b.clientX) / 2 - r.left, (a.clientY + b.clientY) / 2 - r.top);
+      renderer.cam.x += pinch.anchor.x - mid.x;
+      renderer.cam.y += pinch.anchor.y - mid.y;
       renderer.clampCamera();
       e.preventDefault();
       return;
@@ -497,7 +531,13 @@ export function installInput(game, renderer, canvas) {
   }, { passive: false });
 
   const finish = (e) => {
-    if (pinch && e.touches.length < 2) pinch = null;
+    if (pinch && e.touches.length < 2) {
+      pinch = null;
+      // a finger still down carries on from where it is now, not from where
+      // the first one landed a pinch ago
+      if (e.touches.length === 1) { lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; }
+      return;
+    }
     const t = e.changedTouches && e.changedTouches[0];
     if (t) end(t.clientX, t.clientY);
   };
@@ -514,11 +554,26 @@ export function installInput(game, renderer, canvas) {
     e.preventDefault();
   }, { passive: false });
 
-  // double tap to see the whole world again
+  // Double tap to see the whole world again.
+  //
+  // This is what kept throwing a pinch away. Two fingers come off a pinch as
+  // two touchends a fraction of a second apart, which is indistinguishable
+  // from a double tap unless you look — so the zoom somebody had just chosen
+  // snapped straight back to the whole world, and only survived when the two
+  // fingers happened to lift more than a third of a second apart. Hence
+  // "sometimes it works". Only a real single-finger tap counts now: nothing
+  // else still down, no second finger anywhere in this gesture, and short and
+  // still enough to be a tap at all.
   let lastTap = 0;
-  canvas.addEventListener('touchend', () => {
+  canvas.addEventListener('touchend', (e) => {
+    if (pinched || (e.touches && e.touches.length > 0)) { lastTap = 0; return; }
+    if (moved > 12 || Date.now() - startT > 700) { lastTap = 0; return; }
     const now = Date.now();
-    if (now - lastTap < 320) { renderer.userZoom = false; renderer.resize(); closeBubble(); }
+    if (now - lastTap < 320) {
+      renderer.userZoom = false; renderer.resize(); closeBubble();
+      lastTap = 0;
+      return;
+    }
     lastTap = now;
   });
 

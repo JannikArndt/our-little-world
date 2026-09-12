@@ -155,11 +155,7 @@ export const en = {
   'cap.farm': 'farming',
 
   /* ---- asking and teaching ---- */
-  'ask.label': '🙋 Ask the {role} to {what}',
-  'ask.sent': 'Asked the {role}. Tell them out loud too — it is more fun.',
-  'ask.notice': 'The {role} asks: can you {what}?',
-  'ask.forParts': '🙋 Ask for it',
-  'ask.askedForParts': 'Asked for the missing pieces.',
+  'w.theirJob': 'Only the {role} can {what}.',
   'verb.fell': 'fell that tree',
   'verb.saw': 'saw some planks',
   'verb.bridge': 'sort out the bridge',
@@ -313,7 +309,6 @@ export const en = {
   'msg.gaveAcross': '🤝 {n} went across to the {role}.',
   'msg.inBasket': '🍞 {n} in the basket. The hungry ones will come.',
   'msg.plotHere': 'There is a plot here, ready for a house.',
-  'msg.roadLaid': '🛤️ {n} steps of road. Watch them use it.',
   'msg.cannotStand': 'She cannot stand there.',
   'msg.houseUp': '🏠 The roof is on. Somebody will be along shortly.',
   'msg.bridgeStrong': '🌉 It holds. Solid as anything.',

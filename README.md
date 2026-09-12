@@ -321,7 +321,14 @@ that plurals come in pairs.
 
 Neither can finish much alone. Bread needs the Keeper's wheat and the Builder's
 mill. A bridge needs the Builder's planks and stone the Keeper is usually
-carrying. A road on the far bank is no use until somebody bridges the river.
+carrying. A road on the far bank is no use until somebody bridges the river — which is
+widest where it runs off the top and the bottom of the map and narrowest at the
+crossing, so the place to build it is the place it looks like.
+
+Neither can ask the other for anything, and that is deliberate. Tapping a thing
+always says what it needs; when it needs the other player's hands, it says whose
+job it is and stops there. The two of you are in the same room — saying it is
+better than sending it.
 
 Roles are not fixed. Do something two or three times and a "show them how"
 button appears on your role card — teach it across, and you both know it.
@@ -527,8 +534,10 @@ be run by hand against a server of your own (`npm start`, then
 The play-through picks a role, fells a tree, saws it, designs and tests a bridge,
 looks after a sheep, sows the field, lays a road, designs a house, watches
 somebody move in, plants a sapling, builds the boat and goes fishing, builds the
-playground, the well, the little house and the fence, opens the changelog, asks
-the other player for help, runs the day to its checkpoint, starts a world over
+playground, the well, the little house and the fence, opens the changelog,
+checks a job that is not yours says so and offers no button, pinches the world
+and checks the zoom stays put, taps past the edge of the map and checks nothing
+opens, runs the day to its checkpoint, starts a world over
 and checks the old one does not come back, and then checks that two separate
 browsers see each other's work. It also checks the task card: that it says what
 to do, that whoever it names is drawn on it and ringed in the world, and that

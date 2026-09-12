@@ -118,14 +118,6 @@ export function openHouse(game, site) {
     const me = w.players[game.role].res;
     if (me.plank < c.plank || me.stone < c.stone) {
       p.readout(tr('house.notEnough'));
-      if (!p._ask) {
-        p._ask = p.button(tr('ask.forParts'), 'soft', () => {
-          game.dispatch({ type: 'ask', from: game.role, to: game.other, cap: 'house', targetId: site.id });
-          message(tr('ask.askedForParts'));
-        });
-        p._ask.style.flex = '0 0 auto';
-        row.insertBefore(p._ask, back);
-      }
       return;
     }
     game.dispatch({

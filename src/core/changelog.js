@@ -4,9 +4,34 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '1.8';
+export const VERSION = '1.9';
 
 export const CHANGELOG = [
+  {
+    v: '1.9', date: '2026-09-12',
+    en: [
+      'Tap somebody and they answer. No card, no sentence to read: their name floats up over their head and they wave, wink, hop, or go bashful and trot a few tiles off.',
+      'And there is more to catch them at. People dance, run, sit down, stop and natter in twos — and every so often two of them have a little squabble, which a tap breaks up with hearts over both of them.',
+      'A new 👥 in the top row lists everybody: their name, whose house they live in, what they want, and what they are up to this minute. Tap a row and the world goes to them, with a ring round them so you know which one they are. The sheep are in there too.',
+      'The village basket says more than a number now. How many loaves are in it, how many the village eats in a day, and how many days that leaves — so six people eating three a day makes seven loaves about two days, and somebody moving into a new house makes it fewer.',
+      'Fill the basket and people come and eat. They notice bread arriving instead of waiting until they are starving, they walk over, and you can watch them eat it.',
+      'The mill shows what the percentage means. The ring round the stone fills as you turn it and ten boxes fill one by one beside the number, so seven out of ten and 70% say the same thing at the same time.',
+      'The sawmill has a second level. Cut three logs perfectly and the dashed planks above the log go away: what is left is 4 × 3 and the ruler underneath.',
+      'A road you laid could disappear on your own screen while standing perfectly well on the other. It cannot any more — nothing you do gets taken back by a message that left before you did it.',
+      'And the game fetches a newer version by itself, once you are not in the middle of anything. It saves the village first, and comes back on the same world a blink later.',
+    ],
+    de: [
+      'Tipp jemanden an, und er antwortet. Keine Karte, kein Satz zum Lesen: sein Name schwebt über seinem Kopf, und er winkt, zwinkert, hüpft — oder wird verlegen und trabt ein paar Felder weiter.',
+      'Und es gibt mehr zu entdecken. Die Leute tanzen, rennen, setzen sich hin, bleiben zu zweit stehen und quatschen — und ab und zu zanken sich zwei, was ein Antippen mit Herzchen über beiden beendet.',
+      'Neu oben in der Reihe: 👥 zeigt alle. Wie sie heißen, in wessen Haus sie wohnen, was sie brauchen und was sie gerade machen. Tipp eine Zeile an, und die Welt fährt zu ihnen hin, mit einem Ring drum herum. Die Schafe stehen auch mit drin.',
+      'Der Dorfkorb sagt mehr als eine Zahl. Wie viele Brote drin sind, wie viele das Dorf am Tag isst und wie viele Tage das reicht — sechs Leute, drei Brote am Tag, sieben Brote also ungefähr zwei Tage. Und wenn jemand ins neue Haus einzieht, werden es weniger.',
+      'Füll den Korb, und die Leute kommen und essen. Sie merken jetzt, wenn Brot ankommt, statt zu warten, bis sie fast verhungern — sie laufen hin, und man kann ihnen beim Essen zusehen.',
+      'Die Mühle zeigt, was die Prozente bedeuten. Der Ring um den Stein füllt sich beim Drehen, und daneben füllen sich zehn Kästchen eins nach dem anderen: sieben von zehn und 70 % sagen dasselbe.',
+      'Die Sägerei hat eine zweite Stufe. Schneide drei Stämme perfekt, und die gestrichelten Bretter über dem Stamm verschwinden: übrig bleiben 4 × 3 und das Lineal darunter.',
+      'Ein Weg, den du gebaut hast, konnte auf deinem eigenen Bildschirm verschwinden, während er auf dem anderen bestens dalag. Das geht nicht mehr — nichts, was du tust, wird von einer Nachricht zurückgenommen, die vorher losgeschickt wurde.',
+      'Und das Spiel holt sich eine neuere Fassung von allein, sobald du gerade nichts Wichtiges machst. Vorher wird das Dorf gespeichert, und einen Wimpernschlag später ist dieselbe Welt wieder da.',
+    ],
+  },
   {
     v: '1.8', date: '2026-09-10',
     en: [

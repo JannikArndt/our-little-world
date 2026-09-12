@@ -1,11 +1,13 @@
 # Our Little World
 
 A small cooperative world that two people look after together — typically a
-parent and a child, on two different devices, with FaceTime running separately.
+parent and a child, on two different devices, usually in two different places,
+with a video call running separately.
 
 There is no score, no streak, no currency and nothing to come back for. There is
 a river, a forest, a field, some houses and a few people who could do with a
-hand. You each know how to do different things, so you need each other.
+hand. You each know how to do different things, so you have something to say to
+each other.
 
 ```
 Child:  "We need to get the sheep across the river."
@@ -14,6 +16,15 @@ Child:  "But we need more wood."
 Parent: "I have some."
 Child:  "I'll build the road on the other side."
 ```
+
+It is meant for a child of about **six to ten** who can read, and a grown-up. A
+sitting is five to fifteen minutes — a few days in the village — and either of
+you can potter about alone in between.
+
+> **Changing the game?** `CLAUDE.md` is the rulebook: the laws a change has to
+> respect, the things this game will never have, and how to add a project, a
+> task or a language without costing anybody their village. This file is what
+> the game *is* and how to run it.
 
 ## Playing
 
@@ -44,7 +55,7 @@ Three ways to play:
 
 - **Two devices, anywhere** — both open the same address; one starts the world,
   the other joins it from the list. They talk through the small relay built
-  into the same server.
+  into the same server. This is the normal case.
 - **Two windows on one machine** — open the page twice and pick the same world.
   With no relay answering, they find each other through the browser itself, so
   this works from GitHub Pages or a plain file server too.
@@ -59,6 +70,20 @@ falls back to "start a world, then both of you type its name".
 
 Useful query parameters: `?world=sunny-otter` (`?room=` still works),
 `?role=A|B|BOTH`, `?server=wss://your-relay/relay`.
+
+### Playing at different times
+
+You do not have to be in the village at the same time. Whoever opens it runs the
+clock; the other one picks it up later from wherever it got to. While nobody is
+there, **only kind things happen** — saplings grow, wheat ripens, wool comes in.
+Nothing goes hungry, nothing decays, no problem arrives on its own.
+
+When you come back, the game tells you what the other player got up to while you
+were away: what they built, what they left you, what they sorted out. It is a
+list of things that happened, not a message from them — the game carries no
+words between the two of you, on purpose. And nothing ever asks you to come
+back: there are no notifications, and that screen only exists once you have
+already decided to open the game.
 
 ## Finding each other
 
@@ -89,7 +114,7 @@ A browser makes up a random "device" string for itself and keeps it in
 instead of a new one. It is not a login and is not treated as one: anybody who
 knows a world's name can ask for that world. There is nothing there to protect
 — no chat, no personal data, nothing but a world with some sheep in it — and a
-matchmaking list that needs a password is a matchmaking list a five year old
+matchmaking list that needs a password is a matchmaking list a six year old
 cannot use.
 
 What the spots do buy is the thing that actually goes wrong: a stranger, or a
@@ -206,10 +231,14 @@ different roles.
 
 ### CapRover
 
-`.github/workflows/deploy.yml` deploys on every push to `main`. It needs three
-repository secrets: `CAPROVER_SERVER`, `CAPROVER_APP_TOKEN` and `CAPROVER_APP`.
-The CLI tars the checked-out branch and the server builds it; `captain-definition`
-points at the `Dockerfile`, so the image is the same one you get locally.
+`.github/workflows/deploy.yml` runs on every push to `main`: it runs the full
+`npm run verify` first and only deploys if that passes, so a broken push leaves
+the last good build serving the people playing.
+
+It needs three repository secrets: `CAPROVER_SERVER`, `CAPROVER_APP_TOKEN` and
+`CAPROVER_APP`. The CLI tars the checked-out branch and the server builds it;
+`captain-definition` points at the `Dockerfile`, so the image is the same one
+you get locally.
 
 Give the app a **persistent directory** mapped to `/app/data` (Apps → your app
 → App Configs → Persistent Directories). Without one the game still works, but
@@ -300,17 +329,18 @@ and deleted when it expires. Running the clock on the server too is still the
 half that is missing, and `Session` is still shaped for it — see
 **Multiplayer** below.
 
-## English and German
+## Languages
 
 The game picks its language from the device and remembers what you choose; the
-two flags at the top of the start screen switch it. A parent playing in English
-and a child playing in German can share one world: notices, the journal and
+flags at the top of the start screen switch it. A parent playing in English and
+a child playing in German can share one world: notices, the journal and
 everything a villager says are stored as a key and its values, never as a
 finished sentence, so each screen renders them in its own language.
 
-Adding a third language means one file in `src/i18n/`. The tests check that
-every string exists in both tables, that the `{name}` and `{n}` slots match, and
-that plurals come in pairs.
+English and German ship today, and more are welcome — a language is one file in
+`src/i18n/`. Every language has to be complete before it ships: the tests check
+that every string exists in every table, that the `{name}` and `{n}` slots
+match, and that plurals come in pairs. There is no silent fall back to English.
 
 ## The two players
 
@@ -319,11 +349,12 @@ that plurals come in pairs.
 | knows how to   | fell trees, saw planks, build bridges, houses, boats, run the mill | look after animals, move them, lay roads, work the field, fish, plant trees |
 | tends to have  | wood, planks                       | stone, food, wheat, wool         |
 
-Neither can finish much alone. Bread needs the Keeper's wheat and the Builder's
-mill. A bridge needs the Builder's planks and stone the Keeper is usually
-carrying. A road on the far bank is no use until somebody bridges the river — which is
-widest where it runs off the top and the bottom of the map and narrowest at the
-crossing, so the place to build it is the place it looks like.
+Neither gets far alone, and that is the point: it gives you something to say.
+Bread needs the Keeper's wheat and the Builder's mill. A bridge needs the
+Builder's planks and stone the Keeper is usually carrying. A road on the far
+bank is no use until somebody bridges the river — which is widest where it runs
+off the top and the bottom of the map and narrowest at the crossing, so the
+place to build it is the place it looks like.
 
 Your seat follows you, not your browser. A world has two spots and the
 directory hands one to whichever browser asked first — so opening the same
@@ -332,22 +363,22 @@ third person and be told the village was full. Now it asks which of the two you
 are and lets you carry on, and there is a link behind your own chip that says
 which seat you are so the next device never has to ask.
 
-Neither can ask the other for anything, and that is deliberate. Tapping a thing
-always says what it needs; when it needs the other player's hands, it says whose
-job it is and stops there. The two of you are in the same room — saying it is
-better than sending it.
+**Neither of you can send the other anything.** Tapping a thing always says what
+it needs; when it needs the other player's hands, it says whose job it is and
+stops there. You are already on a call — saying it is better than typing it, and
+a message queue in a children's game is a worse version of a conversation.
 
 Roles are not fixed. Do something two or three times and a "show them how"
 button appears on your role card — teach it across, and you both know it.
 
 ## What you can do
 
-Everything the world is waiting on lives behind your own chip in the top row,
-with a red number on it saying how many things there are. Tapping one opens its
-card: the thing said as something to do — **"Build a house for Ted!"**, not
-"Ted has nowhere to sleep tonight" — and the numbered steps that would get
-there, each labelled with who can do it. Three things wrong means three lines,
-not the most pressing one and silence about the rest.
+The world shows you **one thing at a time**. It lives behind your own role chip
+in the top row, with a red number on it; tapping it opens the card: the thing
+said as something to do — **"Build a house for Ted!"**, not "Ted has nowhere to
+sleep tonight" — and the numbered steps that would get there, each labelled with
+who can do it. When that is done, the next thing steps up. No hurry, no list to
+work through, no sense that you are behind.
 
 Nothing is laid over the village itself. A card you tapped away used to come
 straight back a moment later, over the very tree you were trying to fell; now
@@ -393,6 +424,11 @@ picture per plank and per stone, the ones you have in colour and the ones you
 are missing greyed out. Messages from the world wait on screen until somebody
 taps them away.
 
+Nothing worse than discomfort ever happens to anybody. Somebody can be hungry,
+poorly, cold or sleeping outside, and you will notice — but nobody is hurt,
+nobody dies, nobody leaves, and everything that goes wrong can be put right the
+same afternoon.
+
 ## A day
 
 The day starts when the game does. Nobody agrees to anything first, and there is
@@ -413,16 +449,19 @@ instead of something that matters — it is chosen after the bread, the bed and
 the log on the grass, and never before them. All of it comes out of the world's
 own seeded dice, so both screens are watching the same afternoon.
 
+The village is silent. Whatever you are saying to each other on the call is the
+only soundtrack it needs.
+
 ## The two rows
 
 The top row is the people playing: one chip per role, yours marked, the others
-showing whether they are at their screen. Tapping your own opens what needs
-doing — the whole list, one line each, counted by the red number on the chip —
-what you can do, and a tally of what you have already done: felled three trees,
-built a house, harvested six fields. Tapping theirs opens what you do together:
-giving them something, and teaching them anything you have done often enough to
-show. The language, starting over and the way back to the start screen sit
-behind the day, on the right. The bottom row is nothing but what we have.
+showing whether they are at their screen. Tapping your own opens the one thing
+worth doing next, counted by the red number on the chip — what you can do, and a
+tally of what you have already done: felled three trees, built a house,
+harvested six fields. Tapping theirs opens what you do together: giving them
+something, and teaching them anything you have done often enough to show. The
+language, starting over and the way back to the start screen sit behind the day,
+on the right. The bottom row is nothing but what we have.
 
 Between them sits **👥**, and it is a list of everybody who lives here: their
 name, whose house they are in, and what they want — with what they are doing
@@ -437,8 +476,8 @@ clear air rather than up against the top bar.
 
 ## How it is put together
 
-Plain ES modules and a 2D canvas. No framework, no bundler, no build step, no
-downloaded assets — every tree, sheep and roof is drawn with `ctx` calls. It
+Plain ES modules and a 2D canvas. No framework, no bundler, no build step, and
+nothing downloaded — every tree, sheep and roof is drawn with `ctx` calls. It
 starts fast on a phone and stays quiet on the battery.
 
 ```
@@ -453,8 +492,9 @@ src/
     actions.js   the only way the world ever changes
     sim.js       villagers, sheep, crops, weather in the sky
     events.js    problems, but only when they make sense
-    guide.js     the one card: what to do next, who, and how far along
+    guide.js     the one mission: what to do next, who, and how far along
     content.js   what a world is made of, as data: scenarios and projects
+    letters.js   the alphabet, as strokes a hand makes
     migrate.js   bringing an older saved world up to date
     changelog.js what has changed, per language
     i18n.js      one string table per language, and the lookup
@@ -469,16 +509,18 @@ src/
   render/        art.js (sprites) and renderer.js (frames)
   ui/            start.js (the front door), hud.js, interact.js (world taps),
                  overlay.js (panels), share.js, invite.js, whatsnew.js
-  minigames/     one file each (chop, sawmill, bridge, house, care, fish)
+  minigames/     chop, sawmill, bridge, house, care, fish, trace (writing and
+                 drawing), and modes.js (which of the two you last chose)
 server/
   serve.mjs      static files + the relay + the directory, no dependencies
-  relay.mjs      a ~180 line WebSocket relay, no dependencies
+  relay.mjs      a ~200 line WebSocket relay, no dependencies
   worlds.mjs     which worlds exist, who is in them, how each was left
   api.mjs        the JSON endpoints the start screen talks to
   stats.mjs      how much this gets played, in numbers that are nobody's
   buildid.mjs    a hash of everything that ships, for /version
-tests/           simulation, schema, guide, i18n, relay, directory and stats
-tools/           verify.mjs and what it runs: smoke, german, lobby, stats; deployed
+tests/           simulation, schema, guide, i18n, relay, session, worlds, stats
+tools/           verify.mjs and what it runs: smoke, german, lobby, stats;
+                 deployed.mjs, icons.mjs, and look.mjs for a quick screenshot
 ```
 
 Two rules keep it honest:
@@ -521,13 +563,10 @@ It has to work on an **iPhone** and on an **iPad**, on current iOS Safari, both
 in the browser and saved to the Home Screen. That is the target, and the
 play-through walks all three shapes — phone, tablet, laptop — on every run.
 
-Plenty of the code predates that and was written down to Safari 12, so it avoids
-optional chaining, `??` and flexbox `gap`. It is not kept that way on purpose
-and does not need bringing forward. What does still matter is the shape of a
-phone: the `--safe-t/-b/-l/-r` variables for the notch, `--app-h` for the part
-of the screen actually being shown, device pixel ratio capped at 2, terrain
-painted once into an offscreen canvas and re-used, and a frame that is one blit
-plus a few dozen small shapes.
+What matters is the shape of a phone: the `--safe-t/-b/-l/-r` variables for the
+notch, `--app-h` for the part of the screen actually being shown, device pixel
+ratio capped at 2, terrain painted once into an offscreen canvas and re-used,
+and a frame that is one blit plus a few dozen small shapes.
 
 ## Tests
 
@@ -545,6 +584,9 @@ order and stops at the first failure: the unit tests, `tools/smoke.mjs`,
 `tools/german.mjs`, `tools/lobby.mjs` and `tools/stats.mjs`. The parts can still
 be run by hand against a server of your own (`npm start`, then
 `BASE=... node tools/smoke.mjs`).
+
+The same full run is the gate in CI: a push to `main` runs it and only deploys
+if it passes, so nothing broken ever reaches the people playing.
 
 The play-through picks a role, fells a tree, saws it, designs and tests a bridge,
 looks after a sheep, sows the field, lays a road, designs a house, watches
@@ -573,28 +615,24 @@ phone.
 
 `npm run verify -- quick` keeps the unit tests and the play-through and drops
 the rest — the screenshots, the second browser, the walk round three screen
-sizes, German, the lobby and the stats page. About a minute, for iterating. The
-full run is what a push waits for.
+sizes, German, the lobby and the stats page. About a minute, for iterating.
 
 ## Adding to the world
 
 The world is described as data and brought up to date on load, so adding to it
-does not cost anybody their village.
+does not cost anybody their village. `CLAUDE.md` has the full recipes; the shape
+of it is:
 
 - **A new project, villager, plan, role or scenario** is an entry in
   `src/core/content.js`. `ensureWorld()` runs on every load and puts anything
   new into worlds that were saved before it existed. No schema bump, no reset.
-  A project row carries everything: what it costs, who knows how to make it,
-  what to call it and what it changes — one action builds all of them.
-- **A new task** is one entry in `CONCERNS` in `src/core/guide.js` — an `id`, a
-  `when(world)` and a card — placed in the order it matters. The card says what
-  to do, names who it is about, and counts what can be counted.
+- **A new task** is one entry in `CONCERNS` in `src/core/guide.js` — and *where*
+  you put it in that list is the decision, because only the first one that
+  applies is ever shown.
 - **A change to what an existing field means** is the only thing that costs a
   version: a numbered step in `src/core/migrate.js` and `SCHEMA` up by one.
-  Steps are small, kept forever, and run in order.
 - **Anything else** has room already: `world.ext` for namespaced extension data
-  and `world.flags` for one-off switches. Both are saved, loaded and sent over
-  the network untouched.
+  and `world.flags` for one-off switches.
 
 A scenario is a recipe — which terrain to paint, what stands on it, who lives
 there, which projects are marked out, **which roles are at the table** and
@@ -602,47 +640,24 @@ there, which projects are marked out, **which roles are at the table** and
 was made from in `world.scenario`. A second scenario is a second entry in the
 table: an island where the boat comes first, a winter valley, a hill farm.
 
-Two things that are ready but not used yet, so that the world can grow without
-another rebuild:
-
-- **A third role.** `ROLES` is a table and `world.players` is built from it, so
-  a Cook — bread, the larder, something warm out of what the other two bring
-  in — is one entry plus a line in a scenario's `roles`. The seat appears in
-  worlds that were saved before the role existed.
-- **A map that opens up.** A scenario's `regions` are named boxes, each either
-  here or not yet. A closed one is baked into the blocked overlay (so it costs
-  the pathfinder nothing) and drawn as soft weather rather than a wall;
-  `{ type: 'region.open' }` is how the hills stop being a rumour.
-
-Only a world saved by a *newer* build is refused, and even then it is kept aside
-in `olw.world.<room>.kept` rather than written over.
-
-## Fitting on a phone
-
-Two things the layout will not do, and there are tests that keep it that way:
-
-- **Nothing hides under the notch or the home indicator.** The insets are CSS
-  variables (`--safe-t`, `--safe-b`, `--safe-l`, `--safe-r`) that default to
-  `env(safe-area-inset-*)`, so a headless browser can be told to pretend it is
-  an iPhone.
-- **A panel's buttons are always reachable.** A panel is a scrolling middle and
-  a foot that does not move: however long the card is, and however much browser
-  chrome sits at the bottom of the screen, the buttons are the last thing on
-  screen. The visible height comes from the visual viewport (`--app-h`), not
-  from `100%`, because a phone's toolbars sit on top of the page.
+Two things are built and waiting, so the world can grow without another rebuild:
+**a third role** (a Cook — bread, the larder, something warm out of what the
+other two bring in) and **a map that opens up** (a scenario's `regions`, each
+either here or not yet, opened with `{ type: 'region.open' }`). Both are the
+plan, not spare parts.
 
 ## What is new
 
-The start screen says which version this is — **v1.5 · ✨ What is new** at the
-bottom — and tapping it opens the changelog. The same list is under 📜 (what has
+The start screen says which version this is at the bottom, next to **✨ What is
+new**, and tapping it opens the changelog. The same list is under 📜 (what has
 happened) once you are in the world, next to **🏡 Back to the start screen**,
 which saves the village and puts you back at the front door with its name
-already filled in. (The role card — tap the role chip when you are playing one
-role rather than both — has the same way out.)
+already filled in. (The role card has the same way out.)
 
 Every version is listed newest first, in whichever language the screen is in. It
 lives in `src/core/changelog.js`, outside the language tables, so an entry can be
-written once and shipped without waiting for the other language.
+written once and shipped without waiting for the other language. Real features
+get an entry; bug fixes and internals ship quietly.
 
 ### Fetching the game again
 
@@ -674,8 +689,12 @@ ever fetched — the door still works, it just never lights up.
 ## What is deliberately missing
 
 No streaks, daily rewards, coins, energy, loot boxes, timers that punish you,
-leaderboards, notifications, chat, or anything that gets longer the more you
-play. Nothing decays while you are away and nothing asks you to come back.
+leaderboards, notifications, chat, accounts, adverts, or anything that gets
+longer the more you play. Nothing decays while you are away and nothing asks you
+to come back.
 
-The conversation happens on FaceTime. The game only has to be worth talking
+That list is not a mood — it is written down as a binding anti-list in
+`CLAUDE.md`, and nothing on it goes in without the owner saying so.
+
+The conversation happens on the call. The game only has to be worth talking
 about.

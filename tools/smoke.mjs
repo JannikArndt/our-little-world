@@ -121,17 +121,25 @@ async function main() {
 
   // 🧺 — the basket, said as a sum rather than a number
   await page.evaluate(() => { window.OLW.world.larder.food = 7; });
-  const basketPt = await page.evaluate(() => {
-    const g = window.OLW, w = g.world;
-    const canvas = document.getElementById('world');
-    const r = canvas.getBoundingClientRect();
-    g.look(w.larder.x, w.larder.y, 2.4);
-    const p = g.renderer.toScreen(w.larder.x * 24, w.larder.y * 24);
-    return { x: r.left + p.x, y: r.top + p.y };
-  });
-  await page.waitForTimeout(300);
-  await page.mouse.click(basketPt.x, basketPt.y);
-  await page.waitForSelector('.panel', { timeout: 5000 });
+  // "the hungry come here on their own" is the whole point of the basket, so
+  // somebody is often standing right on it — and a person answers a tap
+  // before the basket does. Wait for the spot to clear rather than poke them.
+  let basketShown = false;
+  for (let go = 0; go < 20 && !basketShown; go++) {
+    const basketPt = await page.evaluate(() => {
+      const g = window.OLW, w = g.world;
+      const canvas = document.getElementById('world');
+      const r = canvas.getBoundingClientRect();
+      g.look(w.larder.x, w.larder.y, 2.4);
+      const p = g.renderer.toScreen(w.larder.x * 24, w.larder.y * 24);
+      const busy = w.villagers.some(v => Math.abs(v.x - w.larder.x) < 1 && Math.abs(v.y - w.larder.y) < 1);
+      return { x: r.left + p.x, y: r.top + p.y, busy };
+    });
+    if (basketPt.busy) { await page.waitForTimeout(300); continue; }
+    await page.mouse.click(basketPt.x, basketPt.y);
+    basketShown = await page.waitForSelector('.panel', { timeout: 500 }).then(() => true).catch(() => false);
+  }
+  if (!basketShown) throw new Error('tapping the basket never opened its panel');
   const basket = (await page.textContent('.panel')).replace(/\s+/g, ' ').trim();
   console.log('the basket says:', basket.slice(0, 200));
   if (!/loaves in the basket/.test(basket)) throw new Error('the basket does not say how much is inside');

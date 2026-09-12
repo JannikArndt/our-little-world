@@ -6,9 +6,14 @@
 // It puts a couple of worlds into the directory first, because a page that
 // only ever renders "nobody has played yet" has not really been looked at.
 
-import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { createWorld, serialize } from '../src/core/world.js';
 import { applyAction } from '../src/core/actions.js';
+// Playwright is a devDependency, so normally it resolves by name. One sandbox
+// has it installed globally with nothing to resolve it from; the absolute path
+// is for that sandbox, and for nowhere else.
+const { chromium } = await import('playwright').catch(
+  () => import('/opt/node22/lib/node_modules/playwright/index.mjs'),
+);
 
 const BASE = process.env.BASE || 'http://localhost:8099';
 const SHOTS = new URL('./shots/', import.meta.url).pathname;

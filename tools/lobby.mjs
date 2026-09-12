@@ -3,7 +3,12 @@
 //
 //   node server/serve.mjs 8099 &
 //   node tools/lobby.mjs
-import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+// Playwright is a devDependency, so normally it resolves by name. One sandbox
+// has it installed globally with nothing to resolve it from; the absolute path
+// is for that sandbox, and for nowhere else.
+const { chromium } = await import('playwright').catch(
+  () => import('/opt/node22/lib/node_modules/playwright/index.mjs'),
+);
 
 const BASE = process.env.BASE || 'http://localhost:8099';
 const SHOTS = new URL('./shots/', import.meta.url).pathname;

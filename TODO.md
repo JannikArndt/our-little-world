@@ -14,12 +14,6 @@ on the live site. Delete an item when it lands — this file should get shorter.
 Everything else is easier once a machine keeps the rules. Nothing here ships:
 `devDependencies` only, no runtime dependency, no build step.
 
-**1a. Playwright is imported from an absolute path.** `tools/look.mjs`,
-`smoke.mjs`, `german.mjs`, `lobby.mjs` and `stats.mjs` import from
-`/opt/node22/lib/node_modules/playwright/index.mjs`. That works in one sandbox
-and nowhere else, and it blocks CI. Resolve it normally, falling back to the
-absolute path only if the normal resolve throws.
-
 **1b. Prettier and ESLint.** Flat config (`eslint.config.mjs`). ESLint rules
 that earn their place: no unused variables or imports, no `var`, no implicit
 globals, `eqeqeq`, and `ecmaVersion: 'latest'` so modern syntax is the floor.

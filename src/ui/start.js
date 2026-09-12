@@ -32,6 +32,7 @@ export function startScreen(opts) {
   let step = 'home';
   let pending = null;            // the world we just made, waiting for the other player
   let list = null;               // open worlds, once asked for
+  let seatFor = null;            // a world that says it is full, and might be ours
   let note = '';                 // one line of "that did not work"
 
   function go(next) { step = next; note = ''; render(); }
@@ -63,7 +64,12 @@ export function startScreen(opts) {
         // this is not a door to be kept shut: the spots are there to stop
         // strangers wandering in, not to lock a family out of their village.
         if (wantedRole) { play(name, wantedRole, false, null); return; }
-        say('join.full');
+        // Otherwise ask. A spot is held by whichever browser took it, and a
+        // Home Screen app is a browser of its own with its own memory — so the
+        // person whose village this is arrives as a stranger and gets the
+        // door shut in their face. Saying which chair is theirs is enough.
+        seatFor = name;
+        go('seat');
         return;
       }
       play(name, r.role, false, r.world ? r.world.free : null);
@@ -84,6 +90,7 @@ export function startScreen(opts) {
   function render() {
     host.innerHTML = '';
     if (step === 'home') renderHome();
+    else if (step === 'seat') renderSeat();
     else if (step === 'new') renderPickRole();
     else if (step === 'made') renderMade();
     else if (step === 'join') renderJoin();
@@ -128,32 +135,35 @@ export function startScreen(opts) {
       }
     }
 
-    host.appendChild(el('h2', 'start-h', mine.length ? tr('world.orStart') : tr('world.start')));
+    // With a village already waiting, starting another one is not what
+    // somebody opened this for. The ways in stay, quietly, underneath.
+    const quiet = mine.length > 0;
+    host.appendChild(el('h2', 'start-h', quiet ? tr('world.orStart') : tr('world.start')));
 
-    const start = el('button', 'role-btn wide go');
+    const start = el('button', 'role-btn wide ' + (quiet ? 'small' : 'go'));
     start.type = 'button';
     start.appendChild(el('span', 'role-emoji', '🌱'));
     start.appendChild(el('span', 'role-name', tr('world.newWorld')));
-    start.appendChild(el('span', 'role-desc', tr('world.newWorldDesc')));
+    if (!quiet) start.appendChild(el('span', 'role-desc', tr('world.newWorldDesc')));
     start.addEventListener('click', () => go('new'));
     host.appendChild(start);
 
     if (dir.reachable) {
-      const join = el('button', 'role-btn wide');
+      const join = el('button', 'role-btn wide' + (quiet ? ' small' : ''));
       join.type = 'button';
       join.appendChild(el('span', 'role-emoji', '🔭'));
       join.appendChild(el('span', 'role-name', tr('world.joinWorld')));
-      join.appendChild(el('span', 'role-desc', tr('world.joinWorldDesc')));
+      if (!quiet) join.appendChild(el('span', 'role-desc', tr('world.joinWorldDesc')));
       join.addEventListener('click', () => { go('join'); refreshList(); });
       host.appendChild(join);
     }
 
-    const both = el('button', 'role-btn wide quiet');
+    const both = el('button', 'role-btn wide quiet' + (quiet ? ' small' : ''));
     both.type = 'button';
     both.setAttribute('data-role', 'BOTH');
     both.appendChild(el('span', 'role-emoji', ROLE.A.emoji + ROLE.B.emoji));
     both.appendChild(el('span', 'role-name', tr('role.both.name')));
-    both.appendChild(el('span', 'role-desc', tr('role.both.desc')));
+    if (!quiet) both.appendChild(el('span', 'role-desc', tr('role.both.desc')));
     both.addEventListener('click', () => {
       const name = invited || (mine[0] && mine[0].name) || randomName();
       play(name, 'A', true);
@@ -161,6 +171,30 @@ export function startScreen(opts) {
     host.appendChild(both);
 
     if (!dir.reachable) host.appendChild(el('p', 'start-note', tr('world.noServer')));
+  }
+
+  /**
+   * "Both seats are taken" — but one of them is probably yours. This is the
+   * way back in from a browser that has never been here: a new phone, a
+   * private window, or the Home Screen copy of a world already being played
+   * in Safari. Nothing is taken from anybody: the other browser keeps playing
+   * and the two of them meet on the relay as they always would.
+   */
+  function renderSeat() {
+    host.appendChild(el('h2', 'start-h', tr('seat.title')));
+    host.appendChild(worldCard({ name: seatFor, wide: true, line: tr('seat.full') }));
+    host.appendChild(el('p', 'start-note', tr('seat.why')));
+    for (const id of ['A', 'B']) {
+      const b = el('button', 'role-btn wide');
+      b.type = 'button';
+      b.setAttribute('data-role', id);
+      b.appendChild(el('span', 'role-emoji', ROLE[id].emoji));
+      b.appendChild(el('span', 'role-name', tr('seat.iAm', { role: roleName(id) })));
+      b.appendChild(el('span', 'role-desc', tr('role.' + id + '.desc')));
+      b.addEventListener('click', () => play(seatFor, id, false, null));
+      host.appendChild(b);
+    }
+    host.appendChild(back(() => go('home')));
   }
 
   function renderPickRole() {

@@ -109,6 +109,39 @@ const stored = await (await fetch(BASE + '/api/worlds/' + slug + '/snapshot')).j
 console.log('the server holds a world of', String(stored.world || '').length, 'bytes at tick', stored.tick);
 if (!stored.world) throw new Error('the server kept no copy of the world');
 
+/* ---------- a Home Screen copy is a browser that has never been here ---------- */
+// Saving the game to the Home Screen makes a browser with its own storage, so
+// it arrives at a world that already has two players and is told it is full —
+// by the very person whose village it is. Saying which chair is theirs is the
+// way back in. Safari stays open — that is the situation: you are adding the
+// world you are already playing to the Home Screen, not moving out of it.
+const appCtx = await browser.newContext({ viewport: { width: 393, height: 852 }, hasTouch: true, isMobile: true });
+const app = await appCtx.newPage();
+watch(app, 'app');
+await app.goto(BASE + '/?world=' + slug, { waitUntil: 'load' });
+await app.waitForSelector('.world-card', { timeout: 8000 });
+await app.click('.world-card');                      // the world the link names
+await app.waitForSelector('text=Both seats are taken', { timeout: 8000 });
+console.log('a browser that has never been here is asked which seat is theirs');
+await shot(app, '75-lobby-seat');
+await app.click('#startBody .role-btn[data-role="A"]');
+await inWorld(app);
+const appRole = await app.evaluate(() => window.OLW.role);
+console.log('and it carries on as:', appRole);
+if (appRole !== 'A') throw new Error('claiming a seat back did not work');
+if (await app.evaluate(() => window.OLW.worldName) !== await dad.evaluate(() => window.OLW.worldName))
+  throw new Error('claiming a seat landed in the wrong world');
+
+// and from in there, the link that saves anybody doing that twice
+await app.click('#roleBar button.me');
+await app.waitForSelector('#menuLayer .menu-item', { timeout: 5000 });
+await app.click('#menuLayer .menu-item:has-text("📱")');
+await app.waitForSelector('.panel .link-line', { timeout: 5000 });
+const seatUrl = await app.textContent('.panel .link-line');
+console.log('the link for your own second device:', seatUrl);
+if (!/[?&]role=A(&|$)/.test(seatUrl)) throw new Error('the seat link does not say which seat');
+
+await kidCtx.close();
 await browser.close();
 if (errors.length) { console.error('\n' + errors.join('\n')); process.exit(1); }
 console.log('\nlobby: all good');

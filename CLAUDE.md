@@ -67,6 +67,32 @@ cycle. If something must be stopped, name it exactly.
   the page is `content="dev"` on disk and on any host that does not stamp it,
   and that is the signal to keep quiet, not a bug.
 
+## A seat belongs to a person, not to a browser
+
+A world holds two spots and the directory gives one to whichever browser asked
+first, remembered by a random `device` string in `localStorage`. That is fine
+until the same person turns up in a second browser — a new phone, a private
+window, or the Home Screen copy of a world already open in Safari, which has
+storage of its own. They arrive as a third person at their own village.
+
+- So **a full world is never a closed door**. `enter()` in `start.js` plays
+  anyway whenever it knows which of the two you are; when it does not, the
+  `seat` step asks, and answering is enough. Nobody is evicted — the relay is
+  what actually pairs two players, and it is happy to.
+- `?world=X&role=A` is that answer written down. `openSeat()` hands it to you
+  from behind your own chip, for your own second device. It is not the
+  invitation: `shareWorld()` stays roleless, because the other player should
+  get a seat of their own rather than yours.
+- **`site.webmanifest` deliberately has no `start_url`.** iOS would use it
+  instead of the address a world was added from, and the world's name lives in
+  that address — a `start_url` would quietly send every Home Screen icon to an
+  empty front door. `tools/smoke.mjs` fails if one appears.
+- The icons are generated, not drawn: `node tools/icons.mjs` rewrites
+  `icons/app-*.png` from one `colourAt()` function. They are committed because
+  a browser asking for an icon cannot wait for a build step, and they are in
+  the build hash and in the Dockerfile's `COPY` list like anything else that
+  ships.
+
 ## Never reset somebody's world
 
 A saved world is brought up to date on load; it is never thrown away.
@@ -251,8 +277,14 @@ on a laptop. `tools/smoke.mjs` checks both on every screen size it walks.
 - Every change to the world is an action in `src/core/actions.js`; the
   simulation stays deterministic (fixed ticks, seeded rng in the world).
 - Strings live in `src/i18n/en.js` and `de.js` — both, always; the tests check.
-- Target Safari 12: no optional chaining, no nullish coalescing, no flexbox
-  `gap`. Layout uses the `--safe-t/-b/-l/-r` variables for the notch and
-  `--app-h` for the part of the screen the browser is actually showing.
+- **It has to work on an iPhone and on an iPad**, on current iOS Safari, in
+  the browser and saved to the Home Screen. That is the whole target: there is
+  no old-Safari floor to write down to any more. Layout still uses the
+  `--safe-t/-b/-l/-r` variables for the notch and `--app-h` for the part of
+  the screen the browser is actually showing, because those are what a phone
+  needs, not what an old phone needed.
+- The code as it stands avoids optional chaining, `??` and flexbox `gap` from
+  when the floor was Safari 12. None of that has to be kept up. Use whatever
+  current Safari has; do not go back and rewrite what already works.
 - A panel is a scrolling middle and a foot that does not move; buttons live in
   the foot so nothing can push them off a phone screen.

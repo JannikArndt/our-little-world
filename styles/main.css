@@ -1,6 +1,8 @@
 /* Our Little World — UI shell.
-   Baseline target: Safari 12 (old iPad). No flexbox `gap` (Safari 14.1+),
-   no :is(), no backdrop-filter, no logical properties. */
+   Target: iPhone and iPad on current iOS Safari, in the browser and on the
+   Home Screen. The prefixes and the `gap`-free flex below are left over from
+   an older floor; they still work, so they stay, but nothing new has to
+   avoid what current Safari has. */
 
 :root {
   /* The edges of the screen, in one place. env() gives the notch and the home
@@ -132,6 +134,12 @@ button { cursor: pointer; -webkit-appearance: none; appearance: none; }
 
 .role-btn.go { border-color: var(--keeper); background: #eff6eb; }
 .role-btn.quiet { background: transparent; box-shadow: none; }
+/* Somebody with a village to go back to did not come here to start another
+   one. Those ways in stay exactly where they were, one size down, so they are
+   findable without being the first thing the eye lands on. */
+.role-btn.small { padding: 9px 12px; background: transparent; box-shadow: none; border-style: dashed; }
+.role-btn.small .role-emoji { font-size: 20px; line-height: 1.2; }
+.role-btn.small .role-name { font-size: 15px; margin-top: 1px; color: var(--ink-soft); }
 
 .name-row { display: -webkit-box; display: -ms-flexbox; display: flex; margin: 6px; }
 .name-row input {

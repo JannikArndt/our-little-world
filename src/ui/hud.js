@@ -14,7 +14,7 @@
 
 import { el, openPanel, openMenu, message, clearMessages, loop } from './overlay.js';
 import { openGive } from './share.js';
-import { openInvite } from './invite.js';
+import { openInvite, openSeat } from './invite.js';
 import { RESOURCES, ROLE, ROLE_ORDER, CAPS, byId, capName, roleName, dayPhase } from '../core/world.js';
 import { tr, trn, LANGUAGES, currentLang, setLang } from '../core/i18n.js';
 import { currentProblem, allProblems, MAX_ACTIVE } from '../core/guide.js';
@@ -174,6 +174,10 @@ export class Hud {
         icon: '⇄', label: tr('menu.swap', { role: roleName(g.other) }),
         fn: () => g.swapRole(),
       });
+    } else {
+      // your seat, on a second browser — the Home Screen copy, mostly
+      items.push({ divider: true });
+      items.push({ icon: '📱', label: tr('menu.thisDevice'), fn: () => openSeat(g) });
     }
 
     // What you can do, one skill to a line: a list run together into a

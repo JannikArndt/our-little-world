@@ -10,9 +10,11 @@ const errors = [];
 // For iterating. The full run is what a push waits for.
 const QUICK = process.env.QUICK === '1';
 
+// The three shapes it has to work in. The iPad is the 11" Pro in landscape,
+// which is what this is actually played on; the phone is an iPhone in portrait.
 const DEVICES = {
-  'ipad-old':  { width: 1024, height: 768, dpr: 2, touch: true },
-  'iphone':    { width: 390,  height: 844, dpr: 3, touch: true },
+  'ipad':      { width: 1194, height: 834, dpr: 2, touch: true },
+  'iphone':    { width: 393,  height: 852, dpr: 3, touch: true },
   'mac':       { width: 1280, height: 800, dpr: 2, touch: false },
 };
 
@@ -30,9 +32,9 @@ const step = async (page, name, ms = 400) => {
 async function main() {
   const browser = await chromium.launch();
 
-  /* ---------- 1. the whole flow on an old iPad ---------- */
+  /* ---------- 1. the whole flow on an iPad ---------- */
   const ipad = await browser.newContext({
-    viewport: { width: DEVICES['ipad-old'].width, height: DEVICES['ipad-old'].height },
+    viewport: { width: DEVICES['ipad'].width, height: DEVICES['ipad'].height },
     deviceScaleFactor: 2, hasTouch: true, isMobile: true,
   });
   const page = await ipad.newPage();
@@ -59,6 +61,27 @@ async function main() {
   if (build !== served.build) throw new Error('the page was not stamped with the build it came from');
   const reload = (await page.textContent('#reloadBtn')).trim();
   console.log('the front door offers:', reload);
+
+  // The picture on a Home Screen, and the manifest that names it. The manifest
+  // deliberately has no start_url: iOS would use it instead of the address the
+  // world was added from, and the world name lives in that address.
+  const icon = await page.evaluate(async () => {
+    const link = document.querySelector('link[rel="apple-touch-icon"]');
+    const man = document.querySelector('link[rel="manifest"]');
+    if (!link || !man) return { link: !!link, man: !!man };
+    const i = await fetch(link.href), m = await fetch(man.href);
+    const j = m.ok ? await m.json() : null;
+    return {
+      link: true, man: true, iconOk: i.ok, type: i.headers.get('content-type'),
+      manOk: m.ok, icons: j && j.icons ? j.icons.length : 0,
+      name: j && j.short_name, startUrl: (j && j.start_url) || null,
+    };
+  });
+  console.log('the Home Screen icon:', JSON.stringify(icon));
+  if (!icon.link || !icon.man) throw new Error('the page does not point at an icon and a manifest');
+  if (!icon.iconOk || String(icon.type).indexOf('image/png') !== 0) throw new Error('the Home Screen icon is not being served');
+  if (!icon.manOk || !icon.icons) throw new Error('the manifest is not being served');
+  if (icon.startUrl) throw new Error('a start_url would drop the world out of a Home Screen link');
   if (!reload || reload === '↻') throw new Error('no reload door on the start screen');
 
   // and asking twice costs nothing: the second answer comes out of the cupboard
@@ -1062,6 +1085,18 @@ async function main() {
   console.log('back at the front door:', JSON.stringify(outAgain));
   if (!outAgain.start) throw new Error('there is no way back to the start screen');
   if (outAgain.world !== 'Notch') throw new Error('the world was not waiting at the front door');
+
+  // and with a village to go back to, starting another one is not the loud
+  // thing on the screen — it is still there, one size down
+  const loudness = await ph.evaluate(() => ({
+    worlds: document.querySelectorAll('#startBody .world-card').length,
+    loud: document.querySelectorAll('#startBody .role-btn.go').length,
+    quiet: document.querySelectorAll('#startBody .role-btn.small').length,
+  }));
+  console.log('the front door, with a world to carry on with:', JSON.stringify(loudness));
+  if (!loudness.worlds) throw new Error('the world to carry on with is not on the front door');
+  if (loudness.loud) throw new Error('starting another world is still shouting');
+  if (!loudness.quiet) throw new Error('the way to start another world has gone missing');
 
   await ph.click('#startBody .world-card');
   await ph.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });

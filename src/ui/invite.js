@@ -16,18 +16,21 @@ export function worldLink(name) {
 }
 
 /**
- * Hand the link to whatever the device uses for sharing, and fall back down
- * the ladder: the share sheet, the clipboard, and finally just telling them
- * the name. Resolves with 'shared' | 'copied' | 'none'.
+ * The address that also says which of the two chairs to sit in. For your own
+ * second device — a Home Screen app has its own memory and arrives knowing
+ * nothing, so being told is the whole difference between getting in and being
+ * turned away at a world that already has two players.
  */
-export function shareWorld(name, otherRole) {
-  const url = worldLink(name);
-  const text = tr('invite.shareText', {
-    name: prettyName(name),
-    emoji: worldEmoji(name),
-    role: otherRole ? roleName(otherRole) : '',
-  });
+export function seatLink(name, role) {
+  return worldLink(name) + '&role=' + encodeURIComponent(role);
+}
 
+/**
+ * Hand a link to whatever the device uses for sharing, and fall back down the
+ * ladder: the share sheet, the clipboard, and finally nothing.
+ * Resolves with 'shared' | 'copied' | 'none'.
+ */
+function handOver(url, text) {
   if (typeof navigator !== 'undefined' && navigator.share) {
     return navigator.share({ title: tr('app.title'), text: text, url: url })
       .then(() => 'shared')
@@ -36,6 +39,14 @@ export function shareWorld(name, otherRole) {
       .catch((e) => (e && e.name === 'AbortError' ? 'shared' : copy(url)));
   }
   return Promise.resolve(copy(url));
+}
+
+export function shareWorld(name, otherRole) {
+  return handOver(worldLink(name), tr('invite.shareText', {
+    name: prettyName(name),
+    emoji: worldEmoji(name),
+    role: otherRole ? roleName(otherRole) : '',
+  }));
 }
 
 function copy(url) {
@@ -92,5 +103,46 @@ export function openInvite(game, role) {
   row.appendChild(p.button(tr('ui.close'), 'soft', () => p.close()));
 
   p.body.appendChild(el('p', 'lead center', tr('invite.note', { name: prettyName(name) })));
+  return p;
+}
+
+/**
+ * Taking your own seat to another browser.
+ *
+ * A world holds two spots and a spot belongs to whichever browser took it.
+ * Saving the game to the Home Screen makes a browser with its own storage,
+ * which turns up as a third person and is told the world is full. This hands
+ * that browser a link that says which of the two it is, and then it simply
+ * plays — the Safari tab is not thrown out, and if both are open they meet on
+ * the relay like any two players.
+ */
+export function openSeat(game) {
+  const name = game.worldName, role = game.role;
+  const url = seatLink(name, role);
+  const p = openPanel({
+    title: tr('seat.moveTitle'),
+    lead: tr('seat.moveLead', { role: roleName(role), emoji: ROLE[role].emoji }),
+    center: true,
+  });
+
+  const card = el('div', 'world-card wide still');
+  card.appendChild(el('span', 'w-emoji', worldEmoji(name)));
+  const t = el('span', 'w-text');
+  t.appendChild(el('span', 'w-name', prettyName(name)));
+  t.appendChild(el('span', 'w-line', tr('world.youAre', { role: roleName(role), emoji: ROLE[role].emoji })));
+  card.appendChild(t);
+  p.body.appendChild(card);
+  p.body.appendChild(el('p', 'link-line', url));
+
+  const row = p.row();
+  row.appendChild(p.button(tr('seat.send'), 'go', () => {
+    handOver(url, tr('seat.shareText', { name: prettyName(name), emoji: worldEmoji(name) })).then((how) => {
+      if (how === 'copied') message(tr('invite.copied'));
+      p.close();
+    });
+  }));
+  row.appendChild(p.button(tr('ui.close'), 'soft', () => p.close()));
+
+  p.body.appendChild(el('p', 'lead center', tr('seat.moveNote')));
   return p;
 }

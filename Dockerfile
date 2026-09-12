@@ -19,6 +19,8 @@ COPY stats.html ./
 COPY server/ ./server/
 COPY src/ ./src/
 COPY styles/ ./styles/
+COPY icons/ ./icons/
+COPY site.webmanifest ./
 
 RUN mkdir -p /app/data && chown node:node /app/data
 

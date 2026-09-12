@@ -4,9 +4,24 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '2.1';
+export const VERSION = '2.2';
 
 export const CHANGELOG = [
+  {
+    v: '2.2', date: '2026-09-12',
+    en: [
+      'Put it on your Home Screen and it has its own picture now — a house by the river under the sun, drawn by the same code that draws the game.',
+      'And putting it on your Home Screen actually works. An app saved to the Home Screen is a browser of its own with its own memory, so it arrived at your own village as a stranger and was told both seats were taken. Now it asks which of the two is yours and lets you carry on. Nobody is thrown out: if both are open you simply meet, the way any two players do.',
+      'There is also a link behind your own chip — "Play this on another device" — which says which seat you are, so the next device opens straight into the world with no questions.',
+      'The front door is quieter once you have a village. Starting another world and joining somebody else\'s are still there, a size down, underneath the worlds waiting for you.',
+    ],
+    de: [
+      'Auf dem Home-Bildschirm hat das Spiel jetzt ein eigenes Bild — ein Haus am Fluss unter der Sonne, gezeichnet von demselben Code, der auch das Spiel zeichnet.',
+      'Und aufs Home-Bildschirm legen funktioniert jetzt wirklich. Eine App auf dem Home-Bildschirm ist ein eigener Browser mit eigenem Gedächtnis — sie kam also an deinem eigenen Dorf als Fremde an und bekam zu hören, beide Plätze seien besetzt. Jetzt fragt sie, welcher der beiden deiner ist, und du machst weiter. Rausgeworfen wird niemand: sind beide offen, trefft ihr euch einfach, wie zwei Spieler es immer tun.',
+      'Hinter deinem eigenen Chip gibt es außerdem einen Link — „Auf einem anderen Gerät spielen“ —, der sagt, welcher Platz deiner ist. Das nächste Gerät landet damit ohne Nachfrage direkt in der Welt.',
+      'Die Eingangstür ist ruhiger, wenn du schon ein Dorf hast. Eine neue Welt anfangen und bei einer fremden mitmachen gibt es weiter, eine Nummer kleiner, unter den Welten, die auf dich warten.',
+    ],
+  },
   {
     v: '2.1', date: '2026-09-12',
     en: [

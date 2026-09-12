@@ -325,6 +325,13 @@ carrying. A road on the far bank is no use until somebody bridges the river — 
 widest where it runs off the top and the bottom of the map and narrowest at the
 crossing, so the place to build it is the place it looks like.
 
+Your seat follows you, not your browser. A world has two spots and the
+directory hands one to whichever browser asked first — so opening the same
+world in a second browser, or saving it to the Home Screen, used to arrive as a
+third person and be told the village was full. Now it asks which of the two you
+are and lets you carry on, and there is a link behind your own chip that says
+which seat you are so the next device never has to ask.
+
 Neither can ask the other for anything, and that is deliberate. Tapping a thing
 always says what it needs; when it needs the other player's hands, it says whose
 job it is and stops there. The two of you are in the same room — saying it is
@@ -431,7 +438,7 @@ clear air rather than up against the top bar.
 
 Plain ES modules and a 2D canvas. No framework, no bundler, no build step, no
 downloaded assets — every tree, sheep and roof is drawn with `ctx` calls. It
-starts fast on an old iPad and stays quiet on the battery.
+starts fast on a phone and stays quiet on the battery.
 
 ```
 index.html
@@ -509,11 +516,17 @@ changes.
 
 ### Browser support
 
-Targeted at Safari 12 and up — an iPad from 2015 running the last iOS it was
-given. No optional chaining, no nullish coalescing, no `ResizeObserver`, and no
-flexbox `gap`. Devicepixel ratio is capped at 2, terrain is painted once into an
-offscreen canvas and re-used, and a frame is one blit plus a few dozen small
-shapes.
+It has to work on an **iPhone** and on an **iPad**, on current iOS Safari, both
+in the browser and saved to the Home Screen. That is the target, and the
+play-through walks all three shapes — phone, tablet, laptop — on every run.
+
+Plenty of the code predates that and was written down to Safari 12, so it avoids
+optional chaining, `??` and flexbox `gap`. It is not kept that way on purpose
+and does not need bringing forward. What does still matter is the shape of a
+phone: the `--safe-t/-b/-l/-r` variables for the notch, `--app-h` for the part
+of the screen actually being shown, device pixel ratio capped at 2, terrain
+painted once into an offscreen canvas and re-used, and a frame that is one blit
+plus a few dozen small shapes.
 
 ## Tests
 

@@ -17,9 +17,10 @@ Parent: "I have some."
 Child:  "I'll build the road on the other side."
 ```
 
-It is meant for a child of about **six to ten** who can read, and a grown-up. A
-sitting is five to fifteen minutes — a few days in the village — and either of
-you can potter about alone in between.
+It is meant for a child of about **seven**, who can read and write but for whom
+neither is effortless yet, and a grown-up. A sitting is five to fifteen minutes
+— a few days in the village — and either of you can potter about alone in
+between.
 
 > **Changing the game?** `CLAUDE.md` is the rulebook: the laws a change has to
 > respect, the things this game will never have, and how to add a project, a
@@ -373,12 +374,12 @@ button appears on your role card — teach it across, and you both know it.
 
 ## What you can do
 
-The world shows you **one thing at a time**. It lives behind your own role chip
-in the top row, with a red number on it; tapping it opens the card: the thing
-said as something to do — **"Build a house for Ted!"**, not "Ted has nowhere to
-sleep tonight" — and the numbered steps that would get there, each labelled with
-who can do it. When that is done, the next thing steps up. No hurry, no list to
-work through, no sense that you are behind.
+The world shows you **one thing at a time**, in its own button in the top row
+next to the players. Tapping it opens the card: the thing said as something to
+do — **"Build a house for Ted!"**, not "Ted has nowhere to sleep tonight" — and
+the numbered steps that would get there, each labelled with who can do it. When
+that is done, the next thing steps up. No hurry, no list to work through, no
+count of what is outstanding, no sense that you are behind.
 
 Nothing is laid over the village itself. A card you tapped away used to come
 straight back a moment later, over the very tree you were trying to fell; now
@@ -455,10 +456,9 @@ only soundtrack it needs.
 ## The two rows
 
 The top row is the people playing: one chip per role, yours marked, the others
-showing whether they are at their screen. Tapping your own opens the one thing
-worth doing next, counted by the red number on the chip — what you can do, and a
-tally of what you have already done: felled three trees, built a house,
-harvested six fields. Tapping theirs opens what you do together: giving them
+showing whether they are at their screen, and next to them the one thing worth
+doing next. Tapping your own chip opens what you can do and a tally of what you
+have already done: felled three trees, built a house, harvested six fields. Tapping theirs opens what you do together: giving them
 something, and teaching them anything you have done often enough to show. The
 language, starting over and the way back to the start screen sit behind the day,
 on the right. The bottom row is nothing but what we have.
@@ -571,12 +571,16 @@ and a frame that is one blit plus a few dozen small shapes.
 ## Tests
 
 ```
-npm run verify          # everything: unit tests, a play-through, German, the lobby, /stats
-npm run verify -- quick # just the unit tests and a shortened play-through
-npm test                # the unit tests: simulation, schema, guide, i18n, relay, worlds, stats
-node tools/lobby.mjs    # two browsers find each other without typing anything
-node tools/stats.mjs    # the page at /stats, with some worlds put in first
+npm run check           # seconds: format, lint, unit tests
+npm run fix             # apply what check can apply
+npm run verify -- quick # ~1 min: check + a shortened play-through
+npm run verify          # ~5 min: everything, incl. German, the lobby and /stats
+npm run deployed        # after pushing: is that code actually live?
 ```
+
+The tests exist to stop whoever is changing the code from slipping, and to keep
+the laws in `CLAUDE.md` true without anybody having to remember them. They are
+not a specification and not a report card; there is no coverage target.
 
 `npm run verify` starts its own server on a free port and stops it again, so
 there is nothing to set up and nothing left listening. It runs five things in

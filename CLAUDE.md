@@ -14,8 +14,11 @@ Read the laws first. They are not style preferences; they are the game.
 
 ## 🧭 Who this is for
 
-A **child of about six to ten who can read**, and a grown-up. Both playing at
-the same time is the good case; one of them alone is the common case.
+A **child of about seven**, who can read and write, and a grown-up. Both playing
+at the same time is the good case; one of them alone is the common case.
+
+Reading and writing are not yet effortless, and that is the point rather than a
+problem: practising letters and precision is still worth an afternoon.
 
 - Short sentences are fine. Long paragraphs are not.
 - Numbers up to twenty are fine. Arithmetic the child has to do in their head
@@ -50,6 +53,12 @@ one" is not permission — say which law it crosses and wait.
 multitasking, no urgency — just what a next step could be. `MAX_ACTIVE = 1` in
 `src/core/guide.js`, and it is not a tuning knob.
 
+It lives in **its own button in the top row, next to the player chips** — not
+behind your own chip, and with no red number on anything. A count that is
+always "1" is nagging without information. The button shows the mission's icon
+and opens the card; when the village is calm it is quiet rather than gone, so
+the row never jumps about.
+
 **2. The world picks the mission, by fixed priority.** `allProblems()` walks
 `CONCERNS` in order and the first one that applies is *the* mission, the same
 one on both screens. **The order of `CONCERNS` is therefore the whole design.**
@@ -57,8 +66,9 @@ A new concern's place in that list decides whether anybody ever sees it. Put it
 where it belongs, not at the end.
 
 **3. Nothing is laid over the world.** The village is the tap target. What
-needs doing lives behind your own role chip, with a red number on the chip.
-Nothing pops up over the map, and nothing reloads out from under a finger.
+needs doing lives in the mission button; what you have done lives behind your
+own role chip. Nothing pops up over the map, and nothing reloads out from under
+a finger.
 
 **4. Nobody sends anybody a message.** There is no way for one player to say
 anything to the other through the game. Tapping a thing always explains what it
@@ -111,40 +121,98 @@ fallback to English. Adding a language is welcome and is one file — finished.
 
 ---
 
-## 🔁 The loop: verify, ship, check
+## 🔁 The dev loop
+
+One command while working, one gate before shipping. Everything is an npm
+script so there is nothing to remember and nothing to look up.
 
 ```
-npm run verify -- quick     # while working: unit tests + a shortened play-through
-npm run verify              # before pushing anything a player can see
-git add -A && git commit    # then push to main (see below)
-npm run deployed            # after pushing: is that code actually live?
+npm run check      # seconds:  format + lint + unit tests. After every edit.
+npm run verify -- quick   # ~1 min: check + a shortened play-through in a browser
+npm run verify     # ~5 min: everything, incl. German, the lobby and /stats
+npm run deployed   # after pushing: is that code actually live?
 ```
+
+- **`npm run check`** is the inner loop: Prettier in check mode, ESLint, and
+  `node --test`. If it is red, nothing else matters yet. Run it after every
+  meaningful edit, not once at the end.
+- **`npm run fix`** applies what `check` can apply (Prettier write, ESLint
+  `--fix`). Run it before committing; never commit a formatting-only diff mixed
+  into a behaviour change.
+- **`npm run verify -- quick`** adds the browser play-through with every
+  assertion, minus the screenshots, the second browser, the three screen sizes,
+  German, the lobby and the stats page. This is the bar for a push.
+- **`npm run verify`** is everything, and it is what CI runs. Locally it is the
+  bar for anything that changes what a player sees. About five minutes: run it
+  in the background and wait rather than polling — one
+  `while pgrep -f "tools/(smoke|german|lobby|stats).mjs"; do sleep 15; done`
+  beats ten `sleep`s.
 
 `npm run verify` brings up its own server on a free port and takes it down
 again. **Do not start a server by hand for testing, and never `pkill` broadly** —
 a wide `pkill` has killed a running test's browser mid-run and cost a whole
 cycle. If something must be stopped, name it exactly.
 
-- **`npm run verify`** runs the unit tests, the browser play-through
-  (`tools/smoke.mjs`), the German pass (`tools/german.mjs`), the matchmaking
-  pass (`tools/lobby.mjs`) and the stats page (`tools/stats.mjs`), and exits
-  non-zero on the first failure. About five minutes; run it in the background
-  and wait for it rather than polling — one
-  `while pgrep -f 'tools/(smoke|german|lobby|stats).mjs'; do sleep 15; done`
-  beats ten `sleep`s.
-- **`npm run verify -- quick`** keeps the unit tests and every assertion in the
-  play-through, and drops the screenshots, the second browser, the walk round
-  three screen sizes, German, the lobby and the stats page. About a minute. For
-  iterating, and it is enough before a push **because CI runs the full gate**.
-- **CI is the real gate.** The full `npm run verify` runs in GitHub Actions and
-  **a failure blocks the deploy**, so players keep the last good build. Never
-  make the deploy step independent of it.
+Lint and format are not taste. They exist so that a diff shows only what
+changed, so a future session is not guessing which of two styles is current,
+and so the modern-JavaScript rule is enforced by a machine rather than by
+somebody remembering it. A rule that is not enforced is a rule that is gone.
 
-## 🚀 Branch and deploy
+## 🧪 What the tests are for
+
+**The tests are for whoever is changing the code. Nobody else reads them.**
+
+That has consequences, and they are the opposite of the usual ones:
+
+- **A test earns its place by catching a mistake that is easy to make here.**
+  Not by covering a line. There is no coverage target and there never will be;
+  a number of tests is not an achievement and is never worth reporting.
+- **Every law in this file that can be checked, should be checked.** That is
+  what they are best at: `MAX_ACTIVE` is 1, every string exists in every
+  language, no world name reaches `/stats`, an action applied twice does not
+  double up, a saved world from an older schema still loads. A law with a test
+  behind it survives a session that has not read this file.
+- **Prefer one test that would have caught a real bug** over five that restate
+  the implementation. The road that got taken back, the lamp that was confused
+  with the flame, the pinch that reset the zoom — those are the shape to aim
+  for.
+- **Delete tests that no longer protect anything.** A test kept for its own
+  sake is a cost with no payer.
+- If a change breaks a test, the first question is always *which is wrong* —
+  and if the test is right, the fix is the code. Do not weaken a test to get
+  green.
+
+## 🚦 When to deploy, and when not to
+
+`main` is the only thing the owner can look at, and pushing to `main` deploys.
+So **deciding when to push is part of the job, not a question to hand over.**
+
+Push to `main` when all of these are true:
+
+1. `npm run verify` is green in full.
+2. The change is complete — not a spike, not half a refactor, not a feature
+   with one language's strings missing.
+3. What is live afterwards is better than what is live now, for somebody who
+   opens the game in the next five minutes.
+4. It breaks no law in this file, and crosses nothing on the anti-list.
+
+Hold it back when any of those fails, and say plainly what is being held and
+why. Also hold when the change is only interesting to look at — a screenshot or
+a description costs the owner nothing and an unfinished village costs them a
+Saturday.
+
+Otherwise **ship small and ship often**. Work banked on a branch is work the
+owner cannot see, and a large push is a large thing to undo. A day's work in
+four pushes is better than one, because three of them can be checked while the
+fourth is still being written.
+
+## 🚀 Branch, deploy, confirm
 
 - **All changes go straight to `main`.** There is no dev deployment yet, so
-  `main` is what people play. A push to `main` runs `.github/workflows/deploy.yml`:
-  verify first, CapRover second.
+  `main` is what people play. A push to `main` runs
+  `.github/workflows/deploy.yml`: **check and verify first, CapRover only if
+  they pass.** A red run leaves the last good build serving, and never make the
+  deploy step independent of the gate.
 - After `git push origin main`, point any session working branch at the same
   commit (`git branch -f <branch> main && git push -f origin <branch>`) so the
   two never drift.
@@ -161,8 +229,9 @@ cycle. If something must be stopped, name it exactly.
   call it live. And check the host before assuming it: this one was guessed
   wrong once, from a truncated address bar.
 - Only what ships is hashed — the page, `src`, `styles`, `server`, `icons`. A
-  change to the tests or the docs leaves the build id alone, which is right:
-  nothing a player downloads changed, and `npm run deployed` will still say yes.
+  change to the tests, the tooling or the docs leaves the build id alone, which
+  is right: nothing a player downloads changed, and `npm run deployed` will
+  still say yes.
 - The same id is written into the page it serves (`<meta name="olw-build">`),
   so a copy on somebody's screen knows whether it is still the one being served.
   `src/core/fresh.js` asks whenever the app comes back to the front and on a
@@ -181,6 +250,28 @@ cycle. If something must be stopped, name it exactly.
   `/api/health` once, remembers the answer, pairs browser-to-browser and never
   claims to be out of date. Do not add anything that only works with the Node
   server without a graceful nothing-happens on a static host.
+
+## 🧰 The tooling, and why each piece is there
+
+Nothing here ships. The game still has **zero runtime dependencies** and no
+build step; these are `devDependencies` and they never reach a player.
+
+| | |
+|---|---|
+| **Prettier** | one formatting answer, so no diff is ever about whitespace |
+| **ESLint** | the rules a machine can keep: no unused anything, no `var`, no accidental global, and the modern-syntax floor |
+| **`node --test`** | the unit tests, no framework |
+| **Playwright** | the browser passes in `tools/` |
+
+Rules for touching the tooling:
+
+- **A new devDependency needs a reason written next to it**, in the table above.
+  Anything that would end up in what ships needs the owner's say-so.
+- **Never add a rule that the existing code violates without fixing the code in
+  the same commit.** A lint config with a backlog is a lint config nobody runs.
+- **CI runs exactly what `npm run verify` runs locally**, by calling that
+  script — never a copy of its steps inlined into the workflow, which is how
+  the two drift apart and how "green locally, red in CI" starts.
 
 ## 📓 Changelog and version
 
@@ -331,8 +422,10 @@ strokes a hand makes rather than the shapes a printer prints.
   wrong. Changing that changes what the game is for.
 - `game.tracing` is the live tracer, and exists only so a test can follow a line
   whose shape it has no other way of knowing. Nothing in the game reads it.
-- **It is currently pitched too young** for a six-to-ten-year-old reader. It is
-  meant to grow up — see `TODO.md`.
+- **The pitch is right and settled.** A child of about seven can read and write
+  and still gets something out of practising letters and precision. Do not
+  "grow it up", and do not add a difficulty setting or an age question — that
+  would be a new promise, not a tweak.
 
 ### A task for the guide
 

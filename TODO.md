@@ -78,22 +78,7 @@ is watching, because `SAPLING_TICKS` counts play ticks.
 
 ---
 
-## 4. 🌍 The i18n test only knows two languages
-
-**Law 14** says every language must be complete, and the README invites a third.
-`tests/i18n.test.mjs` imports `en` and `de` by name and compares them pairwise.
-
-- Walk every table in `src/i18n/` and check each against English: every key,
-  matching `{name}`/`{n}` slots, plurals in pairs.
-- `tools/german.mjs` is the browser half and is German by name. Decide whether a
-  third language gets its own pass or whether that tool takes the language as an
-  argument.
-
-*Do this before anybody starts a third language, not after.*
-
----
-
-## 5. 🧹 The modern-JavaScript sweep
+## 4. 🧹 The modern-JavaScript sweep
 
 House style says modern JS everywhere; the code still avoids optional chaining,
 `??` and flexbox `gap` from when the floor was Safari 12.

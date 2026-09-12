@@ -454,7 +454,15 @@ in the list is the decision. Everything else is the queue behind it.
 - `w.notices` still exists and the simulation still raises them. They surface
   under *What has happened*, except where `NOTICE_JOB` in `hud.js` says the
   mission already covers one — the empty bread basket is not worth saying twice.
-- A language is one file in `src/i18n/`, complete, with the tests green.
+- A language is one file in `src/i18n/` plus its line in `LANGUAGES` in
+  `src/core/i18n.js`, complete, with the tests green. `tests/i18n.test.mjs`
+  finds the file on disk rather than being told about it, so a table nobody can
+  pick and a flag with no table both fail.
+- **`tools/german.mjs` stays German**, and a new language gets its own small
+  pass modelled on it rather than a parameter. Its assertions are literal
+  translated words on a real screen — that is the whole point of it, and a pass
+  that took the language as an argument could only check that *something*
+  rendered.
 
 ---
 

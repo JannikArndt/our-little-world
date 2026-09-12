@@ -11,6 +11,10 @@ const LOG_UNITS = 12;
 const MIN_PLANK = 3;
 // Orders that use the whole log: 2 sixes, 3 fours, 4 threes.
 const ORDERS = [[2, 6], [3, 4], [4, 3]];
+// Three perfect logs — every piece the size that was asked for — are enough
+// to show it wasn't luck, without making the reward feel far away. That's
+// when the drawn example goes away and the ruler has to carry the job alone.
+const LEVEL2_AT = 3;
 const W = 480, H = 236;
 const X0 = 96, X1 = 384, U = (X1 - X0) / LOG_UNITS, Y = 128;
 const STACK_L = 48, STACK_R = 432;
@@ -32,6 +36,17 @@ export function openSawmill(game) {
   }
 
   const cv = makeCanvas(W, H);
+
+  // Which level this player is on lives on the world, not the panel, so it is
+  // still true the next time the sawmill opens.
+  function levelOf() {
+    return ((game.world.players[game.role].done.sawPerfect) || 0) >= LEVEL2_AT ? 2 : 1;
+  }
+  let level = levelOf();
+  const levelLine = el('p', 'lead small', '');
+  function showLevel() { levelLine.textContent = tr(level === 2 ? 'saw.level2' : 'saw.level1'); }
+  showLevel();
+  p.body.appendChild(levelLine);
   p.body.appendChild(cv.canvas);
 
   // Every log comes with its own order, so nobody can cut the same thing twice
@@ -41,8 +56,10 @@ export function openSawmill(game) {
 
   function newOrder() {
     const pick = ORDERS[Math.floor(rng() * ORDERS.length)];
-    order = { pieces: pick[0], size: pick[1] };
-    game._saw = order;                 // so a test can read what was asked for
+    // the level travels with the order, so a log already on the bench never
+    // changes its picture mid-cut — only the *next* one does
+    order = { pieces: pick[0], size: pick[1], level: level };
+    game._saw = { pieces: order.pieces, size: order.size, level: level }; // so a test can read what was asked for
     cuts = []; sawing = 0; result = null; flying = [];
     describe();
     buttons();
@@ -134,24 +151,34 @@ export function openSawmill(game) {
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = '#efe4cd'; ctx.fillRect(0, 0, W, H);
 
-    // the order, drawn at the same scale as the log so you can compare lengths
-    const wide = order.pieces * order.size * U + (order.pieces - 1) * 5;
-    let ox = Math.max(102, (W - wide) / 2);   // clear of the words on the left
+    // the order. Level 1 draws it at the log's own scale, so the cuts can be
+    // copied by eye; level 2 keeps only the sum, big enough to read at a
+    // glance, so the length has to come from the ruler below instead.
     ctx.fillStyle = '#43372a';
-    ctx.font = '800 15px -apple-system, system-ui, sans-serif';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(tr('saw.wanted'), 14, 26);
-    ctx.font = '800 19px -apple-system, system-ui, sans-serif';
-    ctx.fillText(order.pieces + ' × ' + order.size, 14, 52);
-    for (let i = 0; i < order.pieces; i++) {
-      const w = order.size * U;
-      ctx.save();
-      ctx.globalAlpha = 0.5;
-      plank(ctx, ox, 30, w, 26, true);
-      ctx.restore();
-      ctx.strokeStyle = '#5d9150'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
-      rr(ctx, ox, 30, w, 26, 5); ctx.stroke(); ctx.setLineDash([]);
-      ox += w + 5;
+    if (order.level === 2) {
+      ctx.font = '800 15px -apple-system, system-ui, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(tr('saw.wanted'), W / 2, 22);
+      ctx.font = '800 34px -apple-system, system-ui, sans-serif';
+      ctx.fillText(order.pieces + ' × ' + order.size, W / 2, 54);
+    } else {
+      const wide = order.pieces * order.size * U + (order.pieces - 1) * 5;
+      let ox = Math.max(102, (W - wide) / 2);   // clear of the words on the left
+      ctx.font = '800 15px -apple-system, system-ui, sans-serif';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(tr('saw.wanted'), 14, 26);
+      ctx.font = '800 19px -apple-system, system-ui, sans-serif';
+      ctx.fillText(order.pieces + ' × ' + order.size, 14, 52);
+      for (let i = 0; i < order.pieces; i++) {
+        const w = order.size * U;
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        plank(ctx, ox, 30, w, 26, true);
+        ctx.restore();
+        ctx.strokeStyle = '#5d9150'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+        rr(ctx, ox, 30, w, 26, 5); ctx.stroke(); ctx.setLineDash([]);
+        ox += w + 5;
+      }
     }
 
     // bench
@@ -238,13 +265,19 @@ export function openSawmill(game) {
     const good = ps.filter(n => n === order.size).length;
     result = { good: good, scraps: ps.length - good };
     flying = ps.map(n => ({ ok: n === order.size, at: 0 }));
-    game.dispatch({ type: 'saw.run', role: game.role, wood: 1, planks: good });
+    game.dispatch({ type: 'saw.run', role: game.role, wood: 1, planks: good, pieces: order.pieces });
 
     p.readout(good === order.pieces
       ? tr('saw.perfect', { n: good, size: order.size })
       : good > 0
         ? trn('saw.some', good, { n: good, scraps: result.scraps })
         : tr('saw.none'));
+
+    // Levelling up happens between logs, never under one that's still flying
+    // apart — the next order is the first one measured with the ruler alone.
+    const now = levelOf();
+    if (now > level) { level = now; showLevel(); message(tr('saw.levelUp')); }
+
     buttons();
   }
 }
@@ -332,6 +365,37 @@ export function openMill(game) {
     ctx.beginPath(); ctx.arc(150, 120, 70, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
 
+    // the empty track fills in as you turn — a picture of the percentage,
+    // not just the word for it
+    const pct = Math.max(0, Math.min(1, turned / NEEDED));
+    if (pct > 0) {
+      ctx.strokeStyle = '#5d9150'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(150, 120, 70, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
+
+    // ten boxes under the stone say the same thing again, a different way:
+    // seven filled out of ten reads as "70%" before you can read the word
+    // floor, not round: a box only fills once its whole ten percent is done,
+    // so the boxes never race ahead of the number beside them
+    const filled = Math.min(10, Math.floor(pct * 10 + 1e-9));
+    const segW = 13, segH = 14, gap = 2, segN = 10;
+    const barW = segN * segW + (segN - 1) * gap;
+    const bx0 = 150 - barW / 2, by = 195;
+    for (let i = 0; i < segN; i++) {
+      const sx = bx0 + i * (segW + gap);
+      ctx.fillStyle = i < filled ? '#5d9150' : 'rgba(67,55,42,.12)';
+      rr(ctx, sx, by, segW, segH, 3); ctx.fill();
+      ctx.strokeStyle = 'rgba(67,55,42,.25)'; ctx.lineWidth = 1;
+      rr(ctx, sx, by, segW, segH, 3); ctx.stroke();
+    }
+    ctx.fillStyle = '#43372a';
+    ctx.font = '800 15px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(Math.round(pct * 100) + '%', bx0 + barW + 10, by + segH / 2);
+
     // flour chute + oven
     ctx.fillStyle = '#c9b38c'; rr(ctx, 210, 150, 150, 12, 5); ctx.fill();
     if (flour >= 1) {
@@ -350,7 +414,8 @@ export function openMill(game) {
     if (turned < NEEDED) {
       ctx.font = '600 12px -apple-system, system-ui, sans-serif';
       ctx.fillStyle = 'rgba(67,55,42,.6)';
-      ctx.fillText(tr('mill.turnMe'), 150, 196);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(tr('mill.turnMe'), 150, 222);
     }
   }
 

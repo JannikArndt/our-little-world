@@ -343,6 +343,9 @@ export const en = {
   'saw.some_one': '<b>1</b> plank the right length. The rest is kindling.',
   'saw.some_other': '<b>{n}</b> planks the right length. The rest is kindling.',
   'saw.none': 'None of them the right length — all kindling. Count the marks next time.',
+  'saw.level1': 'Level 1 — the dashed planks above show you the size.',
+  'saw.level2': 'Level 2 — no planks to copy. Use the ruler.',
+  'saw.levelUp': '📏 You can measure it yourself now.',
 
   /* ---- mill ---- */
   'mill.title': '🌀 The mill',

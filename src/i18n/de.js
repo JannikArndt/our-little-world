@@ -343,6 +343,9 @@ export const de = {
   'saw.some_one': '<b>1</b> Brett hat die richtige Länge. Der Rest ist Kleinholz.',
   'saw.some_other': '<b>{n}</b> Bretter haben die richtige Länge. Der Rest ist Kleinholz.',
   'saw.none': 'Keins hat die richtige Länge — alles Kleinholz. Zähl beim nächsten Mal die Striche.',
+  'saw.level1': 'Stufe 1 — die gestrichelten Bretter oben zeigen dir die Größe.',
+  'saw.level2': 'Stufe 2 — keine Bretter mehr zum Abschauen. Nimm das Lineal.',
+  'saw.levelUp': '📏 Jetzt kannst du es selbst ausmessen.',
 
   /* ---- Mühle ---- */
   'mill.title': '🌀 Die Mühle',

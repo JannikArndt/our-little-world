@@ -77,14 +77,15 @@ export const de = {
   'ui.here': 'da',
   'ui.away': 'gerade nicht da',
 
+  /* ---- der Auftrags-Knopf oben in der Leiste ---- */
+  'mission.chip': 'Was als Nächstes zu tun ist',
+
   /* ---- die Klappmenüs ---- */
-  'menu.tasks': 'Was zu tun ist',
   'menu.swap': 'Als {role} spielen',
   'menu.share': 'Etwas abgeben',
   'menu.invite': '{role} einladen',
   'menu.teach': 'Ihnen {what} zeigen',
   'menu.youCan': 'Was du kannst',
-  'menu.nothingToDo': 'gerade nichts — im Dorf ist Ruhe',
   'menu.news': 'Was passiert ist',
   'menu.youDid': 'Was du geschafft hast',
   'menu.didNothingYet': 'noch nichts — der Tag fängt gerade erst an',

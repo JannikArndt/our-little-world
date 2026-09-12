@@ -500,35 +500,38 @@ button {
 .role-chip.me .r-dot {
   display: none;
 }
-/* how many things are waiting for you — the world says it here now, instead of
-   laying cards over the village where the tap targets are */
-.role-chip .r-todo {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
-  flex: none;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--danger);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 22px;
-  text-align: center;
-}
-.role-chip .r-todo.hidden {
-  display: none;
-}
-.role-chip .r-todo.bump {
-  -webkit-animation: bump 0.45s ease;
-  animation: bump 0.45s ease;
-}
 .role-chip[data-role='A'] {
   border-color: var(--builder);
 }
 .role-chip[data-role='B'] {
   border-color: var(--keeper);
+}
+
+/* the one mission (law 1), in its own button between the role chips and 👥.
+   Icon only, never a number — a count that always says "1" would only nag.
+   `currentProblem()` always returns something, even the calm card, so this
+   button never disappears; a fixed width keeps the row still as its icon
+   changes underneath it. */
+.mission-chip {
+  -webkit-box-flex: 0;
+  -ms-flex: none;
+  flex: none;
+  justify-content: center;
+  min-width: 44px;
+  padding: 0 12px;
+  background: var(--warm-soft);
+}
+.mission-chip .m-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+.mission-chip.calm {
+  opacity: 0.55;
+  background: #fffdf8;
+}
+.mission-chip.bump {
+  -webkit-animation: bump 0.45s ease;
+  animation: bump 0.45s ease;
 }
 
 /* the day, as an icon and a number — never a countdown. It is also the door to

@@ -116,19 +116,14 @@ async function main() {
   await page.waitForFunction(() => window.OLW.world.block.active, null, { timeout: 8000 });
   await step(page, '02-world', 900);
 
-  // The jobs live behind your own role chip now, all of them, one line each.
-  // "What needs doing" is only the heading — the thing to tap is the first job
-  // under it, and the chip carries a red count of how many there are.
-  await page.click('#roleBar button.me');
-  await step(page, '02b-menu', 400);
-  const myMenu = await page.textContent('.menu');
-  if (!/What needs doing/.test(myMenu)) throw new Error('the jobs are not behind your own chip');
-  if (!/What you have done/.test(myMenu)) throw new Error('the tally is not behind your own chip');
-  const jobs = await page.$$eval('.menu .menu-item:not(.off) .mi-label', ns =>
-    ns.map(n => n.textContent),
-  );
-  console.log('waiting for you:', JSON.stringify(jobs.slice(0, 4)));
-  await page.click('.menu .menu-item:not(.off) >> nth=0');
+  // The mission is its own button now, next to the role chips (law 1): one
+  // icon, no text, no number, and it is there from the moment the village is
+  // on screen — it never disappears, calm or not.
+  if (!(await page.$('#missionChip'))) throw new Error('no mission button in the top row');
+  // the red badge it replaced is gone everywhere, not relabelled somewhere else
+  if (await page.$('.r-todo')) throw new Error('the old todo badge is still in the page');
+
+  await page.click('#missionChip');
   await step(page, '02c-guide', 900);
   const guide = await page.textContent('.panel');
   console.log('opening card says:', guide.replace(/\s+/g, ' ').trim().slice(0, 150));
@@ -231,14 +226,14 @@ async function main() {
         // a spot nobody is standing on, that nothing on top of the world covers
         for (const c of arg.cands) {
           if (busy(c)) continue;
-          const p = g.renderer.toScreen(c[0] * 24, c[1] * 24);
+          const p = g.renderer.toScreen(c[0] * 24 + 12, c[1] * 24 + 12);
           const x = r.left + p.x,
             y = r.top + p.y;
           if (x < r.left + 4 || x > r.right - 4 || y < r.top + 4 || y > r.bottom - 4) continue;
           if (document.elementFromPoint(x, y) !== canvas) continue;
           return { x, y };
         }
-        const p = g.renderer.toScreen(arg.cands[0][0] * 24, arg.cands[0][1] * 24);
+        const p = g.renderer.toScreen(arg.cands[0][0] * 24 + 12, arg.cands[0][1] * 24 + 12);
         return { x: r.left + p.x, y: r.top + p.y };
       },
       { cands, at: lookAt || cands[0] },
@@ -752,10 +747,10 @@ async function main() {
   });
   await page.waitForTimeout(700);
 
-  // the red number on your own chip is jobs from the village, and nothing else
-  const counted = await page.textContent('#roleBar button.me .r-todo');
-  if (!(Number(counted.replace('+', '')) > 0))
-    throw new Error('the chip does not count what is waiting');
+  // the mission button still shows a real icon, never a count — a number
+  // that always says "1" would nag rather than inform
+  const missionIcon = await page.textContent('#missionChip .m-icon');
+  if (!missionIcon || !missionIcon.trim()) throw new Error('the mission button lost its icon');
 
   // teaching: having done it a few times, you can show the other player how.
   // This lives behind the OTHER role's chip now (yours is your own tools).
@@ -793,16 +788,14 @@ async function main() {
     g.role = 'B';
     g.other = 'A';
   });
-  const stumpPt = await api(() => {
-    const g = window.OLW,
-      t = g.world.trees.find(t => t.state === 'stump');
-    g.look(t.x, t.y, 2);
-    const p = g.renderer.toScreen(t.x * 24 + 12, t.y * 24 + 12);
-    const r = document.getElementById('world').getBoundingClientRect();
-    return { x: r.left + p.x, y: r.top + p.y };
-  });
-  await page.waitForTimeout(300);
-  await page.mouse.click(stumpPt.x, stumpPt.y);
+  // every stump, so tapTile can pick one nobody is standing on: a villager
+  // answers a tap before the ground does, and Anna wandering onto the stump
+  // used to fail this step about one full run in three.
+  const stumps = await api(() =>
+    window.OLW.world.trees.filter(t => t.state === 'stump').map(t => [t.x, t.y]),
+  );
+  if (!stumps.length) throw new Error('there is no stump to plant in');
+  await tapTile(stumps);
   await step(page, '25d-stump-bubble', 400);
   await page.click('text=Plant a sapling');
   await page.waitForTimeout(400);
@@ -1202,9 +1195,7 @@ async function main() {
   await ph.waitForTimeout(700);
 
   await ph.waitForFunction(() => window.OLW.world.block.active, null, { timeout: 8000 });
-  await ph.click('#roleBar button.me');
-  await ph.waitForTimeout(300);
-  await ph.click('.menu .menu-item:not(.off) >> nth=0');
+  await ph.click('#missionChip');
   await ph.waitForTimeout(900);
   await ph.addStyleTag(notch);
   await step(ph, '31-phone-guide', 300);

@@ -340,12 +340,12 @@ export const CONCERNS = [
 ];
 
 /**
- * How many jobs anybody is asked to hold in their head at once. The village
- * always has eight things it would like; two is a morning, eight is a chore.
- * The rest are not cancelled — they are next, and they turn up on their own
- * as these are finished.
+ * How many jobs anybody is asked to hold in their head at once — one (law 1).
+ * The village might want half a dozen things; only the first of them is ever
+ * shown, as the mission. The rest are not cancelled — they are next, and they
+ * turn up on their own as this one is finished. Not a tuning knob.
  */
-export const MAX_ACTIVE = 2;
+export const MAX_ACTIVE = 1;
 
 /**
  * Everything the world is asking for, in the order it matters — not just the
@@ -367,7 +367,7 @@ export function allProblems(w) {
   return out;
 }
 
-/** The two at the front of the queue — what the village is actually doing. */
+/** The one at the front of the queue — what the village is actually doing. */
 export function activeProblems(w) {
   return allProblems(w).slice(0, MAX_ACTIVE);
 }

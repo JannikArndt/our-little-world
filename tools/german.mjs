@@ -66,16 +66,24 @@ await p.waitForFunction(() => window.OLW.world.block.active, null, { timeout: 80
 await p.waitForTimeout(700);
 await scan('world');
 
-// the jobs live behind your own role chip now, one line each — the heading is
-// only a heading, so the thing to tap is the first job under it
+// what you have done lives behind your own role chip (law 3)
 await p.click('#roleBar button.me');
 await p.waitForTimeout(300);
 await scan('menu');
 const meinMenue = await p.textContent('.menu');
-if (!/Was zu tun ist/.test(meinMenue)) throw new Error('the jobs are not behind your own chip');
 if (!/Was du geschafft hast/.test(meinMenue))
   throw new Error('the tally is not behind your own chip');
-await p.click('.menu .menu-item:not(.off) >> nth=0');
+if (/Was zu tun ist/.test(meinMenue))
+  throw new Error('the jobs are behind the role chip again — they belong to the mission button');
+
+// #menuLayer covers the screen while a menu is open, so the menu has to be put
+// away before anything in the top row can be tapped. A press on the layer is
+// what closes it, the same as a finger anywhere off the menu.
+await p.click('#menuLayer', { position: { x: 5, y: 5 } });
+await p.waitForSelector('#menuLayer.hidden', { state: 'attached', timeout: 4000 });
+
+// and the one mission lives in its own button beside it (law 1)
+await p.click('#missionChip');
 await p.waitForTimeout(900);
 await scan('guide');
 await p.screenshot({ path: out + '61-de-guide.png' });

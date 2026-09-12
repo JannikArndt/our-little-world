@@ -76,14 +76,15 @@ export const en = {
   'ui.here': 'here',
   'ui.away': 'not here right now',
 
+  /* ---- the mission button, in the top row ---- */
+  'mission.chip': 'What to do next',
+
   /* ---- the drop-down menus ---- */
-  'menu.tasks': 'What needs doing',
   'menu.swap': 'Play as the {role}',
   'menu.share': 'Give them something',
   'menu.invite': 'Invite the {role}',
   'menu.teach': 'Teach them {what}',
   'menu.youCan': 'What you can do',
-  'menu.nothingToDo': 'nothing right now — the village is calm',
   'menu.news': 'What has happened',
   'menu.youDid': 'What you have done',
   'menu.didNothingYet': 'nothing yet — the day is young',

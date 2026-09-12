@@ -3,14 +3,15 @@
 //
 // The top row belongs to the roles — one chip each, yours marked, the others
 // showing whether they are here. Every chip opens a drop-down: your own holds
-// what you are meant to do, what you can do and what you have already done;
-// theirs the things you do together. The day on the right opens the world's
-// own menu — the language and the ways out — so none of that sits in the way
-// of playing.
+// what you can do and what you have already done; theirs the things you do
+// together. Between the roles and 👥 sits the mission button — the one thing
+// the guide is asking for, as an icon only (law 1). The day on the right
+// opens the world's own menu — the language and the ways out — so none of
+// that sits in the way of playing.
 //
 // Nothing the world has to say is laid over the world any more. What needs
-// doing lives behind your own chip, counted by a red number on it, so the
-// village is never hidden behind a stack of cards you cannot put away.
+// doing lives in the mission button, not behind a chip and not as a count —
+// there is only ever one, so a number would nag rather than inform.
 
 import { el, openPanel, openMenu, message, loop } from './overlay.js';
 import { openGive } from './share.js';
@@ -26,7 +27,7 @@ import {
   dayPhase,
 } from '../core/world.js';
 import { tr, trn, LANGUAGES, currentLang, setLang } from '../core/i18n.js';
-import { currentProblem, allProblems, MAX_ACTIVE } from '../core/guide.js';
+import { currentProblem, allProblems } from '../core/guide.js';
 import { showChangelog as openChangelog, VERSION } from './whatsnew.js';
 import { newerBuild } from '../core/fresh.js';
 import { drawPortrait } from '../render/art.js';
@@ -46,8 +47,12 @@ export class Hud {
     this.resEls = {};
     this.roleEls = {};
     this.last = {};
-    this.todos = { tick: -1, n: 0 };
+    // the mission is read from the world's whole queue of worries, which is
+    // not free, so it is refreshed roughly once a second rather than every
+    // frame — the same rhythm the old todo count used to keep
+    this.mission = { tick: -1, pr: null };
     this.buildRoleBar();
+    this.buildMissionChip();
     this.buildFolkChip();
     this.buildDayBadge();
     this.buildResources();
@@ -163,8 +168,6 @@ export class Hud {
       chip.appendChild(el('span', 'r-emoji', ROLE[id].emoji));
       chip.appendChild(el('span', 'r-name', roleName(id)));
       chip.appendChild(el('span', 'r-dot'));
-      // only your own chip carries a number, and only while there is one
-      chip.appendChild(el('span', 'r-todo hidden'));
       chip.addEventListener('click', () => {
         if (id === this.game.role) this.openMyMenu(chip);
         else this.openRoleMenu(chip, id);
@@ -175,32 +178,44 @@ export class Hud {
   }
 
   /**
-   * Your own chip: everything waiting for you, everything you know how to do,
-   * and everything you have done so far. The list of jobs is the whole list —
-   * three things wrong means three lines here, not the most pressing one and
-   * silence about the rest.
+   * The mission button: one icon, always there. `currentProblem()` falls back
+   * to the calm card when nothing is wrong, so this chip never has to hide —
+   * it just goes quiet (see `update()`). Tapping it opens the same card
+   * `showGuide()` has always opened, with no argument, so it is always the
+   * most pressing thing.
+   */
+  buildMissionChip() {
+    const chip = document.getElementById('missionChip');
+    if (!chip) return;
+    if (chip.openMission) chip.removeEventListener('click', chip.openMission);
+    chip.openMission = () => this.showGuide();
+    chip.addEventListener('click', chip.openMission);
+    chip.setAttribute('aria-label', tr('mission.chip'));
+    this.missionChip = chip;
+    this.missionIcon = chip.querySelector('.m-icon');
+  }
+
+  /**
+   * Your own chip: everything you know how to do, and everything you have
+   * done so far. The mission itself lives in its own button now (law 1); this
+   * menu is what is left once that is taken out.
    */
   openMyMenu(anchor) {
     const g = this.game;
     const items = [];
 
     const waiting = this.todoList();
-    items.push({ icon: '📋', disabled: true, label: tr('menu.tasks') });
-    if (!waiting.jobs.length) {
-      items.push({ icon: '🌤️', disabled: true, sub: true, label: tr('menu.nothingToDo') });
-    }
-    for (const t of waiting.jobs) items.push({ icon: t.icon, label: t.label, fn: t.fn });
 
-    // Things that have happened rather than things to do. They are worth a
-    // look and not worth a red number, so they sit under their own heading.
+    // Things that have happened rather than things to do. The mission button
+    // carries the one thing to do; this is everything else worth a look.
     if (waiting.news.length) {
       items.push({ divider: true });
       items.push({ icon: '📣', disabled: true, label: tr('menu.news') });
       for (const t of waiting.news) items.push({ icon: t.icon, label: t.label, fn: t.fn });
     }
 
+    if (items.length) items.push({ divider: true });
     if (g.canSwap) {
-      items.push({ divider: true });
       items.push({
         icon: '⇄',
         label: tr('menu.swap', { role: roleName(g.other) }),
@@ -208,7 +223,6 @@ export class Hud {
       });
     } else {
       // your seat, on a second browser — the Home Screen copy, mostly
-      items.push({ divider: true });
       items.push({ icon: '📱', label: tr('menu.thisDevice'), fn: () => openSeat(g) });
     }
 
@@ -235,36 +249,25 @@ export class Hud {
   }
 
   /**
-   * What is waiting for you, in two piles.
-   *
-   * `jobs` is work: the two at the front of the world's queue.
-   * Two, because a village always wants half a dozen
-   * things and a list of eight is a chore — the rest are next, not cancelled.
-   * The whole queue is still read, so a notice about something further down —
-   * the wheat is golden, and it will be somebody's job in a minute — is not
-   * said twice either; it waits its turn with the job it belongs to.
-   *
-   * `news` is everything that has merely happened: a sapling grown, somebody
-   * moved in, a skill passed across. Worth a look, not worth a red number.
+   * What has merely happened, worth a look behind your own chip: a sapling
+   * grown, somebody moved in, a skill passed across. The mission itself lives
+   * in its own button now (law 1), so this is not a job list any more — but
+   * the whole queue is still walked, so a notice about something further
+   * down — the wheat is golden, and it will be the mission in a minute — is
+   * not said twice either; it waits its turn behind the mission button.
    */
   todoList() {
     const g = this.game,
       w = g.world;
-    const jobs = [],
-      news = [],
+    const news = [],
       covered = {};
 
-    const queue = allProblems(w);
-    for (const pr of queue) covered[pr.id] = 1;
-    for (const pr of queue.slice(0, MAX_ACTIVE)) {
-      jobs.push({ icon: pr.icon, label: pr.title, fn: () => this.showGuide(pr) });
-    }
-
+    for (const pr of allProblems(w)) covered[pr.id] = 1;
     for (const n of w.notices) {
       if (covered[NOTICE_JOB[n.id] || n.id]) continue;
       news.push({ icon: n.icon, label: tr(n.key, n.vars), fn: () => g.goToNotice(n) });
     }
-    return { jobs, news };
+    return { news };
   }
 
   /**
@@ -408,15 +411,16 @@ export class Hud {
 
   /**
    * Something big changed under us — the language, or the whole world after
-   * starting over: redraw everything that holds words, and count the jobs
-   * again, because the ones we knew about belonged to the world that was here
+   * starting over: redraw everything that holds words, and read the mission
+   * again, because the one we knew about belonged to the world that was here
    * a moment ago.
    */
   relabel() {
     this.buildRoleBar();
+    this.buildMissionChip();
     this.buildFolkChip();
     this.last = {};
-    this.todos = { tick: -1, n: 0 };
+    this.mission = { tick: -1, pr: null };
     this.update();
   }
 
@@ -453,20 +457,30 @@ export class Hud {
       const label = chip.querySelector('.r-name');
       if (label.textContent !== name) label.textContent = name;
       chip.title = busy || '';
+    }
 
-      // the count belongs to whoever is holding the phone, nobody else
-      const todo = chip.querySelector('.r-todo');
-      const n = mine ? this.updateTodoCount() : 0;
-      if (this.last['todo_' + id] !== n) {
-        todo.textContent = n > 9 ? '9+' : String(n);
-        todo.classList.toggle('hidden', n <= 0);
-        // a new job nudges the chip, so nothing has to be laid over the world
-        if (n > (this.last['todo_' + id] || 0)) {
-          todo.classList.remove('bump');
-          void todo.offsetWidth;
-          todo.classList.add('bump');
+    // the mission: one icon, always current. Reading the world's whole queue
+    // of worries is not free, so it is refreshed roughly once a second rather
+    // than every frame — the tick check mirrors the old todo count's.
+    if (this.missionChip) {
+      const stale =
+        this.mission.tick < 0 || w.tick < this.mission.tick || w.tick - this.mission.tick >= 10;
+      if (stale) {
+        this.mission.tick = w.tick;
+        this.mission.pr = currentProblem(w);
+      }
+      const pr = this.mission.pr;
+      if (this.missionIcon.textContent !== pr.icon) this.missionIcon.textContent = pr.icon;
+      this.missionChip.classList.toggle('calm', pr.id === 'calm');
+      // reuse the bump animation once, only when the mission itself changes —
+      // never on every tick, and never on the very first paint
+      if (this.last.missionId !== pr.id) {
+        if (this.last.missionId != null) {
+          this.missionChip.classList.remove('bump');
+          void this.missionChip.offsetWidth;
+          this.missionChip.classList.add('bump');
         }
-        this.last['todo_' + id] = n;
+        this.last.missionId = pr.id;
       }
     }
 
@@ -489,30 +503,6 @@ export class Hud {
       document.getElementById('dayNum').textContent = String(w.day);
       this.last.day = w.day;
     }
-  }
-
-  /* ---------------- how many jobs, as a number on your chip ---------------- */
-
-  /**
-   * The red number on your own chip: jobs only, so it always means the same
-   * thing — this many things are waiting for you to do them. News is not
-   * counted; a grown sapling is not a chore.
-   *
-   * Reading the world's whole list of worries is not free, so it is counted
-   * once a second rather than once a frame, and the chip only changes when the
-   * number does.
-   */
-  updateTodoCount() {
-    const g = this.game,
-      w = g.world;
-    // A world handed over by the relay can be at an earlier tick than the one
-    // we counted, so anything but a small step forward counts again.
-    if (this.todos.tick >= 0 && w.tick >= this.todos.tick && w.tick - this.todos.tick < 10)
-      return this.todos.n;
-    this.todos.tick = w.tick;
-    const n = Math.min(allProblems(w).length, MAX_ACTIVE);
-    this.todos.n = n;
-    return n;
   }
 
   /**

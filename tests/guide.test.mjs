@@ -55,6 +55,10 @@ function settled(seed) {
   return w;
 }
 
+test('law 1: one mission at a time, not a tuning knob', () => {
+  assert.equal(MAX_ACTIVE, 1, 'the guide shows exactly one thing — raising this breaks law 1');
+});
+
 test('a card says what to do, not what is sad', () => {
   setLang('en');
   const w = createWorld(42);

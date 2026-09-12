@@ -9,29 +9,7 @@ on the live site. Delete an item when it lands — this file should get shorter.
 
 ---
 
-## 1. 🎯 One mission, in its own button
-
-**Law 1 and law 3.** `MAX_ACTIVE` is still 2, and the mission still hides behind
-the player's own chip under a red count.
-
-- `src/core/guide.js` — `MAX_ACTIVE` → `1`.
-- **A new button in the top row, next to the player chips.** It shows the
-  mission's icon and opens its card. No red number anywhere: a count that is
-  always "1" nags without informing.
-- When the village is calm the button goes quiet rather than disappearing, so
-  the row never jumps about as the last job is finished.
-- `src/ui/hud.js` — the queue loop at ~221 renders `MAX_ACTIVE` cards and the
-  badge at ~448 is `min(allProblems().length, MAX_ACTIVE)`. Both go.
-- `tests/guide.test.mjs` uses `MAX_ACTIVE` symbolically and should pass
-  unchanged. Add one that asserts it **is** 1 — the law is worth a test.
-- `tools/smoke.mjs` — it opens the mission through the role chip today. Update
-  the path, and keep every assertion about what the card says.
-
-*Small, and the most visible thing on this list. Ship it on its own.*
-
----
-
-## 2. 🎁 The welcome-back screen
+## 1. 🎁 The welcome-back screen
 
 **Law 10.** Nothing tells you what the other player did while you were away.
 The largest piece here; worth sketching before writing.
@@ -57,7 +35,7 @@ The largest piece here; worth sketching before writing.
 
 ---
 
-## 3. 🌱 Kind things while nobody is there
+## 2. 🌱 Kind things while nobody is there
 
 **Law 9.** The world is frozen between visits; saplings only grow while somebody
 is watching, because `SAPLING_TICKS` counts play ticks.
@@ -78,7 +56,7 @@ is watching, because `SAPLING_TICKS` counts play ticks.
 
 ---
 
-## 4. 🧹 The modern-JavaScript sweep
+## 3. 🧹 The modern-JavaScript sweep
 
 House style says modern JS everywhere; the code still avoids optional chaining,
 `??` and flexbox `gap` from when the floor was Safari 12.

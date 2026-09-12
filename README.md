@@ -354,13 +354,13 @@ Three things keep that card honest:
 | | |
 |---|---|
 | 🪓 **Fell a tree** | Pick which way it falls, then swing the axe by tapping the trunk. It goes where you cut it — unless you drop it into the wind, and then it goes wherever it likes. |
-| 🪚 **Saw a log** | Every log arrives with an order — three pieces of four, two of six, four of three — drawn above the log at the same scale. Pieces that match become planks and land on the stack; the rest is kindling. Each log is measured on its own. |
+| 🪚 **Saw a log** | Every log arrives with an order — three pieces of four, two of six, four of three — drawn above the log at the same scale. Pieces that match become planks and land on the stack; the rest is kindling. Each log is measured on its own. Cut three logs perfectly and the drawn example goes: what is left is **4 × 3** and the ruler under the log. |
 | 🌉 **Build the bridge** | Stand piers in the river. A beam reaches two gaps on its own; three sags; four goes in the water, taking a villager with it. Try it before you build it — trying costs nothing. |
 | 🏠 **Design a house** | Put a door, windows, beds, a stove and a table on a floor plan. The family stands outside and tells you, with their faces, what living there would be like — dark, freezing, cramped, or a bed nobody can reach. |
 | 🐑 **Look after a sheep** | She does not say what she wants. She droops, or eyes the river, or gets very woolly. Drag over what you think she needs. Wrong guesses are funny and free. |
 | 🛤️ **Lay a road** | Drag across the ground. One stone for every two steps, counted as you drag. People immediately start using it. |
 | 🌱 **Work the field** | Sow, then carry water. The can holds three plots and the field has six. |
-| 🌀 **Run the mill** | Turn the stone with your finger, then bake. Two wheat, three loaves. |
+| 🌀 **Run the mill** | Turn the stone with your finger, then bake. Two wheat, three loaves. The ring round the stone fills as you turn it and ten boxes fill one by one beside the number, so *70%* and *seven out of ten* say the same thing at the same time. |
 | 🪣 **Dig a well** | Until there is one, everybody drinks from the river — and sooner or later somebody has a poorly tummy: a slow walk home and a sit down, nothing worse. A well is clean water, and a trough the sheep find on their own. |
 | 🚪 **Build the little house** | The one at the bottom of the garden. What used to end up in the river stops doing so, which is why the water was not safe and why the fishing was poor. Either it or the well settles the tummies; both is a tidy village. |
 | 🚧 **Fence the wheat field** | Six planks of posts and rails with a gap to walk through. The sheep keep to the meadow — unless you take one in yourself, which still works. |
@@ -468,6 +468,16 @@ One peer hosts: it runs the clock, applies actions and broadcasts a full world
 snapshot roughly once a second. Guests apply their own actions immediately so
 the game feels instant, send them on, and get corrected by the next snapshot
 (positions are blended in, so nobody teleports).
+
+The correction is not allowed to undo you, which is subtler than it sounds. A
+snapshot that left before your action arrived carries a world your action never
+happened in, and swapping it in whole used to take a road back out from under
+the very player who had just laid it. So a guest names each action and holds
+onto it until the host says it landed; anything still unacknowledged is replayed
+onto an arriving snapshot before it is adopted, and let go of after five seconds
+so an action the host genuinely refused does not haunt every snapshot for ever.
+The host is still the authority — it just cannot silently overrule something it
+has not seen yet.
 
 That is the same shape a real server needs. Moving the host into Node means
 implementing `Transport` and running `Session` there; nothing above the seam
@@ -603,11 +613,23 @@ game again** is that way out. It sits next to the version at the front door and
 under 📜 in the world, it is always there, and it saves the village before it
 goes.
 
-Whenever the app comes back to the front it quietly asks `/version` whether a
-newer build is live, and if one is, the same door says **✨ A newer version is
-ready — fetch it** instead. Nothing pops up and nothing reloads underneath you.
-On a plain static host there is no `/version` to ask, so it never claims anything
-is out of date — the door still works, it just never lights up.
+But a door only helps somebody who thinks to open it, so the game no longer
+waits to be asked. It puts the question to `/version` whenever the app comes
+back to the front and on a slow timer besides — at most once a minute, however
+often it is prompted — and when a newer build is live it fetches it itself.
+
+Not straight away: it waits for a moment nothing can be lost in. No panel open,
+no menu open, no road half drawn, no finger down, nothing half typed at the
+front door. When that moment comes the village is saved to this device *and* to
+the server, one line says what is happening, and the page comes back a blink
+later on the same world. Never in the first twenty seconds of a page's life, and
+never twice — a reload loop would cost far more than a stale copy does.
+
+The doors stay, and still say **✨ A newer version is ready — fetch it**, for
+anybody deep in a mini-game while the fetch politely waits. Nothing pops up and
+nothing ever reloads out from under a finger. On a plain static host there is no
+`/version` to ask, so nothing is ever claimed to be out of date and nothing is
+ever fetched — the door still works, it just never lights up.
 
 ## What is deliberately missing
 

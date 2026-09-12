@@ -55,11 +55,17 @@ cycle. If something must be stopped, name it exactly.
   player downloads changed, and `npm run deployed` will still say yes.
 - The same id is written into the page it serves (`<meta name="olw-build">`),
   so a copy on somebody's screen knows whether it is still the one being served.
-  `src/core/fresh.js` asks whenever the app comes back to the front, and the
-  **↻ Fetch the game again** door changes what it says. Nothing pops up and
-  nothing reloads underneath a player. Test it against a stamped server: the
-  page is `content="dev"` on disk and on any host that does not stamp it, and
-  that is the signal to keep quiet, not a bug.
+  `src/core/fresh.js` asks whenever the app comes back to the front and on a
+  slow timer besides, and then **fetches the newer build itself** — nobody on a
+  Home Screen ever reads a door. It waits for a quiet moment first (no panel,
+  no menu, no mode, no finger down, nothing half typed), saves the village to
+  this device *and* the server, and says one line on its way out. Never in the
+  first twenty seconds of a page's life and never twice: a reload loop is far
+  worse than a stale copy. Nothing pops up, and nothing reloads out from under
+  a finger. The **↻ Fetch the game again** doors stay, for anybody deep in a
+  mini-game while the fetch politely waits. Test it against a stamped server:
+  the page is `content="dev"` on disk and on any host that does not stamp it,
+  and that is the signal to keep quiet, not a bug.
 
 ## Never reset somebody's world
 
@@ -83,6 +89,26 @@ A saved world is brought up to date on load; it is never thrown away.
   nothing — the other two hand the world straight back on the next visit. That
   is what `Session.startOver()` is for, and why the directory takes a tick 0
   world only when it is told this is a reset.
+
+## Never take back what somebody just did
+
+A guest applies its own actions at once so the game feels instant, and the host
+is still the authority — but a snapshot that left before the action arrived must
+never be allowed to undo it. That cost a road once, on the screen that laid it.
+
+- `Session.dispatch()` names every action and, on a guest, keeps it in
+  `pending`. The host acks each action it applies; `reconcile()` replays
+  everything still pending onto an incoming snapshot before adopting it.
+- Five seconds without an ack and it is let go, so an action the host really
+  refused does not haunt every snapshot for ever.
+- So an action must stay safe to apply twice. The reducer already does this by
+  checking state first — a felled tree is not standing, a laid road is already
+  road — and a new action has to hold that line or it will double up in the
+  race window.
+- The handshake matters too: a reconnect says hello again, an undecided peer
+  echoes hello back, and anybody who hears a lower peer id than their own waits
+  rather than racing for the clock. `tests/session.test.mjs` wires two real
+  sessions together and covers all of it.
 
 ## Adding a project
 

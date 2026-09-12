@@ -6,12 +6,12 @@ import { Directory, apiBase } from './net/directory.js';
 import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
 import { installInput, renderModeBar, closeBubble, buildProject } from './ui/interact.js';
-import { message, closePanel, closeMenu, clearMessages } from './ui/overlay.js';
+import { message, closePanel, closeMenu, clearMessages, isPanelOpen } from './ui/overlay.js';
 import { ROLE, otherRole, byId, can } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
 import { deviceId, rememberWorld } from './core/persist.js';
-import { newerBuild, watchForNewer, reloadNow } from './core/fresh.js';
+import { newerBuild, watchForNewer, reloadNow, whenQuiet } from './core/fresh.js';
 import { startScreen } from './ui/start.js';
 import { openInvite } from './ui/invite.js';
 import { showChangelog, VERSION } from './ui/whatsnew.js';
@@ -26,6 +26,17 @@ const qs = new URLSearchParams(location.search);
 const dir = new Directory(apiBase(qs));
 const device = deviceId();
 let screen = null;
+let liveGame = null;   // the game object, once a world is actually up and running
+
+// A tap in progress anywhere is not a quiet moment, wherever on the page it
+// lands — this is the one thing `whenQuiet` needs that nothing else here
+// already tracks, so it is watched for on its own.
+let pointerDown = false;
+window.addEventListener('touchstart', () => { pointerDown = true; }, { passive: true });
+window.addEventListener('touchend', () => { pointerDown = false; }, { passive: true });
+window.addEventListener('touchcancel', () => { pointerDown = false; }, { passive: true });
+window.addEventListener('mousedown', () => { pointerDown = true; });
+window.addEventListener('mouseup', () => { pointerDown = false; });
 
 /* ------------------------------------------------------------------ */
 /* start screen                                                       */
@@ -42,6 +53,37 @@ function showReloadLabel() {
   // the front door has no icon column, so the sign carries its own picture
   b.textContent = (news ? '✨ ' : '↻ ') + tr(news ? 'ui.reloadNew' : 'ui.reload');
   b.className = 'link-btn' + (news ? ' fresh' : '');
+}
+
+/**
+ * Is right now a moment a reload can happen in without taking anything with
+ * it? At the front door there is no world yet, so nothing ever is in progress
+ * — always yes. Mid-game it means every door onto the world itself is shut: no
+ * panel open, no drop-down menu open, no mode running (the road-drawing and
+ * sheep-walking bar), and no finger still down.
+ */
+function quietForReload() {
+  // half a typed world name is the one thing the front door can lose
+  const typing = document.activeElement;
+  if (typing && typing.tagName === 'INPUT') return false;
+  if (!liveGame) return true;
+  const menu = document.getElementById('menuLayer');
+  return !isPanelOpen() && menu.classList.contains('hidden') && !liveGame.mode && !pointerDown;
+}
+
+/**
+ * The fetch itself, once it is safe. Mid-game the village is saved to this
+ * device and the server first, so the blink loses nothing; at the front door
+ * there is no village yet to lose, so it goes straight there.
+ */
+function fetchNewBuild() {
+  if (liveGame) {
+    message(tr('ui.reloadFetching'));
+    liveGame.session.checkpoint();
+    reloadNow(liveGame.worldName);
+  } else {
+    reloadNow();
+  }
 }
 
 /** Fill in the start screen in whichever language, and offer the other one. */
@@ -98,9 +140,11 @@ async function boot() {
 
   // the way out of a Home Screen app, which has no address bar to reload from
   document.getElementById('reloadBtn').addEventListener('click', () => reloadNow());
-  // coming back to the app is the one moment it can find out that it is old, so
-  // that is when we ask — quietly. Nothing pops up; the doors just say more.
-  watchForNewer(showReloadLabel);
+  // coming back to the app, and now and then besides, is when it finds out
+  // whether it is old. The doors say more either way, and the moment it is
+  // safe to, the game fetches the newer build itself — nobody has to notice
+  // the doors to get it.
+  watchForNewer(() => { showReloadLabel(); whenQuiet(quietForReload, fetchNewBuild); });
 
   // one question to the host: is there a world directory here? The answer is
   // remembered, so a static host is asked once ever and costs one 404.
@@ -376,6 +420,7 @@ async function startGame(choice) {
     },
   };
 
+  liveGame = game;    // from here on, `quietForReload` is checking this world
   const hud = new Hud(game);
   game.hud = hud;
 

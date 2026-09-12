@@ -128,6 +128,7 @@ export const de = {
   'ui.reload': 'Das Spiel neu holen',
   'ui.reloadNew': 'Eine neuere Fassung ist da — hol sie',
   'ui.reloadNote': 'Vorher wird alles gespeichert. Das Dorf kommt genau so zurück.',
+  'ui.reloadFetching': 'Die neue Fassung wird geholt …',
   'ui.back': 'Zurück',
   'ui.have': 'hast',
   'ui.need': 'brauchst',

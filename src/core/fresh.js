@@ -10,6 +10,11 @@
 // answers mean the thing on screen is old. A plain static host does neither, so
 // nothing is ever claimed to be out of date there — the door is still open, it
 // just never lights up.
+//
+// A door only helps if somebody thinks to open it, and on a Home Screen nobody
+// ever does — so the game fetches the newer build itself, the moment doing so
+// costs nothing. `watchForNewer` keeps asking without being asked to, and
+// `whenQuiet` waits for a moment nothing can be lost in before it acts.
 
 /** The build this page was downloaded from, or '' where nobody stamped it. */
 export const BUILD = (function () {
@@ -18,9 +23,13 @@ export const BUILD = (function () {
   return v === 'dev' ? '' : v;                  // 'dev' is the unstamped file
 })();
 
-const QUIET_FOR = 60000;   // never ask twice in the same minute
+const QUIET_FOR = 60000;    // never ask twice in the same minute
+const POLL_EVERY = 180000;  // and ask again on a slow timer even if nobody switches away and back
+const STARTUP_GRACE = 20000; // never reload out from under somebody who just arrived
+const startedAt = Date.now();
 let asked = 0;
 let newer = null;
+let reloaded = false;       // at most once per page life; a reload loop beats a stale copy at nothing
 
 /** The newer build we have already seen, or null. No question asked. */
 export function newerBuild() { return newer; }
@@ -56,9 +65,12 @@ export function reloadNow(world) {
 }
 
 /**
- * Ask again whenever the app comes back to the front — which, on a Home Screen,
- * is the only moment it ever gets the chance. `onNews` is called once, if and
- * when there turns out to be something newer.
+ * Ask whenever the app comes back to the front — which, on a Home Screen, used
+ * to be the only moment it ever got the chance — and besides that, on a slow
+ * timer, so a copy left open on one screen for an afternoon still finds out.
+ * `onNews` is called once, if and when there turns out to be something newer;
+ * `askIfNewer`'s own `QUIET_FOR` guard means none of this can turn into asking
+ * more than once a minute, however often `look` runs.
  */
 export function watchForNewer(onNews) {
   const look = function () {
@@ -67,5 +79,29 @@ export function watchForNewer(onNews) {
   };
   document.addEventListener('visibilitychange', look);
   window.addEventListener('pageshow', look);
+  setInterval(look, POLL_EVERY);
   look();
+}
+
+/**
+ * Do the newer build no harm in waiting for: act the instant `isQuiet()` says
+ * yes, and not a moment before. A place where nothing is ever in progress —
+ * the front door — can hand in a function that always says yes, and this
+ * fires the first time it is asked; mid-game it is checked every couple of
+ * seconds until a panel closes, a menu closes, a mode ends and a finger lifts.
+ *
+ * Never in the first `STARTUP_GRACE` of a page's life, so a `/version` that
+ * flaps right after a deploy can never trap somebody arriving right then — and
+ * never more than once ever, because a reload loop would cost far more than a
+ * stale copy does.
+ */
+export function whenQuiet(isQuiet, go) {
+  if (reloaded) return;
+  const tryNow = function () {
+    if (reloaded) return;
+    if (Date.now() - startedAt < STARTUP_GRACE || !isQuiet()) { setTimeout(tryNow, 2000); return; }
+    reloaded = true;
+    go();
+  };
+  tryNow();
 }

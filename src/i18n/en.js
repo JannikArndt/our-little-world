@@ -128,6 +128,7 @@ export const en = {
   'ui.reload': 'Fetch the game again',
   'ui.reloadNew': 'A newer version is ready — fetch it',
   'ui.reloadNote': 'Everything is saved first. The village comes back exactly as it is.',
+  'ui.reloadFetching': 'Fetching the new version…',
   'ui.back': 'Back',
   'ui.have': 'have',
   'ui.need': 'need',

@@ -475,6 +475,11 @@ upgrade goes through `api.mjs`'s checks.
   connection. These govern only the HTTP request/header phase; a relay socket
   is handed off to `attachRelay`'s own upgrade handling the moment it arrives
   and is never subject to them.
+- **The boot log prints whether `TRUST_PROXY` is on**, right after the "N
+  world(s) remembered" line — a `rate limits:` line saying which of the two
+  modes described below this instance is actually running in. A config that
+  only lives in an environment variable is invisible until something asks; now
+  every restart says it in the one place an operator already looks.
 
 ### `server/api.mjs` — the gate
 
@@ -493,18 +498,34 @@ upgrade goes through `api.mjs`'s checks.
 - **`clientIp()` decides which address a request counts against.** By default
   it is `req.socket.remoteAddress` — behind a reverse proxy, that is the
   proxy's own address, so every visitor shares one bucket. Setting
-  `TRUST_PROXY=1` switches it to the **last** entry in `X-Forwarded-For`: a
-  standard proxy (nginx's `$proxy_add_x_forwarded_for`, which is what CapRover
-  generates) *appends* its own idea of the address rather than replacing what
-  arrived, so the last entry is the only one the proxy actually vouches for —
-  a client can write anything it likes earlier in the list. Taking the first
-  entry instead was a real bug here for a short time; `tests/worlds.test.mjs`
-  now specifically simulates a client prepending a fresh lie on every request
-  and checks it buys nothing. **`TRUST_PROXY` defaults off** because this only
-  tells the truth when every request provably comes through one trusted proxy
-  — flip it on only after confirming, for wherever this is deployed, that the
-  app container is not reachable except through that proxy, and that nothing
-  else (a CDN, another load balancer) sits in front adding its own hop.
+  `TRUST_PROXY=1` switches it to, in order: **`X-Real-IP`**, if present, or
+  else the **last** entry in `X-Forwarded-For`. `X-Real-IP` is preferred
+  because there is nothing to get wrong about it — a well-behaved proxy always
+  overwrites it with its own directly-observed peer, so a client cannot make
+  it say anything else. `X-Forwarded-For` is the fallback for a proxy that
+  only sets that one: a standard proxy *appends* its own idea of the address
+  rather than replacing what arrived, so the last entry is the only one it
+  actually vouches for — a client can write anything it likes earlier in the
+  list. Taking the first entry instead was a real bug here for a short time;
+  `tests/worlds.test.mjs` simulates a client prepending a fresh lie on every
+  request and checks it buys nothing, and a second test checks `X-Real-IP`
+  wins whenever both headers are present. **`TRUST_PROXY` defaults off in the
+  code** because this only tells the truth when every request provably comes
+  through one trusted proxy — flip it on only after confirming, for wherever
+  this is deployed, that the app container is not reachable except through
+  that proxy, and that nothing else (a CDN, another load balancer) sits in
+  front adding its own hop. For CapRover specifically, both headers are
+  confirmed set correctly — `template/server-block-conf.ejs` in CapRover's own
+  source sets `X-Real-IP $remote_addr` and
+  `X-Forwarded-For $proxy_add_x_forwarded_for`
+  (<https://raw.githubusercontent.com/caprover/caprover/master/template/server-block-conf.ejs>,
+  fetched to confirm this) — so enabling it is safe there once the "nothing
+  else sits in front of CapRover's nginx" precondition is confirmed
+  separately. **Currently on for `dev`, not yet for `prod`** — the deployer
+  flips prod once dev is confirmed working; the boot log's `rate limits:` line
+  (`server/serve.mjs`, above) is the live source of truth for which is
+  currently true on a given running instance, since this note will not update
+  itself.
 - **`MAX_BODY` (1 MB)** is enforced incrementally as chunks arrive, with an
   immediate `req.destroy()` past the limit — never buffered unbounded first.
 - **Every route checks its own method**; a wrong verb is a `405`, not a
@@ -634,8 +655,9 @@ build hash does not make a thing servable.
 - **The public lobby (`GET /api/worlds`) lists every world with a free spot,
   touched in the last week, by name** — not a full or old world, but still
   nothing stops a stranger from taking that free seat before the real second
-  player arrives. Needs an owner decision (scope discovery to the creating
-  device, versus keep it a public browse list) before it is touched — see
+  player arrives. **Kept as is, on purpose: the owner weighed this against
+  scoping discovery to the creating device and chose the risk over the
+  ease-of-use cost.** Revisit only if that trade-off stops feeling right — see
   law 7 and the "🪑 A seat belongs to a person" section above for the
   legitimate case this has to keep working.
 - **The relay has no server-side notion of "host."** Any connected peer's
@@ -652,8 +674,6 @@ build hash does not make a thing servable.
   stylesheet are inline, not external files, so a strict CSP would break it
   outright — that page needs its code extracted first, a real if mechanical
   refactor, before it can share whatever CSP `index.html` gets.
-- **`TRUST_PROXY` defaults off** — see `server/api.mjs` above; it needs a
-  human to confirm the deployment's actual proxy topology first.
 
 ### A periodic checklist
 
@@ -667,8 +687,9 @@ build hash does not make a thing servable.
 | Transport headers | nosniff, referrer-policy, frame-ancestors, timeouts | `serve.mjs` |
 | TLS | terminated by CapRover's proxy, outside this repo | — |
 | Supply chain | Actions pinned to SHAs, base image pinned by digest, `caprover` version-pinned, dependabot | `.github/workflows/deploy.yml`, `Dockerfile`, `.github/dependabot.yml` |
-| Logging | none of this ever logs an IP, device id, or world content | disk-error codes and the boot-time LAN address are the only things printed anywhere |
-| **Known gaps** | public lobby scoping; no relay host authority; `stats.html` has no CSP path; `TRUST_PROXY` needs manual confirmation | see above |
+| Logging | none of this ever logs an IP, device id, or world content | disk-error codes, the boot-time LAN address, and the boot-time `rate limits:` line are the only things printed anywhere |
+| **Known gaps** | no relay host authority; `stats.html` has no CSP path | see above |
+| **Accepted trade-offs** | public lobby lists every joinable world by name, on purpose (owner decision) | see above |
 
 ---
 

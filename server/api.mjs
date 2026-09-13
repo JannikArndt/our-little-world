@@ -52,8 +52,13 @@ export function createApi(store, opts) {
 
   function clientIp(req) {
     if (trustProxy) {
+      // a standard reverse proxy (nginx's $proxy_add_x_forwarded_for, which
+      // is what CapRover generates) appends its own idea of the address
+      // rather than replacing whatever arrived — so the entry it just added,
+      // the *last* one, is the only one the proxy actually vouches for. A
+      // client can write anything it likes earlier in the list.
       const xff = req.headers['x-forwarded-for'];
-      if (xff) return String(xff).split(',')[0].trim();
+      if (xff) return String(xff).split(',').pop().trim();
     }
     return req.socket?.remoteAddress || 'local';
   }

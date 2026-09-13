@@ -523,3 +523,29 @@ test('TRUST_PROXY=1 gives each forwarded address its own budget', async t => {
   assert.ok(refused >= 5, 'the first address did get throttled on its own');
   assert.equal(await createAs('2.2.2.2'), 201, 'a different address still has its own budget');
 });
+
+test('TRUST_PROXY=1 trusts the last hop, not whatever a client wrote first', async t => {
+  // a real proxy appends its own idea of the address rather than replacing
+  // what arrived — so a client prepending a made-up address ahead of the
+  // real one must not be able to pick its own bucket that way
+  process.env.TRUST_PROXY = '1';
+  t.after(() => delete process.env.TRUST_PROXY);
+  const { server, base } = await listen();
+  t.after(() => server.close());
+  const createWithChain = xff =>
+    fetch(base + '/api/worlds', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-forwarded-for': xff },
+      body: JSON.stringify({ device: 'x' }),
+    }).then(r => r.status);
+
+  let refused = 0;
+  for (let i = 0; i < 35; i++)
+    if ((await createWithChain('made-up-' + i + ', 3.3.3.3')) === 429) refused++;
+  assert.ok(refused >= 5, 'a different claimed first hop each time changed nothing');
+  assert.equal(
+    await createWithChain('a-fresh-lie, 3.3.3.3'),
+    429,
+    'the real (last, proxy-appended) address is what is actually throttled',
+  );
+});

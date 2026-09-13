@@ -55,7 +55,7 @@ export class Worlds {
       if (!f.endsWith('.json')) continue;
       try {
         const w = JSON.parse(await readFile(join(this.dir, f), 'utf8'));
-        if (w && w.name) this.worlds.set(w.name, normalise(w));
+        if (w?.name) this.worlds.set(w.name, normalise(w));
       } catch {
         /* a half-written file is not worth a crash */
       }
@@ -146,7 +146,7 @@ export class Worlds {
     const o = opts || {};
     const t = this.now();
     const name = o.name && !this.worlds.has(o.name) ? o.name : randomName(this.worlds);
-    const roles = o.roles && o.roles.length ? o.roles.slice() : DEFAULT_ROLES.slice();
+    const roles = o.roles?.length ? o.roles.slice() : DEFAULT_ROLES.slice();
     const w = {
       name,
       created: t,
@@ -293,7 +293,7 @@ export class Worlds {
 
   getSnapshot(name) {
     const w = this.worlds.get(name);
-    return w && w.snapshot ? w.snapshot : null;
+    return w?.snapshot || null;
   }
 
   /** How much this gets played, and how far people get. Counts only. */
@@ -340,7 +340,7 @@ function normalise(w) {
     seen: Number(w.seen) || Number(w.created) || Date.now(),
     roles: Array.isArray(w.roles) && w.roles.length ? w.roles.map(String) : DEFAULT_ROLES.slice(),
     slots: w.slots && typeof w.slots === 'object' ? w.slots : {},
-    snapshot: w.snapshot && w.snapshot.world ? w.snapshot : null,
+    snapshot: w.snapshot?.world ? w.snapshot : null,
     active: w.active && typeof w.active === 'object' ? w.active : {},
     far: w.far && typeof w.far === 'object' ? w.far : null,
   };

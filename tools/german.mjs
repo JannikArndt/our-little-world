@@ -60,7 +60,7 @@ await p.click('text=Zurück');
 await p.waitForTimeout(200);
 
 await p.click('[data-role="BOTH"]');
-await p.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+await p.waitForFunction(() => window.OLW?.world, null, { timeout: 8000 });
 // the day starts on its own now, no offer panel to click through
 await p.waitForFunction(() => window.OLW.world.block.active, null, { timeout: 8000 });
 await p.waitForTimeout(700);

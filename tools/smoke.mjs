@@ -89,9 +89,9 @@ async function main() {
       iconOk: i.ok,
       type: i.headers.get('content-type'),
       manOk: m.ok,
-      icons: j && j.icons ? j.icons.length : 0,
-      name: j && j.short_name,
-      startUrl: (j && j.start_url) || null,
+      icons: j?.icons ? j.icons.length : 0,
+      name: j?.short_name,
+      startUrl: j?.start_url || null,
     };
   });
   console.log('the Home Screen icon:', JSON.stringify(icon));
@@ -111,7 +111,7 @@ async function main() {
 
   await page.click('[data-role="BOTH"]');
   await page.waitForSelector('#game:not(.hidden)');
-  await page.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+  await page.waitForFunction(() => window.OLW?.world, null, { timeout: 8000 });
   // the day now starts on its own, with no offer panel to click through
   await page.waitForFunction(() => window.OLW.world.block.active, null, { timeout: 8000 });
   await step(page, '02-world', 900);
@@ -1013,7 +1013,7 @@ async function main() {
     watch(po, 'start-over');
     const room = 'over' + Math.floor(Math.random() * 1e6);
     await po.goto(BASE + '/?world=' + room + '&role=A', { waitUntil: 'load' });
-    await po.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 15000 });
+    await po.waitForFunction(() => window.OLW?.world, null, { timeout: 15000 });
 
     // build up a village worth losing, and let the server hear about it
     await po.evaluate(() => {
@@ -1056,7 +1056,7 @@ async function main() {
     const po2 = await over.newPage();
     watch(po2, 'start-over');
     await po2.goto(BASE + '/?world=' + room + '&role=A', { waitUntil: 'load' });
-    await po2.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 15000 });
+    await po2.waitForFunction(() => window.OLW?.world, null, { timeout: 15000 });
     await po2.waitForTimeout(600);
     const back = await po2.evaluate(() => window.OLW.world.players.A.res.wood);
     console.log('and on the way back in:', back);
@@ -1076,7 +1076,7 @@ async function main() {
     const pA = await ctxA.newPage();
     watch(pA, 'welcome-a');
     await pA.goto(BASE + '/?world=' + room + '&role=A', { waitUntil: 'load' });
-    await pA.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 15000 });
+    await pA.waitForFunction(() => window.OLW?.world, null, { timeout: 15000 });
     await pA.evaluate(() => {
       const w = window.OLW.world;
       w.players.A.res.wood = 5;
@@ -1090,7 +1090,7 @@ async function main() {
     const pB = await ctxB.newPage();
     watch(pB, 'welcome-b');
     await pB.goto(BASE + '/?world=' + room + '&role=B', { waitUntil: 'load' });
-    await pB.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 15000 });
+    await pB.waitForFunction(() => window.OLW?.world, null, { timeout: 15000 });
     await pB
       .waitForFunction(
         () => !document.getElementById('overlay').classList.contains('hidden'),
@@ -1127,7 +1127,7 @@ async function main() {
     const pB2 = await ctxB.newPage();
     watch(pB2, 'welcome-b-again');
     await pB2.goto(BASE + '/?world=' + room + '&role=B', { waitUntil: 'load' });
-    await pB2.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 15000 });
+    await pB2.waitForFunction(() => window.OLW?.world, null, { timeout: 15000 });
     await pB2.waitForTimeout(600);
     const backAgain = await pB2.evaluate(
       () => !document.getElementById('overlay').classList.contains('hidden'),
@@ -1145,10 +1145,10 @@ async function main() {
     watch(pa, 'A');
     watch(pb, 'B');
     await pa.goto(BASE + '/?room=duo&role=A');
-    await pa.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+    await pa.waitForFunction(() => window.OLW?.world, null, { timeout: 8000 });
     // the day starts on its own now, nothing to click through
     await pb.goto(BASE + '/?room=duo&role=B');
-    await pb.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+    await pb.waitForFunction(() => window.OLW?.world, null, { timeout: 8000 });
     await pb.waitForTimeout(2500);
     const how = await pa.evaluate(() => window.OLW.session.transport.constructor.name);
     console.log('transport when the relay is running:', how);
@@ -1225,7 +1225,7 @@ async function main() {
     const pg = await c.newPage();
     watch(pg, name);
     await pg.goto(BASE + '/?room=look&role=BOTH');
-    await pg.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+    await pg.waitForFunction(() => window.OLW?.world, null, { timeout: 8000 });
     await pg.waitForTimeout(1200);
     await pg.screenshot({ path: SHOTS + '30-' + name + '.png' });
     const overflow = await pg.evaluate(
@@ -1279,7 +1279,7 @@ async function main() {
   watch(ph, 'phone');
   await ph.goto(BASE + '/?room=notch&role=BOTH');
   await ph.addStyleTag(notch);
-  await ph.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+  await ph.waitForFunction(() => window.OLW?.world, null, { timeout: 8000 });
   await ph.addStyleTag(notch);
   await ph.waitForTimeout(700);
 
@@ -1493,7 +1493,7 @@ async function main() {
   if (!loudness.quiet) throw new Error('the way to start another world has gone missing');
 
   await ph.click('#startBody .world-card');
-  await ph.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+  await ph.waitForFunction(() => window.OLW?.world, null, { timeout: 8000 });
   await ph.waitForTimeout(600);
   const kept = await ph.evaluate(() => window.OLW.world.buildings.length);
   console.log('the village was still there when we walked back in:', kept, 'buildings');
@@ -1515,7 +1515,7 @@ async function main() {
   if (!afterFetch.start || afterFetch.world !== 'Notch')
     throw new Error('the reload door lost the world');
   await ph.click('#startBody .world-card');
-  await ph.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+  await ph.waitForFunction(() => window.OLW?.world, null, { timeout: 8000 });
   await ph.waitForTimeout(600);
   const keptAgain = await ph.evaluate(() => window.OLW.world.buildings.length);
   console.log('the village survived the reload:', keptAgain, 'buildings');

@@ -372,7 +372,7 @@ test('in the evening the people go in, and a new day brings them out again', () 
   );
   run(w, 200);
   assert.equal(
-    w.villagers.some(v => v.path && v.path.length),
+    w.villagers.some(v => v.path?.length),
     true,
     'and they get on with the day',
   );

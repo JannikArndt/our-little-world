@@ -296,6 +296,22 @@ build step; these are `devDependencies` and they never reach a player.
 | **`node --test`** | the unit tests, no framework |
 | **Playwright** | the browser passes in `tools/` |
 
+**The modern-syntax floor is two rules of our own**, written into
+`eslint.config.mjs` rather than pulled in — `olw/optional-chaining` and
+`olw/nullish`, about thirty lines, no dependency. They flag only the shapes
+where the old way and the new way are the same value in *every* case, because
+a rule that is sometimes wrong is a rule somebody switches off. `v.task &&
+v.task.kind !== 'gohome'` is **not** `v.task?.kind !== 'gohome'` — undefined is
+not `'gohome'` — and widening either rule until it says so would send a
+villager off at dusk with nothing to do. `tests/tooling.test.mjs` holds both
+halves: what they catch, and what they must leave alone. The same floor in CSS
+is a test rather than a rule, because nothing here lints a stylesheet.
+
+`.claude/hooks/session-start.sh` installs them when a session starts in the
+cloud, because a web session begins at a fresh clone and the first `npm run
+check` otherwise falls over on a missing package. It does nothing on a machine
+of your own, and it never fetches a browser this environment already has.
+
 Rules for touching the tooling:
 
 - **A new devDependency needs a reason written next to it**, in the table above.
@@ -570,9 +586,11 @@ during `npm run verify`.
   variables for the notch and `--app-h` for the part of the screen the browser
   is actually showing, because those are what a phone needs.
 - **Modern JavaScript everywhere.** The code was once written down to Safari 12
-  and avoids optional chaining, `??` and flexbox `gap`. That floor is gone and
-  a one-off sweep to modern syntax is planned (`TODO.md`); until it lands, write
-  new code modern and do not imitate the old style.
+  and wrote around optional chaining, `??` and flexbox `gap`. That floor is
+  gone, the sweep has landed, and ESLint keeps it — see the tooling table. What
+  is left of the old style is deliberate: a handful of `a && a.b` that do not
+  mean the same thing written the new way, each of them a comparison rather
+  than a plain read.
 - A panel is a scrolling middle and a foot that does not move; buttons live in
   the foot so nothing can push them off a phone screen.
 - **The art is drawn in code by default** — every tree, sheep and roof is `ctx`

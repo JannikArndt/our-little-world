@@ -22,7 +22,7 @@ p.on('console', m => {
   if (m.type() === 'error') errs.push(m.text());
 });
 await p.goto(BASE + '/?room=look' + Math.random().toString(36).slice(2, 6) + '&role=BOTH');
-await p.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 8000 });
+await p.waitForFunction(() => window.OLW?.world, null, { timeout: 8000 });
 await p.click('text=Five minutes together').catch(() => {});
 if (zoom)
   await p.evaluate(z => {

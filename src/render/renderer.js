@@ -459,7 +459,7 @@ export class Renderer {
           if (o.state === 'standing') art.drawTree(ctx, o, time);
           else if (o.state === 'sapling') art.drawSapling(ctx, o, time);
           else {
-            const age = w.tick - (o.fellTick != null ? o.fellTick : -999);
+            const age = w.tick - (o.fellTick ?? -999);
             if (age < 18) {
               art.drawStump(ctx, o);
               art.drawFallingTree(ctx, o, age / 18);

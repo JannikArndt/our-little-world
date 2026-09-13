@@ -38,7 +38,7 @@ export function createApi(store, opts) {
   let cached = null;
 
   function allowedToCreate(req) {
-    const ip = (req.socket && req.socket.remoteAddress) || 'local';
+    const ip = req.socket?.remoteAddress || 'local';
     const t = now();
     const b = buckets.get(ip) || { n: 0, until: t + 3600000 };
     if (t > b.until) {

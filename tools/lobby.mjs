@@ -21,8 +21,7 @@ const watch = (page, tag) => {
   });
 };
 const shot = (page, name) => page.screenshot({ path: SHOTS + name + '.png' });
-const inWorld = page =>
-  page.waitForFunction(() => window.OLW && window.OLW.world, null, { timeout: 10000 });
+const inWorld = page => page.waitForFunction(() => window.OLW?.world, null, { timeout: 10000 });
 
 const browser = await chromium.launch();
 

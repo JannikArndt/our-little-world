@@ -57,7 +57,7 @@ export class Stats {
     if (!this.file) return this;
     try {
       const raw = JSON.parse(await readFile(this.file, 'utf8'));
-      if (raw && raw.days) this.ledger = normalise(raw);
+      if (raw?.days) this.ledger = normalise(raw);
     } catch {
       /* no ledger yet, or half a ledger: start counting again */
     }
@@ -234,7 +234,7 @@ export class Stats {
 /** The things worth knowing a world reached, read off the world itself. */
 export function marksOf(w) {
   const m = {};
-  if (w.bridge && w.bridge.built) m.bridge = 1;
+  if (w.bridge?.built) m.bridge = 1;
   const bs = Array.isArray(w.buildings) ? w.buildings : [];
   for (const b of bs) {
     if (b.state !== 'built') continue;

@@ -31,8 +31,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # checkout leaves the workspace at the git root on a real "main" branch,
-      # which is all the CapRover CLI needs: it tars that branch and the server
+      # checkout leaves the workspace at the git root on a real branch — main
+      # for a push, or whichever branch this run was dispatched from — which
+      # is all the CapRover CLI needs: it tars that branch and the server
       # builds the Dockerfile named by captain-definition. Pinned, and the
       # token rides in an env var rather than an argument — a CLI argument
       # sits in plain sight of anything else running in the same step.
@@ -42,7 +43,7 @@ jobs:
           caprover deploy \
             --caproverUrl ${{ secrets.CAPROVER_SERVER }} \
             --appName ${{ secrets.CAPROVER_APP_DEV }} \
-            --branch main
+            --branch ${{ github.ref_name }}
         env:
           CAPROVER_APP_TOKEN: ${{ secrets.CAPROVER_APP_TOKEN_DEV }}
 
@@ -55,6 +56,11 @@ jobs:
 
   deploy-prod:
     needs: deploy-dev
+    # deploy-dev now takes whichever branch a run was dispatched from — prod
+    # never should. This is the one gate that keeps a manual dispatch of a
+    # branch that isn't main from ever reaching it; a real push to main is
+    # the only event that satisfies both this and the on.push.branches filter.
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

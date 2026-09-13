@@ -44,6 +44,31 @@ House style says modern JS everywhere; the code still avoids optional chaining,
 
 ---
 
+## 3. 👆 The raw world-taps in the play-through
+
+This bug class has cost three runs now, twice failing only in CI after passing
+here: a step taps a bare screen coordinate, a villager has wandered onto that
+tile, and a person answers a tap before the ground does.
+
+`tools/smoke.mjs` has around twenty `page.mouse.click(...)` calls. Most are
+inside a mini-game — house slots, sawmill boxes, the water — where nobody can be
+standing, and those are fine. The ones to audit are the taps on **world tiles**:
+the trees, the workshop, the crossing, the built house, and any other that takes
+its point from `renderer.toScreen()` on a tile.
+
+- Each of those should choose a free tile *first* and look at it *second*, then
+  `tapTile([thatTile])`.
+- **`tapTile` itself has the sharper edge**: it centres the camera on the first
+  candidate but may tap a later one, and when every candidate is covered or off
+  screen it falls back to the first *unguarded*. Either make the fallback throw
+  with a useful message, or make it never return a point it has not checked.
+  A helper that silently taps a bad spot is worse than no helper.
+- Deliberate taps on a person (there is at least one) stay as they are — say so
+  in a comment so the next audit does not "fix" them.
+
+*Not glamorous, and it is the difference between a gate that means something and
+one that cries wolf.*
+
 ## ✅ Settled — do not reopen without asking
 
 - **Tracing stays exactly as it is.** A seven-year-old can read and write and

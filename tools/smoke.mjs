@@ -178,10 +178,12 @@ async function main() {
       const r = canvas.getBoundingClientRect();
       g.look(w.larder.x, w.larder.y, 2.4);
       const p = g.renderer.toScreen(w.larder.x * 24, w.larder.y * 24);
-      const busy = w.villagers.some(
-        v => Math.abs(v.x - w.larder.x) < 1 && Math.abs(v.y - w.larder.y) < 1,
-      );
-      return { x: r.left + p.x, y: r.top + p.y, busy };
+      const x = r.left + p.x,
+        y = r.top + p.y;
+      const busy =
+        w.villagers.some(v => Math.abs(v.x - w.larder.x) < 1 && Math.abs(v.y - w.larder.y) < 1) ||
+        document.elementFromPoint(x, y) !== canvas;
+      return { x, y, busy };
     });
     if (basketPt.busy) {
       await page.waitForTimeout(300);
@@ -210,37 +212,74 @@ async function main() {
   /**
    * Tap a tile, choosing whichever of the given ones nobody is standing on —
    * people answer a tap before the ground does, which is right in the game and
-   * flaky in a test.
+   * flaky in a test. Candidates are tile coordinates; the tap lands in the
+   * middle of the tile, so a fraction moves it about within one.
+   *
+   * It never taps a point it has not just looked at. The camera is moved to
+   * the candidate it means to tap (or to `lookAt`, when the framing matters),
+   * the world is given a moment to settle, and only then is the same tile
+   * checked again with the click one round trip away. A candidate that fails
+   * three times is dropped, and when nothing is left it says what was in the
+   * way rather than tapping a spot it has never looked at — which is how a
+   * sapling once went to the tile Anna was standing on.
    */
   const tapTile = async (cands, lookAt) => {
-    const pt = await api(
-      arg => {
-        const g = window.OLW,
-          w = g.world;
-        const canvas = document.getElementById('world');
-        const r = canvas.getBoundingClientRect();
-        g.look(arg.at[0], arg.at[1], 2);
-        const busy = c =>
-          w.villagers.some(v => Math.abs(v.x - c[0]) < 1.3 && Math.abs(v.y - c[1]) < 1.3) ||
-          w.sheep.some(sh => Math.abs(sh.x - c[0]) < 1.3 && Math.abs(sh.y - c[1]) < 1.3);
-        // a spot nobody is standing on, that nothing on top of the world covers
-        for (const c of arg.cands) {
-          if (busy(c)) continue;
+    const strikes = cands.map(() => 0);
+    let why = 'there were no tiles to try';
+    for (let go = 0; go < 8; go++) {
+      // whom the tile has to be clear of, before a camera move is spent on it
+      const i = await api(
+        arg => {
+          const w = window.OLW.world;
+          const busy = c =>
+            w.villagers.some(v => Math.abs(v.x - c[0]) < 1.3 && Math.abs(v.y - c[1]) < 1.3) ||
+            w.sheep.some(sh => Math.abs(sh.x - c[0]) < 1.3 && Math.abs(sh.y - c[1]) < 1.3);
+          return arg.cands.findIndex((c, n) => arg.strikes[n] < 3 && !busy(c));
+        },
+        { cands, strikes },
+      );
+      if (i < 0) {
+        why = 'somebody was standing on every one of them';
+        await page.waitForTimeout(400);
+        continue;
+      }
+      await api(arg => window.OLW.look(arg.at[0], arg.at[1], 2), { at: lookAt || cands[i] });
+      await page.waitForTimeout(300); // the world redraws, and people move on
+      const seen = await api(
+        arg => {
+          const g = window.OLW,
+            w = g.world,
+            c = arg.c;
+          const canvas = document.getElementById('world');
+          const r = canvas.getBoundingClientRect();
+          if (
+            w.villagers.some(v => Math.abs(v.x - c[0]) < 1.3 && Math.abs(v.y - c[1]) < 1.3) ||
+            w.sheep.some(sh => Math.abs(sh.x - c[0]) < 1.3 && Math.abs(sh.y - c[1]) < 1.3)
+          )
+            return { why: 'somebody walked onto it' };
           const p = g.renderer.toScreen(c[0] * 24 + 12, c[1] * 24 + 12);
           const x = r.left + p.x,
             y = r.top + p.y;
-          if (x < r.left + 4 || x > r.right - 4 || y < r.top + 4 || y > r.bottom - 4) continue;
-          if (document.elementFromPoint(x, y) !== canvas) continue;
+          if (x < r.left + 4 || x > r.right - 4 || y < r.top + 4 || y > r.bottom - 4)
+            return { why: 'it sits off the edge of the screen' };
+          const on = document.elementFromPoint(x, y);
+          if (on !== canvas)
+            return {
+              why: 'a ' + ((on && (on.className || on.tagName)) || 'nothing') + ' covers it',
+            };
           return { x, y };
-        }
-        const p = g.renderer.toScreen(arg.cands[0][0] * 24 + 12, arg.cands[0][1] * 24 + 12);
-        return { x: r.left + p.x, y: r.top + p.y };
-      },
-      { cands, at: lookAt || cands[0] },
-    );
-    await page.waitForTimeout(300);
-    await page.mouse.click(pt.x, pt.y);
-    return pt;
+        },
+        { c: cands[i] },
+      );
+      if (seen.why) {
+        strikes[i]++;
+        why = seen.why + ' (tile ' + cands[i] + ')';
+        continue;
+      }
+      await page.mouse.click(seen.x, seen.y);
+      return seen;
+    }
+    throw new Error('none of these tiles could be tapped: ' + JSON.stringify(cands) + ' — ' + why);
   };
 
   /**
@@ -250,16 +289,18 @@ async function main() {
    * another tap rather than a longer wait.
    */
   const tapFor = async (cands, lookAt, words) => {
+    let last = '';
     for (let go = 0; go < 6; go++) {
-      await tapTile(cands, lookAt);
       try {
+        await tapTile(cands, lookAt);
         await page.waitForSelector('text=' + words, { timeout: 2500 });
         return;
-      } catch {
+      } catch (e) {
+        last = e.message;
         await page.waitForTimeout(500);
       }
     }
-    throw new Error('six taps and nothing offered "' + words + '"');
+    throw new Error('six taps and nothing offered "' + words + '": ' + last);
   };
 
   // world sanity
@@ -276,18 +317,12 @@ async function main() {
   console.log('world:', JSON.stringify(info));
   if (!info.block) throw new Error('the play block did not start');
 
-  // tap a tree -> the felling game
-  const treePt = await api(() => {
-    const g = window.OLW,
-      w = g.world;
-    const t = w.trees.find(t => t.state === 'standing');
-    g.look(t.x, t.y, 1.8); // the opening card left us looking at Ted
-    const p = g.renderer.toScreen(t.x * 24 + 12, t.y * 24 + 12);
-    const r = document.getElementById('world').getBoundingClientRect();
-    return { x: r.left + p.x, y: r.top + p.y, id: t.id };
-  });
-  await page.waitForTimeout(300);
-  await page.mouse.click(treePt.x, treePt.y);
+  // tap a tree -> the felling game. Every standing tree is a candidate, so a
+  // person loitering under one costs a tree rather than the run.
+  const anyTree = await api(() =>
+    window.OLW.world.trees.filter(t => t.state === 'standing').map(t => [t.x, t.y]),
+  );
+  await tapFor(anyTree, null, 'Fell this tree');
   await step(page, '04-tree-bubble', 400);
   await page.click('text=Fell this tree');
   await step(page, '05-chop', 600);
@@ -336,17 +371,10 @@ async function main() {
   // overlay from under the felling game. It has to notice and let go, rather
   // than draw on into a canvas nobody can see and close somebody else's card
   // a second later. Taking the overlay away is exactly what that looks like.
-  const nextTree = await api(() => {
-    const g = window.OLW,
-      w = g.world;
-    const t = w.trees.find(t => t.state === 'standing');
-    g.look(t.x, t.y, 2);
-    const p = g.renderer.toScreen(t.x * 24 + 12, t.y * 24 + 12);
-    const r = document.getElementById('world').getBoundingClientRect();
-    return { x: r.left + p.x, y: r.top + p.y };
-  });
-  await page.waitForTimeout(300);
-  await page.mouse.click(nextTree.x, nextTree.y);
+  const stillStanding = await api(() =>
+    window.OLW.world.trees.filter(t => t.state === 'standing').map(t => [t.x, t.y]),
+  );
+  await tapTile(stillStanding);
   await page.waitForTimeout(400);
   const fellBtn = await page.$('text=Fell this tree');
   if (fellBtn) {
@@ -392,28 +420,20 @@ async function main() {
   await api(() => {
     window.OLW.world.players.A.res.wood = 6;
   });
-  const wsPt = await api(() => {
-    const g = window.OLW,
-      w = g.world,
-      b = w.buildings.find(b => b.type === 'workshop');
-    g.look(b.x + b.w / 2, b.y + b.h / 2, 1.8);
-    // somebody standing in the doorway would answer the tap instead of the
-    // workshop, so aim at whichever corner nobody is loitering in
-    const cands = [
-      [b.x + 0.5, b.y + 0.3],
-      [b.x + b.w - 0.5, b.y + 0.3],
-      [b.x + 0.5, b.y + 1.3],
-    ];
-    const clear =
-      cands.find(
-        c => !w.villagers.some(v => Math.abs(v.x - c[0]) < 1.2 && Math.abs(v.y - c[1]) < 1.2),
-      ) || cands[0];
-    const p = g.renderer.toScreen(clear[0] * 24, clear[1] * 24);
-    const r = document.getElementById('world').getBoundingClientRect();
-    return { x: r.left + p.x, y: r.top + p.y };
+  // somebody standing in the doorway would answer the tap instead of the
+  // workshop, so offer every corner and let tapTile take a clear one
+  const workshop = await api(() => {
+    const b = window.OLW.world.buildings.find(b => b.type === 'workshop');
+    return {
+      tiles: [
+        [b.x, b.y],
+        [b.x + b.w - 1, b.y],
+        [b.x, b.y + 1],
+      ],
+      at: [b.x + b.w / 2, b.y + b.h / 2],
+    };
   });
-  await page.waitForTimeout(300);
-  await page.mouse.click(wsPt.x, wsPt.y);
+  await tapFor(workshop.tiles, workshop.at, 'Saw wood into planks');
   await step(page, '07-workshop-bubble', 400);
   await page.click('text=Saw wood into planks');
   await step(page, '08-sawmill', 500);
@@ -449,16 +469,16 @@ async function main() {
     w.players.A.res.plank = 9;
     w.players.A.res.stone = 9;
   });
-  const crossPt = await api(() => {
-    const g = window.OLW,
-      s = g.world.bridge.site;
-    g.look((s.x0 + s.x1 + 1) / 2, s.row + 1, 1.8);
-    const p = g.renderer.toScreen((s.x0 + s.x1 + 1) * 12, (s.row + 1) * 24);
-    const r = document.getElementById('world').getBoundingClientRect();
-    return { x: r.left + p.x, y: r.top + p.y };
+  // the whole crossing, so somebody on the near bank costs nothing
+  const crossing = await api(() => {
+    const s = window.OLW.world.bridge.site;
+    const tiles = [];
+    for (let x = s.x0; x <= s.x1; x++) tiles.push([x, s.row + 0.5]);
+    const mid = Math.round((s.x0 + s.x1) / 2);
+    tiles.sort((a, b) => Math.abs(a[0] - mid) - Math.abs(b[0] - mid));
+    return { tiles, at: [(s.x0 + s.x1 + 1) / 2, s.row + 1] };
   });
-  await page.waitForTimeout(300);
-  await page.mouse.click(crossPt.x, crossPt.y);
+  await tapFor(crossing.tiles, crossing.at, 'Build a bridge here');
   await step(page, '11-crossing-bubble', 400);
   await page.click('text=Build a bridge here');
   await step(page, '12-bridge-design', 600);
@@ -484,6 +504,8 @@ async function main() {
   await step(page, '15b-menu', 300);
   await page.click('text=Play as the Keeper');
   await step(page, '16-keeper', 500);
+  // A deliberate tap on somebody, not on the ground: she is the point. Leave
+  // it alone — the next audit of world taps is not meant to "fix" this one.
   // She is a moving target near the top of a short world. Nothing is laid over
   // the world any more, so it is only her: frame her, check the tap really
   // lands on the canvas, and try again.
@@ -590,7 +612,7 @@ async function main() {
     for (let y = s.y; y < s.y + s.h; y++) for (let x = s.x; x < s.x + s.w; x++) out.push([x, y]);
     return { tiles: out, at: [s.x + s.w / 2, s.y + s.h / 2] };
   });
-  await tapTile(siteTiles.tiles, siteTiles.at);
+  await tapFor(siteTiles.tiles, siteTiles.at, 'Build a house here');
   await step(page, '21-site-bubble', 400);
   await page.click('text=Build a house here');
   await step(page, '22-house-plan', 600);
@@ -704,16 +726,13 @@ async function main() {
   await step(page, '24-house-built', 1200);
 
   // and tapping the house again goes back in, because it is a place now
-  const housePt = await api(() => {
-    const g = window.OLW,
-      b = g.world.buildings.filter(x => x.type === 'house' && x.builtTick != null)[0];
-    g.look(b.x + b.w / 2, b.y + b.h / 2, 2.2);
-    const p = g.renderer.toScreen((b.x + b.w / 2) * 24, (b.y + b.h / 2) * 24);
-    const r = document.getElementById('world').getBoundingClientRect();
-    return { x: r.left + p.x, y: r.top + p.y };
+  const theHouse = await api(() => {
+    const b = window.OLW.world.buildings.filter(x => x.type === 'house' && x.builtTick != null)[0];
+    const tiles = [];
+    for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) tiles.push([x, y]);
+    return { tiles, at: [b.x + b.w / 2, b.y + b.h / 2] };
   });
-  await page.waitForTimeout(300);
-  await page.mouse.click(housePt.x, housePt.y);
+  await tapTile(theHouse.tiles, theHouse.at);
   await page.waitForSelector('.tools .tool', { timeout: 5000 });
   console.log('tapping a built house opens the room again: good');
   await page.click('.p-rows button:has-text("Close")');
@@ -721,19 +740,13 @@ async function main() {
 
   // the Keeper cannot fell trees: the tree still says what it is, and says
   // whose job it is, and offers no button that would only send a message
-  const standingPt = await api(() => {
-    const g = window.OLW,
-      w = g.world;
+  const theirTrees = await api(() => {
+    const g = window.OLW;
     g.role = 'B';
     g.other = 'A';
-    const t = w.trees.find(t => t.state === 'standing');
-    g.look(t.x, t.y, 2);
-    const p = g.renderer.toScreen(t.x * 24 + 12, t.y * 24 + 12);
-    const r = document.getElementById('world').getBoundingClientRect();
-    return { x: r.left + p.x, y: r.top + p.y };
+    return g.world.trees.filter(t => t.state === 'standing').map(t => [t.x, t.y]);
   });
-  await page.waitForTimeout(300);
-  await page.mouse.click(standingPt.x, standingPt.y);
+  await tapTile(theirTrees);
   await page.waitForSelector('.bubble', { timeout: 5000 });
   const treeSays = (await page.textContent('.bubble')).replace(/\s+/g, ' ').trim();
   console.log('the Keeper taps a tree:', treeSays.slice(0, 110));
@@ -791,22 +804,15 @@ async function main() {
     g.role = 'B';
     g.other = 'A';
   });
-  // Pick the stump BEFORE moving the camera to it. tapTile centres on the first
-  // candidate but may tap a later one, and if every candidate is covered or off
-  // screen it falls back to the first regardless — so handing it six stumps
-  // scattered round the map lands back on the one Anna is standing on. A
-  // villager answers a tap before the ground does, and this failed in CI having
-  // passed here three times.
-  const stump = await api(() => {
-    const w = window.OLW.world;
-    const free = t =>
-      !w.villagers.some(v => Math.abs(v.x - t.x) < 1.3 && Math.abs(v.y - t.y) < 1.3) &&
-      !w.sheep.some(sh => Math.abs(sh.x - t.x) < 1.3 && Math.abs(sh.y - t.y) < 1.3);
-    const t = w.trees.filter(t => t.state === 'stump').find(free);
-    return t ? [t.x, t.y] : null;
-  });
-  if (!stump) throw new Error('every stump has somebody standing on it');
-  await tapTile([stump]);
+  // Every stump, scattered round the map: tapTile frames each one it means to
+  // tap and checks it there, so handing it the lot costs nothing. This is the
+  // tap that failed in CI having passed here three times — Anna was standing
+  // on the stump, and a villager answers a tap before the ground does.
+  const stumps = await api(() =>
+    window.OLW.world.trees.filter(t => t.state === 'stump').map(t => [t.x, t.y]),
+  );
+  if (!stumps.length) throw new Error('there is no stump to plant on');
+  await tapFor(stumps, null, 'Plant a sapling');
   await step(page, '25d-stump-bubble', 400);
   await page.click('text=Plant a sapling');
   await page.waitForTimeout(400);

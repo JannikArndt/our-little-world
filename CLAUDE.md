@@ -428,6 +428,248 @@ storage of its own. They arrive as a third person at their own village.
   the build hash and in the Dockerfile's `COPY` list like anything else that
   ships.
 
+## 🔒 What stops a stranger from acting like a player
+
+This exists for two moments: **something fundamental just broke, and the first
+question is whether a security measure is the cause** — and **a periodic look
+at what is actually enforced, versus what only looks like it is.** Every
+mechanism below names its file, its constant, and its test. If you change one
+of these, update this list in the same commit — a stale line here is worse
+than no line.
+
+**The shape of it.** There is no login (law, anti-list), so a world's name is
+the only thing that lets anybody *read* it — that is by design, a link is
+meant to work like a key. But a name is not meant to let anybody *write*.
+Reading only needs the name; changing the village needs a seat in it too. That
+second gate is newer than the first, and is where most of what follows lives.
+
+### The path a request actually takes
+
+`server/serve.mjs` gets every request first. It sets response headers, then
+hands anything starting `/api/` to `server/api.mjs`'s `handle()`; everything
+else falls through to the static file allowlist. `api.mjs` strips the request
+down to `parts = ['api', 'worlds', name, what]`, runs `cleanName()` on `name`
+and the shared rate limiter on it, then calls into `server/worlds.mjs` — the
+one place that holds the actual state and the one place that checks whether
+the caller is allowed to change it. `server/relay.mjs` is a separate path
+entirely: it never touches `worlds.mjs`, and nothing about the WebSocket
+upgrade goes through `api.mjs`'s checks.
+
+### `server/serve.mjs` — the front door
+
+- **Static files are an allowlist, not a blocklist.** `PUBLIC_FILES`
+  (`index.html`, `stats.html`, `site.webmanifest`) and `PUBLIC_DIRS` (`src`,
+  `styles`, `icons`) are the only things a browser may fetch by path; anything
+  else 404s before the filesystem is even touched. This is not just tidiness:
+  `DATA_DIR` (every world's save file) defaults to living right under the same
+  root this server hands out files from, so before this allowlist existed,
+  `/data/<name>.json` served a world's raw save — device ids and all — to
+  anyone who could guess or enumerate a name. `tools/smoke.mjs` fetches
+  `/server/api.mjs`, `/package.json`, and `/data/anything-at-all.json` and
+  fails unless all three 404.
+- **Headers set on every response**, before routing: `x-content-type-options:
+  nosniff`, `referrer-policy: no-referrer`, `x-frame-options: DENY`,
+  `content-security-policy: frame-ancestors 'none'`. This is not a full CSP —
+  see "what's deliberately not done" below.
+- **`headersTimeout` (20s) and `requestTimeout` (30s)** bound a slow-trickled
+  connection. These govern only the HTTP request/header phase; a relay socket
+  is handed off to `attachRelay`'s own upgrade handling the moment it arrives
+  and is never subject to them.
+
+### `server/api.mjs` — the gate
+
+- **No cookies, ever** — `device` travels in the request body, not a header a
+  browser attaches automatically, so CORS is deliberately wide open
+  (`access-control-allow-origin: *`). There is no credential for a foreign
+  origin to ride along with, which is what makes that safe here and would not
+  be if a session cookie ever got added.
+- **Two independent rate limiters**, both per-address buckets that reset every
+  hour, both cleared wholesale if either map passes 5000 entries:
+  `CREATE_PER_HOUR` (30) gates only world creation; `ACTIVITY_PER_HOUR` (1200)
+  gates every other `/api/worlds/:name/...` route — GET or POST — once a name
+  passes `cleanName()`. Before this, only creation was throttled and the
+  900-word name space (see `src/core/names.js`) made every other route free to
+  hammer or enumerate.
+- **`clientIp()` decides which address a request counts against.** By default
+  it is `req.socket.remoteAddress` — behind a reverse proxy, that is the
+  proxy's own address, so every visitor shares one bucket. Setting
+  `TRUST_PROXY=1` switches it to the **last** entry in `X-Forwarded-For`: a
+  standard proxy (nginx's `$proxy_add_x_forwarded_for`, which is what CapRover
+  generates) *appends* its own idea of the address rather than replacing what
+  arrived, so the last entry is the only one the proxy actually vouches for —
+  a client can write anything it likes earlier in the list. Taking the first
+  entry instead was a real bug here for a short time; `tests/worlds.test.mjs`
+  now specifically simulates a client prepending a fresh lie on every request
+  and checks it buys nothing. **`TRUST_PROXY` defaults off** because this only
+  tells the truth when every request provably comes through one trusted proxy
+  — flip it on only after confirming, for wherever this is deployed, that the
+  app container is not reachable except through that proxy, and that nothing
+  else (a CDN, another load balancer) sits in front adding its own hop.
+- **`MAX_BODY` (1 MB)** is enforced incrementally as chunks arrive, with an
+  immediate `req.destroy()` past the limit — never buffered unbounded first.
+- **Every route checks its own method**; a wrong verb is a `405`, not a
+  silent 200.
+
+### `server/worlds.mjs` — the seat
+
+- **`inWorld(w, device)`** is the one real authorization check in this
+  codebase: true only if `device` currently holds one of the world's role
+  slots. **`putSnapshot()` refuses to write unless `inWorld()` says yes** —
+  before this, knowing a world's name was enough to overwrite or reset a
+  family's saved village outright, with only an easily-bypassed "tick must not
+  go backwards" guard in the way. `tests/worlds.test.mjs`: *"a stranger who
+  only knows the name cannot touch the saved world."*
+- **`touch()` (the "seen" heartbeat) claims a spot via `claim()`**, the same
+  function `join()` uses, rather than only refreshing a slot it already knows
+  about. This matters because of the check above: a `join()` request that
+  never reached the server (a dropped request, not a refusal) would otherwise
+  leave a device "registered" client-side but seatless server-side, and every
+  future snapshot would then fail `inWorld()` for a device that only ever had
+  bad luck once. The heartbeat fires immediately on entering a world and every
+  60 seconds after, so it self-heals within one cycle. `tests/worlds.test.mjs`:
+  *"a heartbeat claims a spot for a device that never managed to join."*
+- **`leave()` only ever removes a slot whose device matches** — always did;
+  a mismatched device is a no-op, not an error.
+- **`MAX_SNAPSHOT` (512 KB)** caps a single write; a real world is ~10 KB.
+- **Defense in depth on the filesystem, unreachable today, kept anyway:**
+  `flush()` refuses to write a file for any name that is not already
+  `cleanName()`-clean, and `load()` keys a world by its filename, not by a
+  `name` field inside the file. Every caller already cleans a name before it
+  gets this far — `api.mjs` on the way in — so neither path can currently be
+  hit through the HTTP API. This is the backstop for whatever reads or writes
+  `DATA_DIR` next, not for what does today.
+
+### `server/relay.mjs` — the wire between two open tabs
+
+- **No authentication at all: a room is whoever connects with the same
+  `?room=` name.** This is a known, deliberate gap — see "what's deliberately
+  not done" below, not something to "fix" by adding a cap alone.
+- **`MAX_PEERS_PER_ROOM` (20) is a resource bound, not a seat model.** It used
+  to be 2, on the assumption of one connection per role; that broke the
+  ordinary "a seat belongs to a person, not a browser" case (above) the first
+  time it shipped, caught by `tools/lobby.mjs`'s full-verify pass. It is 20
+  now specifically so it is never mistaken for "two seats" again — real
+  headroom for a phone and an iPad both open, while still refusing something
+  unbounded connecting over and over.
+- **A fragmented WebSocket frame is closed, not buffered.** Opcode `0x0`, or
+  any data frame with `FIN` unset, ends the connection immediately. Nothing on
+  either side of this ever sends a message in more than one frame
+  (`src/net/transport.js` makes one `.send()` call per message), so believing
+  a peer that claims "more is coming" would only grow an attacker's share of
+  memory for free. `tests/relay.test.mjs`: *"a frame that claims more is
+  coming is closed, not believed."*
+- **`KEEP_MAX` (3 MB), `KEEP_ROOMS` (200), `KEEP_MS` (12h)** bound the
+  in-memory "last snapshot seen per room" cache that lets a second joiner
+  never start from nothing.
+- A 25-second ping sweeps dead sockets: a write that throws closes the peer.
+
+### `server/stats.mjs` — the one endpoint anyone can call, by design
+
+- **`DEED_TYPES` and `PROJECT_TYPES` allowlist what `deedsOf()`/`marksOf()`
+  will read out of a posted snapshot.** A snapshot's `players.*.done` and
+  `buildings` content comes from whoever holds a seat — legitimately a real
+  player, but the server has no way to tell that content apart from anything
+  else that shape. Before `DEED_TYPES` existed, `deedsOf()` copied every key
+  in `done` verbatim; a snapshot with an arbitrary string in it would appear
+  on the public `/stats` page within 30 seconds and persist forever once the
+  world was forgotten. `marksOf()` was never vulnerable to this — it always
+  checked building types against `PROJECT_TYPES` first.
+- **Never a device id, an IP, a world name, or anything finer than a calendar
+  day** — `tests/stats.test.mjs`'s *"nothing in the report belongs to
+  anybody"* reads the whole report back looking for all four.
+
+### `server/buildid.mjs` — a different list, on purpose
+
+Three lists exist and they are not the same thing, which is worth naming
+explicitly because conflating them once was an easy mistake to nearly make:
+
+1. **The Dockerfile's `COPY` list** — what physically ships in the image
+   (includes `package.json`).
+2. **`buildid.mjs`'s `SERVED`** — what the `/version` build hash is computed
+   over (includes `server/`, because a change there changes what is running,
+   even though a browser never fetches it directly).
+3. **`serve.mjs`'s `PUBLIC_FILES`/`PUBLIC_DIRS`** — what a browser may actually
+   request over HTTP (excludes both `server/` and `package.json`).
+
+A file can appear in any subset of the three. `server/*.mjs` is in the first
+two and not the third; `package.json` is in the first only. Adding something
+new that should be public needs the third list, specifically — being in the
+build hash does not make a thing servable.
+
+### CI/CD and the supply chain
+
+- **GitHub Actions are pinned to commit SHAs**, not mutable tags (`actions/
+  checkout@3d3c42e…` with the tag it corresponds to in a comment), and the
+  **Dockerfile's base image is pinned by digest**
+  (`node:24-alpine@sha256:50c8e8ca…`) — both verified against the real
+  registries when pinned, not taken from a rendered webpage.
+- **`caprover` is pinned to an exact version** in `deploy.yml` and its deploy
+  token travels as the `CAPROVER_APP_TOKEN` environment variable, never a CLI
+  argument — an argument sits in plain sight of anything else that runs in the
+  same step; an env var does not.
+- **`deploy-dev` deploys `github.ref_name`** — whichever branch a run was
+  dispatched from — so a branch can be tested on dev without touching `main`.
+  **`deploy-prod` only runs `if: github.event_name == 'push'`**, which,
+  combined with the existing `on.push.branches: [main]` filter, is the one
+  gate that keeps a manual dispatch of anything but `main` from ever reaching
+  production.
+- **`.github/dependabot.yml`** watches `npm`, `docker`, and `github-actions`
+  weekly — including the two pins above, so they get proposed bumps instead of
+  quietly going stale.
+
+### If something fundamental just broke, check here
+
+| Symptom | Most likely cause |
+|---|---|
+| A legitimate save/join/seen suddenly `403`s | `inWorld()` in `worlds.mjs` — the device string changed, or the world never actually held that seat |
+| A legitimate request suddenly `429`s | `CREATE_PER_HOUR`/`ACTIVITY_PER_HOUR` buckets in `api.mjs` — check whether `TRUST_PROXY` is misconfigured and collapsing many real visitors onto one bucket |
+| A file that should load `404`s | `PUBLIC_FILES`/`PUBLIC_DIRS` in `serve.mjs` — a new top-level file or directory needs adding there, being referenced from HTML is not enough |
+| Two of somebody's own devices can't both stay connected to one room | `MAX_PEERS_PER_ROOM` in `relay.mjs` |
+| A WebSocket closes right after connecting, no obvious reason | Check whether whatever connected sent a fragmented frame — `readFrames()` in `relay.mjs` closes on sight |
+| A word appears in `/stats` that is not a real deed or milestone | `DEED_TYPES`/`PROJECT_TYPES` in `stats.mjs` |
+| A world's save is missing or looks wrong after a redeploy | `DATA_DIR`'s mount, or `cleanName()` disagreeing with what `flush()`/`load()` expect — see "defense in depth" above |
+
+### What's deliberately not done, and why
+
+- **The public lobby (`GET /api/worlds`) lists every world with a free spot,
+  touched in the last week, by name** — not a full or old world, but still
+  nothing stops a stranger from taking that free seat before the real second
+  player arrives. Needs an owner decision (scope discovery to the creating
+  device, versus keep it a public browse list) before it is touched — see
+  law 7 and the "🪑 A seat belongs to a person" section above for the
+  legitimate case this has to keep working.
+- **The relay has no server-side notion of "host."** Any connected peer's
+  `t:'snap'` message is trusted and remembered; the client-side host-election
+  protocol (`src/net/session.js`) has no matching backstop at the transport
+  layer. Bounded today by the room-peer cap above and by laws 6 and 12
+  (nothing here is ever destructive or permanent) — genuinely fixing it means
+  teaching the relay about devices and seats, which it currently knows nothing
+  about at all.
+- **No CSP beyond `frame-ancestors`/`X-Frame-Options`.** `index.html` has no
+  inline script and exactly one inline `style=` (the `<noscript>` fallback,
+  trivial to move into `styles/main.css`), so a real `script-src`/`style-src`
+  CSP is cheap to add there. `stats.html` is not: its entire script and
+  stylesheet are inline, not external files, so a strict CSP would break it
+  outright — that page needs its code extracted first, a real if mechanical
+  refactor, before it can share whatever CSP `index.html` gets.
+- **`TRUST_PROXY` defaults off** — see `server/api.mjs` above; it needs a
+  human to confirm the deployment's actual proxy topology first.
+
+### A periodic checklist
+
+| Category | What exists | Where |
+|---|---|---|
+| Access control | name reads, a held seat writes | `inWorld()`/`claim()`, `worlds.mjs` |
+| Rate limiting | per-address, two tiers | `CREATE_PER_HOUR`/`ACTIVITY_PER_HOUR`, `api.mjs`; `MAX_PEERS_PER_ROOM`, `relay.mjs` |
+| Input validation | names cleaned before they become paths; snapshot type-checked; deed/mark keys allowlisted | `cleanName()`, `src/core/names.js`; `putSnapshot()`, `worlds.mjs`; `DEED_TYPES`, `stats.mjs` |
+| Resource exhaustion | body/snapshot/frame size caps; fragment rejection; bounded in-memory caches | `MAX_BODY`, `api.mjs`; `MAX_SNAPSHOT`, `worlds.mjs`; `readFrames()`, `KEEP_*`, `relay.mjs` |
+| Information disclosure | static file allowlist; nothing personal ever counted | `PUBLIC_FILES`/`PUBLIC_DIRS`, `serve.mjs`; `stats.mjs` |
+| Transport headers | nosniff, referrer-policy, frame-ancestors, timeouts | `serve.mjs` |
+| TLS | terminated by CapRover's proxy, outside this repo | — |
+| Supply chain | Actions pinned to SHAs, base image pinned by digest, `caprover` version-pinned, dependabot | `.github/workflows/deploy.yml`, `Dockerfile`, `.github/dependabot.yml` |
+| Logging | none of this ever logs an IP, device id, or world content | disk-error codes and the boot-time LAN address are the only things printed anywhere |
+| **Known gaps** | public lobby scoping; no relay host authority; `stats.html` has no CSP path; `TRUST_PROXY` needs manual confirmation | see above |
+
 ---
 
 ## ➕ Adding things

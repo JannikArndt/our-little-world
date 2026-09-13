@@ -20,6 +20,9 @@ const PORT = Number(process.argv[2] || process.env.PORT || 8080);
 // them is nothing; see README for what it costs at scale.
 const DATA_DIR = process.env.DATA_DIR || join(ROOT, 'data');
 const TTL_DAYS = Number(process.env.WORLD_TTL_DAYS || 14);
+// Read here too, only to say so at boot — api.mjs reads its own copy for the
+// actual rate-limiting. A silent env var is a config nobody can see is on.
+const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 
 const worlds = new Worlds({ dir: DATA_DIR, ttlMs: TTL_DAYS * 24 * 60 * 60 * 1000 });
 await worlds.load();
@@ -165,6 +168,14 @@ server.listen(PORT, () => {
       ', forgotten after ' +
       TTL_DAYS +
       ' days',
+  );
+  // config that changes what a request is trusted for, printed once at boot
+  // so it is visible without going and checking the environment separately
+  console.log(
+    '  rate limits: ' +
+      (TRUST_PROXY
+        ? 'trusting X-Real-IP / X-Forwarded-For (TRUST_PROXY=1) — per real visitor'
+        : 'not trusting a proxy header — shared across everyone behind one address'),
   );
 });
 

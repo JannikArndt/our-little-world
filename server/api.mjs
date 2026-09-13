@@ -52,11 +52,17 @@ export function createApi(store, opts) {
 
   function clientIp(req) {
     if (trustProxy) {
-      // a standard reverse proxy (nginx's $proxy_add_x_forwarded_for, which
-      // is what CapRover generates) appends its own idea of the address
-      // rather than replacing whatever arrived — so the entry it just added,
-      // the *last* one, is the only one the proxy actually vouches for. A
-      // client can write anything it likes earlier in the list.
+      // X-Real-IP has no ambiguity to get wrong: CapRover's nginx template
+      // (template/server-block-conf.ejs) always overwrites it with
+      // $remote_addr, its own directly-observed peer — a client cannot make
+      // it say anything else. Prefer it. X-Forwarded-For is the fallback for
+      // a proxy that only sets that one; a standard proxy (nginx's
+      // $proxy_add_x_forwarded_for, which is what CapRover also generates)
+      // appends its own idea of the address rather than replacing whatever
+      // arrived, so the *last* entry is the only one it actually vouches
+      // for — a client can write anything it likes earlier in the list.
+      const real = req.headers['x-real-ip'];
+      if (real) return String(real).trim();
       const xff = req.headers['x-forwarded-for'];
       if (xff) return String(xff).split(',').pop().trim();
     }

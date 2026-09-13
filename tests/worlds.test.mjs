@@ -549,3 +549,33 @@ test('TRUST_PROXY=1 trusts the last hop, not whatever a client wrote first', asy
     'the real (last, proxy-appended) address is what is actually throttled',
   );
 });
+
+test('TRUST_PROXY=1 prefers X-Real-IP over X-Forwarded-For', async t => {
+  // X-Real-IP has nothing to parse and nothing a client can make it say —
+  // CapRover's nginx always overwrites it with its own observed peer. Where
+  // both headers are present, it wins over whatever X-Forwarded-For claims.
+  process.env.TRUST_PROXY = '1';
+  t.after(() => delete process.env.TRUST_PROXY);
+  const { server, base } = await listen();
+  t.after(() => server.close());
+  const createAs = (realIp, xff) =>
+    fetch(base + '/api/worlds', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-real-ip': realIp,
+        'x-forwarded-for': xff,
+      },
+      body: JSON.stringify({ device: 'x' }),
+    }).then(r => r.status);
+
+  let refused = 0;
+  for (let i = 0; i < 35; i++)
+    if ((await createAs('4.4.4.4', 'a-different-lie-' + i)) === 429) refused++;
+  assert.ok(refused >= 5, 'the real X-Real-IP address did get throttled on its own');
+  assert.equal(
+    await createAs('5.5.5.5', 'a-different-lie-again'),
+    201,
+    'a different X-Real-IP still has its own budget, regardless of X-Forwarded-For',
+  );
+});

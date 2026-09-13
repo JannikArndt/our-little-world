@@ -580,14 +580,17 @@ async function main() {
     return site.id;
   });
   await page.waitForTimeout(300);
-  const sitePt = await api(() => {
-    const g = window.OLW,
-      site = g.world.buildings.find(b => b.state === 'site');
-    const p = g.renderer.toScreen((site.x + site.w / 2) * 24, (site.y + site.h / 2) * 24);
-    const r = document.getElementById('world').getBoundingClientRect();
-    return { x: r.left + p.x, y: r.top + p.y };
+  // every tile of the plot, so tapTile can pick one nobody is standing on. Ted
+  // has nowhere to sleep and hangs about the empty plot, and a person answers a
+  // tap before the ground does — this failed in CI having passed here three
+  // times, which is exactly how this kind of tap behaves.
+  const siteTiles = await api(() => {
+    const s = window.OLW.world.buildings.find(b => b.state === 'site');
+    const out = [];
+    for (let y = s.y; y < s.y + s.h; y++) for (let x = s.x; x < s.x + s.w; x++) out.push([x, y]);
+    return { tiles: out, at: [s.x + s.w / 2, s.y + s.h / 2] };
   });
-  await page.mouse.click(sitePt.x, sitePt.y);
+  await tapTile(siteTiles.tiles, siteTiles.at);
   await step(page, '21-site-bubble', 400);
   await page.click('text=Build a house here');
   await step(page, '22-house-plan', 600);
@@ -788,14 +791,22 @@ async function main() {
     g.role = 'B';
     g.other = 'A';
   });
-  // every stump, so tapTile can pick one nobody is standing on: a villager
-  // answers a tap before the ground does, and Anna wandering onto the stump
-  // used to fail this step about one full run in three.
-  const stumps = await api(() =>
-    window.OLW.world.trees.filter(t => t.state === 'stump').map(t => [t.x, t.y]),
-  );
-  if (!stumps.length) throw new Error('there is no stump to plant in');
-  await tapTile(stumps);
+  // Pick the stump BEFORE moving the camera to it. tapTile centres on the first
+  // candidate but may tap a later one, and if every candidate is covered or off
+  // screen it falls back to the first regardless — so handing it six stumps
+  // scattered round the map lands back on the one Anna is standing on. A
+  // villager answers a tap before the ground does, and this failed in CI having
+  // passed here three times.
+  const stump = await api(() => {
+    const w = window.OLW.world;
+    const free = t =>
+      !w.villagers.some(v => Math.abs(v.x - t.x) < 1.3 && Math.abs(v.y - t.y) < 1.3) &&
+      !w.sheep.some(sh => Math.abs(sh.x - t.x) < 1.3 && Math.abs(sh.y - t.y) < 1.3);
+    const t = w.trees.filter(t => t.state === 'stump').find(free);
+    return t ? [t.x, t.y] : null;
+  });
+  if (!stump) throw new Error('every stump has somebody standing on it');
+  await tapTile([stump]);
   await step(page, '25d-stump-bubble', 400);
   await page.click('text=Plant a sapling');
   await page.waitForTimeout(400);

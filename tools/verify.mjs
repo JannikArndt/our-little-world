@@ -2,6 +2,11 @@
 //
 //   npm run verify          format + lint + unit tests, the play-through, German, the lobby, /stats
 //   npm run verify -- quick just check and a shortened play-through
+//   npm run verify -- only=german   one pass on its own, against a fresh server
+//
+// `only=` is for the middle of a fix: a failing pass can be run again in its
+// own minute instead of sitting through the other four. It is never the gate —
+// it says so at the end, so a run of one is never mistaken for a run of all.
 //
 // It brings up its own server on a free port and takes it down again, so no
 // stray server is left listening and nothing has to be killed by hand — a
@@ -14,6 +19,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const quick = process.argv.slice(2).some(a => /quick/.test(a));
+const only = (process.argv.slice(2).find(a => /^only=/.test(a)) || '').split('=')[1] || '';
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -85,24 +91,42 @@ if (!info) {
 console.log('server on ' + base + '  v' + info.version + '  build ' + info.build + '\n');
 
 const steps = [
-  ['format, lint and unit tests', () => run('npm', ['run', 'check'])],
+  ['format, lint and unit tests', () => run('npm', ['run', 'check']), 'check'],
   [
     'a whole morning in a browser',
     () => run('node', ['tools/smoke.mjs'], { BASE: base, QUICK: quick ? '1' : '' }),
+    'smoke',
   ],
 ];
 if (!quick)
-  steps.push(['the same in German', () => run('node', ['tools/german.mjs'], { BASE: base })]);
+  steps.push([
+    'the same in German',
+    () => run('node', ['tools/german.mjs'], { BASE: base }),
+    'german',
+  ]);
 if (!quick)
   steps.push([
     'two browsers finding each other',
     () => run('node', ['tools/lobby.mjs'], { BASE: base }),
+    'lobby',
   ]);
 if (!quick)
-  steps.push(['the page at /stats', () => run('node', ['tools/stats.mjs'], { BASE: base })]);
+  steps.push([
+    'the page at /stats',
+    () => run('node', ['tools/stats.mjs'], { BASE: base }),
+    'stats',
+  ]);
+
+// `only=smoke` keeps the step whose name or script matches, and nothing else.
+const chosen = only ? steps.filter(st => st[2] && st[2].includes(only)) : steps;
+if (only && !chosen.length) {
+  stop();
+  console.error('no pass called "' + only + '". There is: ' + steps.map(st => st[2]).join(', '));
+  process.exit(1);
+}
 
 let ok = true;
-for (const [name, go] of steps) {
+for (const [name, go] of chosen) {
   console.log('\n──── ' + name + ' ────');
   const passed = await go();
   if (!passed) {
@@ -113,12 +137,17 @@ for (const [name, go] of steps) {
 }
 
 stop();
+// One last line, always in the same shape, so whoever is reading this at the
+// end of five minutes can find it without scrolling — and so a run of one pass
+// can never be mistaken for the gate.
 console.log(
   '\n' +
     (ok
-      ? quick
-        ? 'quick verify: all good (run the full one before pushing)'
-        : 'verify: all good'
+      ? only
+        ? 'verify (' + only + ' only): all good — this is NOT the gate, run the full one'
+        : quick
+          ? 'quick verify: all good (run the full one before pushing)'
+          : 'verify: all good'
       : 'verify: something is broken'),
 );
 process.exit(ok ? 0 : 1);

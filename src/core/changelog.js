@@ -4,9 +4,25 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '2.3';
+export const VERSION = '2.4';
 
 export const CHANGELOG = [
+  {
+    v: '2.4',
+    date: '2026-09-13',
+    en: [
+      'The village asks for one thing at a time now. It sits in its own button at the top, next to the two of you, and it shows what that one thing is — no red number, because a number that always says "1" is only nagging. Finish it and the next one steps up on its own. There is no list to work through and no way to be behind.',
+      'And because you two are hardly ever playing at the same moment, coming back now tells you what the other one has been up to. A house went up, a road was laid, three wood arrived as a gift — what they did while you were away, in a list, once. One tap and you are in the village.',
+      'It is a list of things that happened, not a message from them: the game still never carries a word between the two of you. And nothing ever asks you to come back — it is only there once you have already opened the game yourself.',
+      'Your own chip keeps what it was always best at: everything you have already done.',
+    ],
+    de: [
+      'Das Dorf bittet jetzt immer nur um eine Sache. Sie sitzt in einem eigenen Knopf oben, neben euch beiden, und zeigt, worum es gerade geht — ohne rote Zahl, denn eine Zahl, die immer „1“ sagt, nörgelt bloß. Ist sie erledigt, rückt die nächste von allein nach. Es gibt keine Liste abzuarbeiten und kein Hinterherhinken.',
+      'Und weil ihr fast nie gleichzeitig spielt, erzählt dir das Spiel beim Zurückkommen, was der andere gemacht hat. Ein Haus steht, ein Weg ist gelegt, drei Holz sind als Geschenk da — was sie getan haben, während du weg warst, als Liste, einmal. Ein Tipp, und du bist im Dorf.',
+      'Es ist eine Liste von Dingen, die passiert sind, keine Nachricht von ihnen: Das Spiel trägt weiterhin kein einziges Wort zwischen euch hin und her. Und nichts bittet dich je zurückzukommen — es ist erst da, wenn du das Spiel von dir aus geöffnet hast.',
+      'Dein eigener Chip behält, was er immer am besten konnte: alles, was du schon geschafft hast.',
+    ],
+  },
   {
     v: '2.3',
     date: '2026-09-12',

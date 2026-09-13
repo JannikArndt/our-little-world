@@ -130,6 +130,7 @@ script so there is nothing to remember and nothing to look up.
 npm run check      # seconds:  format + lint + unit tests. After every edit.
 npm run verify -- quick   # ~1 min: check + a shortened play-through in a browser
 npm run verify     # ~5 min: everything, incl. German, the lobby and /stats
+npm run verify -- only=german   # one pass on its own, for the middle of a fix
 npm run deployed   # after pushing: is that code actually live?
 ```
 
@@ -147,6 +148,15 @@ npm run deployed   # after pushing: is that code actually live?
   in the background and wait rather than polling — one
   `while pgrep -f "tools/(smoke|german|lobby|stats).mjs"; do sleep 15; done`
   beats ten `sleep`s.
+
+- **`npm run verify -- only=<pass>`** runs one of `check`, `smoke`, `german`,
+  `lobby`, `stats` against a fresh server and nothing else. It is for the middle
+  of a fix — a failing pass in its own minute rather than five minutes of the
+  other four — and it says so in its last line, because **it is not the gate**.
+
+Every run ends with one line in the same shape, so it can be found without
+reading the five minutes above it: `verify: all good`, or
+`verify: something is broken`.
 
 `npm run verify` brings up its own server on a free port and takes it down
 again. **Do not start a server by hand for testing, and never `pkill` broadly** —
@@ -220,8 +230,17 @@ fourth is still being written.
   code is being served, ask the site: `GET /version` answers
   `{ version, schema, build, startedAt }`, where `build` is a hash of every file
   that ships (`server/buildid.mjs`, also `npm run build-id`). `npm run deployed`
-  compares the live `build` with the working tree's and waits up to three
-  minutes for them to match. **The push is not finished until that says yes.**
+  compares the live `build` with the working tree's and waits up to **fifteen
+  minutes** for them to match. **The push is not finished until that says yes.**
+  It waits that long because a push now goes through the whole gate before it
+  deploys at all — installing, fetching a browser, five minutes of verify, and
+  only then CapRover building an image. It waited three minutes once, which was
+  right when a push went straight out, and which quietly meant it could never
+  say yes again once the gate existed.
+- **A push is not finished when the command returns, either.** Check the
+  workflow run: a red gate means nothing deployed and the old build is still
+  what people are playing. Saying "pushed" is not saying "live", and only the
+  site can settle which.
 - The site is <https://ourlittleworld.timpanini.com>; `npm run deployed` knows
   that address, and takes another as an argument or in `DEPLOY_URL`. If a
   sandbox will not let a session reach it, check the workflow run instead and

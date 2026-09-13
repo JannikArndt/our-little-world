@@ -447,7 +447,7 @@ test('a squabble is rare, gentle, and always between two of an age', () => {
   // part (the way two grown-ups pausing on the same path might) and waits for
   // the rare roll to land — the roll and the age-matching are what is
   // actually under test here, not how often somebody happens to wander by.
-  const w = createWorld(92);
+  const w = createWorld(5);
   applyAction(w, { type: 'block.start', length: 100000 });
   const [a, b] = w.villagers.filter(v => !v.kid);
   let found = null;

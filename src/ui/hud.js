@@ -657,6 +657,18 @@ const DEEDS = [
   { key: 'fish', icon: '🎣', word: 'deed.fish' },
   { key: 'care', icon: '🐑', word: 'deed.care' },
   { key: 'plant', icon: '🌳', word: 'deed.plant' },
+  { key: 'herb_mint', icon: '🌿', word: 'deed.herb_mint' },
+  { key: 'herb_basil', icon: '🌱', word: 'deed.herb_basil' },
+  { key: 'herb_thyme', icon: '🍃', word: 'deed.herb_thyme' },
+  { key: 'herb_sage', icon: '🪴', word: 'deed.herb_sage' },
+  { key: 'heal', icon: '💚', word: 'deed.heal' },
+  { key: 'spot_deer', icon: '🦌', word: 'deed.spot_deer' },
+  { key: 'spot_rabbit', icon: '🐇', word: 'deed.spot_rabbit' },
+  { key: 'spot_bird', icon: '🐦', word: 'deed.spot_bird' },
+  { key: 'spot_butterfly', icon: '🦋', word: 'deed.spot_butterfly' },
+  { key: 'dig', icon: '⛏️', word: 'deed.dig' },
+  { key: 'support', icon: '🛠️', word: 'deed.support' },
+  { key: 'machine', icon: '⚙️', word: 'deed.machine' },
 ];
 
 /** The tally as sentences, leaving out everything nobody has done yet. */

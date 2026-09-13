@@ -27,9 +27,9 @@ export function maybeEvent(w) {
   if (w.journal.some(j => j.icon === '🏠') && !w.buildings.some(b => b.id === 'site_east'))
     options.push({ event: 'newfamily', weight: 4 });
 
-  // something wanders out of the forest
-  if (!w.visitors?.length && w.trees.some(t => t.state === 'stump'))
-    options.push({ event: 'critter', weight: 3 });
+  // something is out in the meadow, worth a look — always worth checking,
+  // not only once the forest has been thinned
+  if (!w.visitors?.length) options.push({ event: 'critter', weight: 4 });
 
   // a good growing night
   if (w.plots.filter(pl => pl.state === 'growing' && pl.growth > 30).length >= 2)

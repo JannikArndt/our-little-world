@@ -3,7 +3,7 @@
 // one blit plus a few dozen small shapes — cheap enough for an old iPad.
 
 import { GW, GH, TILE, WORLD_W, WORLD_H, T, idx } from '../core/grid.js';
-import { blockProgress, dayPhase } from '../core/world.js';
+import { blockProgress, dayPhase, machineSpinning } from '../core/world.js';
 
 // The colour of the day, in eight moments. Everything between them is mixed.
 // wash is laid over the picture; dark is multiplied into it as shade.
@@ -426,6 +426,7 @@ export class Renderer {
     for (const l of w.logs) things.push({ y: l.y, kind: 'log', o: l });
     for (const p of w.plots) things.push({ y: p.y + 2, kind: 'plot', o: p });
     for (const sb of w.stones) things.push({ y: sb.y + 0.5, kind: 'stones', o: sb });
+    for (const h of w.herbs) things.push({ y: h.y + 0.6, kind: 'herb', o: h });
     for (const v of w.villagers) if (!v.inside) things.push({ y: v.y, kind: 'villager', o: v });
     for (const sh of w.sheep) things.push({ y: sh.y, kind: 'sheep', o: sh });
     if (w.visitors) for (const c of w.visitors) things.push({ y: c.y, kind: 'deer', o: c });
@@ -453,6 +454,8 @@ export class Renderer {
             else art.drawPlan(ctx, o, time, '🚧');
           } else if (o.state === 'site') art.drawSite(ctx, o, time);
           else if (o.type === 'workshop') art.drawWorkshop(ctx, o, time, w.tick);
+          else if (o.type === 'mine') art.drawMineEntrance(ctx, o, time);
+          else if (o.type === 'machine') art.drawMachine(ctx, o, time, machineSpinning(w));
           else art.drawHouse(ctx, o, time, w.tick);
           break;
         case 'tree': {
@@ -475,6 +478,9 @@ export class Renderer {
           break;
         case 'stones':
           art.drawStoneBank(ctx, o);
+          break;
+        case 'herb':
+          art.drawHerbBed(ctx, o);
           break;
         case 'villager':
           art.drawVillager(ctx, o, time, w.tick, true);

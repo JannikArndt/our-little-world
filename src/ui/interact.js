@@ -4,7 +4,16 @@
 // saying so across the room beats a button that sends a message.
 
 import { TILE, T, WORLD_W, WORLD_H, tileAt, toTileX, toTileY } from '../core/grid.js';
-import { can, roleName, PROJECT, project, kids, loavesPerDay, basketDays } from '../core/world.js';
+import {
+  can,
+  roleName,
+  PROJECT,
+  project,
+  kids,
+  loavesPerDay,
+  basketDays,
+  HERB_REMEDY,
+} from '../core/world.js';
 import { PROJECTS } from '../core/content.js';
 import { canPay } from '../core/actions.js';
 import { tr, trn } from '../core/i18n.js';
@@ -15,6 +24,8 @@ import { openBridge, openRepair } from '../minigames/bridge.js';
 import { openHouse, openRaise } from '../minigames/house.js';
 import { openCare } from '../minigames/care.js';
 import { openFish } from '../minigames/fish.js';
+import { openMine } from '../minigames/mine.js';
+import { openMachine } from '../minigames/machine.js';
 import { roadMode, sheepMode } from '../minigames/modes.js';
 import { openGive } from './share.js';
 
@@ -156,6 +167,7 @@ function hit(w, wx, wy) {
     for (const c of w.visitors) if (near(c.x, c.y - 0.3, 18)) return { kind: 'deer', o: c };
   for (const l of w.logs) if (near(l.x, l.y, 16)) return { kind: 'log', o: l };
   for (const b of w.stones) if (near(b.x + 0.5, b.y + 0.5, 16)) return { kind: 'stones', o: b };
+  for (const h of w.herbs) if (near(h.x + 0.5, h.y + 0.5, 15)) return { kind: 'herb', o: h };
   if (near(w.larder.x, w.larder.y, 18)) return { kind: 'larder', o: w.larder };
   for (const t of w.trees) if (t.x === tx && t.y === ty) return { kind: 'tree', o: t };
   for (const t of w.trees)
@@ -314,6 +326,26 @@ function actionsFor(game, h) {
             : [],
       };
 
+    case 'herb': {
+      const bed = h.o;
+      const known = !!w.players[r].caps['herb_' + bed.kind];
+      const title = known ? tr('herb.' + bed.kind) : tr('w.herbUnknown');
+      const hint = known ? trn('w.herbHint', bed.count, { n: bed.count }) : tr('w.herbUnknownHint');
+      return {
+        title,
+        hint,
+        actions:
+          bed.count > 0
+            ? [
+                {
+                  label: known ? tr('w.herbPick') : tr('w.herbLook'),
+                  fn: () => game.dispatch({ type: 'herb.pick', role: r, id: bed.id }),
+                },
+              ]
+            : [],
+      };
+    }
+
     // the basket answers with a whole panel now — see openBasket, which
     // installInput reaches before actionsFor is ever called
 
@@ -340,8 +372,20 @@ function actionsFor(game, h) {
     // a tap on a villager never reaches here any more — installInput answers
     // it directly with villager.poke, before actionsFor is ever called
 
-    case 'deer':
-      return { title: tr('w.deer'), hint: tr('w.deerHint'), actions: [] };
+    case 'deer': {
+      const c = h.o;
+      const known = !!w.players[r].caps['spot_' + c.kind];
+      return {
+        title: known ? tr('creature.' + c.kind) : tr('w.creatureUnknown'),
+        hint: tr('w.creatureHint'),
+        actions: [
+          {
+            label: tr('w.creatureLook'),
+            fn: () => game.dispatch({ type: 'nature.spot', role: r, id: c.id }),
+          },
+        ],
+      };
+    }
 
     case 'plot': {
       const p = h.o;
@@ -411,6 +455,20 @@ function actionsFor(game, h) {
       }
       if (b.type === 'well' || b.type === 'privy' || b.type === 'fence')
         return projectBubble(game, b);
+      if (b.type === 'mine') {
+        return {
+          title: tr('w.mine'),
+          hint: tr('w.mineHint'),
+          actions: [{ label: tr('w.mineGo'), fn: () => openMine(game) }],
+        };
+      }
+      if (b.type === 'machine') {
+        return {
+          title: tr('w.machine'),
+          hint: tr('w.machineHint'),
+          actions: [{ label: tr('w.machineGo'), fn: () => openMachine(game) }],
+        };
+      }
       if (b.state === 'site') {
         const mine = can(w, r, 'house');
         if (mine) A.push({ label: tr('w.buildHouse'), fn: () => openRaise(game, b) });
@@ -621,8 +679,29 @@ export function installInput(game, renderer, canvas) {
     }
     const h = hit(game.world, p.x, p.y);
     // a tap on a person gets no bubble at all: just poke them and see what
-    // they do — their name floats up in the world instead of a card here
+    // they do — their name floats up in the world instead of a card here.
+    // The one exception is somebody with a poorly tummy, when there is mint
+    // in your own basket: then the tap asks, because there is a real choice
+    // to make rather than only an answer to watch.
     if (h.kind === 'villager') {
+      const mine = game.world.players[game.role].herbs?.[HERB_REMEDY] || 0;
+      if (h.o.poorly > 0 && mine > 0) {
+        const r = canvas.getBoundingClientRect();
+        showBubble(x - r.left, y - r.top, {
+          title: h.o.name,
+          hint: tr('w.poorlyMintHint', { name: h.o.name }),
+          actions: [
+            {
+              label: tr('w.giveMint'),
+              fn: () => {
+                if (game.dispatch({ type: 'herb.give', role: game.role, villagerId: h.o.id }))
+                  message(tr('msg.healed', { name: h.o.name }));
+              },
+            },
+          ],
+        });
+        return;
+      }
       closeBubble();
       game.dispatch({ type: 'villager.poke', role: game.role, id: h.o.id });
       return;

@@ -261,7 +261,7 @@ test('a plan is not a building site, and nothing stands in it', () => {
 });
 
 test('river water is why somebody gets a poorly tummy, and clean water is the cure', () => {
-  const w = settled(31);
+  const w = settled(3);
   w.tick = 3000;
   applyAction(w, { type: 'block.start' });
   w.block.startTick = w.tick;

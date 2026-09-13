@@ -15,6 +15,8 @@ import {
   HOUSE_STUFF,
   HOUSE_WALL,
   HOUSE_ALL,
+  MINE_W,
+  MINE_H,
 } from './content.js';
 import { runMigrations } from './migrate.js';
 
@@ -36,6 +38,16 @@ export const RESOURCES = [
 
 // what things cost and how fast they grow lives with the rest of the content
 export { PROJECT, PROJECTS, SAPLING_TICKS, REPLANT_GOAL, SCENARIOS } from './content.js';
+export {
+  HERBS,
+  HERB_REMEDY,
+  CRITTERS,
+  MINE_W,
+  MINE_H,
+  MINE_FINDS,
+  MINE_SUPPORT_COST,
+  MACHINE_PLOT_BONUS,
+} from './content.js';
 
 /** The roles in play, drawn from the catalogue. */
 export const ROLE = ROLES;
@@ -55,6 +67,22 @@ export const CAPS = {
   care: { icon: '💚', owner: 'B' },
   road: { icon: '🛤️', owner: 'B' },
   farm: { icon: '🌱', owner: 'B' },
+
+  // Knowledge, not permission: nobody starts with any of these, so they have
+  // no `owner`. They are earned by doing the thing — picking a herb,
+  // digging, shoring up a tunnel, working out the machine — and taught the
+  // same way any other capability is (see `teach` in actions.js).
+  herb_mint: { icon: '🌿' },
+  herb_basil: { icon: '🌱' },
+  herb_thyme: { icon: '🍃' },
+  herb_sage: { icon: '🪴' },
+  spot_deer: { icon: '🦌' },
+  spot_rabbit: { icon: '🐇' },
+  spot_bird: { icon: '🐦' },
+  spot_butterfly: { icon: '🦋' },
+  dig: { icon: '⛏️' },
+  support: { icon: '🛠️' },
+  machine: { icon: '⚙️' },
 };
 
 /** Names live in the language tables, not in the world. */
@@ -162,6 +190,9 @@ export function createWorld(seed, scenarioId) {
     villagers: [],
     stones: [],
     visitors: [],
+    herbs: [],
+    mine: { dug: {} },
+    machine: { valve: 'closed', lever: false },
     bridge: { built: false, tiles: [], quality: 0, damaged: false },
     larder: { x: scen.larder.x, y: scen.larder.y, food: scen.larder.food },
     players: {},
@@ -290,7 +321,7 @@ function newPlayer(id) {
     caps = {};
   for (const k in role.res || {}) res[k] = role.res[k];
   for (const k in role.caps || {}) caps[k] = role.caps[k];
-  return { res, caps, done: {}, busy: null, seen: 0 };
+  return { res, caps, done: {}, busy: null, seen: 0, herbs: {} };
 }
 
 /** Somebody from the roster, at home if their house has room for them. */
@@ -354,6 +385,7 @@ export function ensureWorld(w) {
     'visitors',
     'notices',
     'journal',
+    'herbs',
   ]) {
     if (!Array.isArray(w[k])) w[k] = [];
   }
@@ -361,6 +393,12 @@ export function ensureWorld(w) {
   if (!w.ext || typeof w.ext !== 'object') w.ext = {};
   if (!w.players || typeof w.players !== 'object') w.players = {};
   if (!w.regions || typeof w.regions !== 'object') w.regions = {};
+  if (!w.mine || typeof w.mine !== 'object') w.mine = { dug: {} };
+  if (!w.mine.dug || typeof w.mine.dug !== 'object') w.mine.dug = {};
+  if (!w.mine.dug[mineKey(0, 0)]) w.mine.dug[mineKey(0, 0)] = { kind: 'empty', supported: true };
+  if (!w.machine || typeof w.machine !== 'object') w.machine = { valve: 'closed', lever: false };
+  for (const id in w.players)
+    if (!w.players[id].herbs || typeof w.players[id].herbs !== 'object') w.players[id].herbs = {};
 
   // a role the scenario plays that this world has never heard of gets a seat
   for (const id of scen.roles || ['A', 'B']) if (!w.players[id]) w.players[id] = newPlayer(id);
@@ -397,7 +435,24 @@ export function ensureWorld(w) {
 
   ensurePeople(w, scen);
   ensurePlans(w, scen);
+  ensureHerbs(w, scen);
   return w;
+}
+
+/** Every herb the scenario grows somewhere has its bed, whatever a saved
+ * world already had. Matched by kind rather than position: a bed never
+ * moves, and there is only ever one of each. */
+function ensureHerbs(w, scen) {
+  for (const [x, y, kind] of scen.herbs || []) {
+    if (w.herbs.some(h => h.kind === kind)) continue;
+    w.herbs.push({ id: newId('herb'), kind, x, y, count: 3, regrow: 0 });
+  }
+}
+
+/** A tile in the mine, addressed the way `house.move`'s slots are: by where
+ * it is, never by an id nobody but this device has handed out. */
+export function mineKey(x, y) {
+  return x + ',' + y;
 }
 
 /** Anybody in the roster who is not in this world yet moves in. */
@@ -699,6 +754,40 @@ export function kids(w) {
   return w.villagers.filter(v => v.kid);
 }
 
+/** What is known about a tile in the mine, or null if it is still rock. */
+export function mineCellAt(w, x, y) {
+  return w.mine.dug[mineKey(x, y)] || null;
+}
+
+/**
+ * You can only ever dig into the rock next to a tunnel that is already
+ * there — never a tile floating on its own — and never past an unstable one
+ * that has nothing holding it up yet. That is what makes the mine a network
+ * rather than a scatter of holes, and what makes shoring one up something
+ * worth doing rather than a step nobody would miss.
+ */
+export function mineCanDig(w, x, y) {
+  if (x < 0 || y < 0 || x >= MINE_W || y >= MINE_H) return false;
+  if (mineCellAt(w, x, y)) return false;
+  const neighbours = [
+    [x - 1, y],
+    [x + 1, y],
+    [x, y - 1],
+    [x, y + 1],
+  ];
+  return neighbours.some(([nx, ny]) => {
+    const cell = mineCellAt(w, nx, ny);
+    return cell && (cell.kind !== 'unstable' || cell.supported);
+  });
+}
+
+/** The wheel turns when the water can reach it and somebody has pulled the
+ * lever — both, not either. Nothing else remembers this; it is worked out
+ * fresh every time, the same way a house's comfort is. */
+export function machineSpinning(w) {
+  return w.machine.valve === 'open' && !!w.machine.lever;
+}
+
 /** The house plot people are waiting on — never one of the project plans. */
 export function openSite(w) {
   return w.buildings.find(b => b.state === 'site') || null;
@@ -794,6 +883,7 @@ export function deserialize(text) {
   scan(w.logs);
   scan(w.stones);
   scan(w.visitors);
+  scan(w.herbs);
   nextId = max + 1;
 
   ensureWorld(w);

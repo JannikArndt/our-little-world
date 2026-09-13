@@ -188,6 +188,71 @@ export const PROJECTS = {
 export const PROJECT = {};
 for (const k in PROJECTS) PROJECT[k] = PROJECTS[k].cost;
 
+/* --------------------------------------------------------------------- */
+/* the herb garden: a handful of plants worth knowing by sight            */
+/* --------------------------------------------------------------------- */
+
+/**
+ * A row here is one plant: an icon and how long it takes to come back once
+ * picked. What each one is called lives in the language tables, keyed
+ * `herb.<kind>`, so the name is only ever read, never composed.
+ */
+export const HERBS = {
+  mint: { icon: '🌿' },
+  basil: { icon: '🌱' },
+  thyme: { icon: '🍃' },
+  sage: { icon: '🪴' },
+};
+export const HERB_REGROW_TICKS = 900; // ~90 s, about the same patience as a stone bank
+
+/** The one a poorly tummy actually wants. The other three are worth knowing
+ * by sight anyway — that is the whole point of a garden. */
+export const HERB_REMEDY = 'mint';
+
+/* --------------------------------------------------------------------- */
+/* the meadow: things that turn up if you go and look                     */
+/* --------------------------------------------------------------------- */
+
+/** What can be seen out there, and how it is drawn. `slow` critters (a
+ * rabbit having a look round) linger; `flighty` ones (a bird, a butterfly)
+ * do not stay long once they arrive. */
+export const CRITTERS = {
+  deer: { icon: '🦌', flighty: false },
+  rabbit: { icon: '🐇', flighty: false },
+  bird: { icon: '🐦', flighty: true },
+  butterfly: { icon: '🦋', flighty: true },
+};
+// the open ground east of the river, past where the wheat grows — nobody
+// has to be told to go and look, it is just there to wander into
+export const MEADOW_BOX = [24, 0, 39, 10];
+
+/* --------------------------------------------------------------------- */
+/* the mine: a handful of tunnels, dug one tile at a time                 */
+/* --------------------------------------------------------------------- */
+
+export const MINE_W = 4;
+export const MINE_H = 4;
+// what a freshly dug tile might turn out to be, and how likely each is —
+// weights, not percentages, so adding a new find is one more row
+export const MINE_FINDS = [
+  { kind: 'empty', weight: 3 },
+  { kind: 'stone', weight: 3, res: { stone: 2 } },
+  { kind: 'coal', weight: 2, res: { coal: 1 } },
+  { kind: 'clay', weight: 2, res: { clay: 1 } },
+  { kind: 'water', weight: 1 },
+  { kind: 'unstable', weight: 1 },
+];
+export const MINE_SUPPORT_COST = { plank: 1 };
+
+/* --------------------------------------------------------------------- */
+/* the strange machine: a wheel that turns, if you work out how           */
+/* --------------------------------------------------------------------- */
+
+// While the wheel is turning, the water it moves helps the field along too —
+// the first thing the machine is good for, and the only one this version
+// promises. PLOT_GROW_WET below is the plain rate; this is added on top of it.
+export const MACHINE_PLOT_BONUS = 0.02;
+
 export const SAPLING_TICKS = 1500; // a sapling is a tree again after ~2.5 min of play
 export const REPLANT_GOAL = 3; // stumps worth replanting before the forest looks whole
 
@@ -248,7 +313,19 @@ export const SCENARIOS = {
       { key: 'house_b', x: 10, y: 12, w: 3, h: 2, name: "Mira's house", beds: 2 },
     ],
     sites: [{ key: 'site_village', x: 4, y: 18, w: 3, h: 2, name: 'an empty plot' }],
-    works: [{ key: 'workshop', type: 'workshop', x: 9, y: 16, w: 4, h: 3, name: 'the workshop' }],
+    works: [
+      { key: 'workshop', type: 'workshop', x: 9, y: 16, w: 4, h: 3, name: 'the workshop' },
+      { key: 'mine', type: 'mine', x: 0, y: 14, w: 2, h: 2, name: 'the mine' },
+      { key: 'machine', type: 'machine', x: 14, y: 20, w: 2, h: 2, name: 'the strange machine' },
+    ],
+    // a small bed of plants nobody has to plant: they are just there,
+    // waiting to be looked at closely
+    herbs: [
+      [1, 21, 'mint'],
+      [2, 21, 'basil'],
+      [1, 22, 'thyme'],
+      [2, 22, 'sage'],
+    ],
     roads: [
       [5, 14, 8, 15],
       [8, 15, 11, 14],

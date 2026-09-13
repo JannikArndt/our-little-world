@@ -16,10 +16,25 @@ import {
   houseFit,
   newHouseStuff,
   slotFits,
+  mineKey,
+  mineCellAt,
+  mineCanDig,
+  machineSpinning,
 } from './world.js';
-import { PROJECTS, EAGER_AT, HOUSE_SHELL, HOUSE_STUFF } from './content.js';
+import {
+  PROJECTS,
+  EAGER_AT,
+  HOUSE_SHELL,
+  HOUSE_STUFF,
+  HERBS,
+  HERB_REMEDY,
+  CRITTERS,
+  MEADOW_BOX,
+  MINE_FINDS,
+  MINE_SUPPORT_COST,
+} from './content.js';
 import { findPath } from './pathfind.js';
-import { rndInt } from './rng.js';
+import { rndInt, rnd } from './rng.js';
 
 /* ---- small helpers -------------------------------------------------- */
 
@@ -581,6 +596,145 @@ function applyOne(w, a) {
       return true;
     }
 
+    /* ---------------- the herb garden ---------------- */
+    /**
+     * One tap does both jobs at once: a first pick is the discovery ("oh,
+     * that's mint") and every pick after it is the practice that eventually
+     * makes it teachable — see `tally` and `teachKey` in hud.js, unchanged.
+     */
+    case 'herb.pick': {
+      const bed = byId(w.herbs, a.id);
+      if (!bed || bed.count <= 0) return false;
+      bed.count -= 1;
+      const p = w.players[a.role];
+      p.herbs[bed.kind] = (p.herbs[bed.kind] || 0) + 1;
+      const cap = 'herb_' + bed.kind;
+      const firstTime = !p.caps[cap];
+      if (firstTime) p.caps[cap] = 1;
+      tally(w, a.role, cap);
+      fx(w, 'float', bed.x + 0.5, bed.y + 0.5, '+1 ' + HERBS[bed.kind].icon);
+      if (firstTime) {
+        journal(w, HERBS[bed.kind].icon, 'j.herb', { what: capName(cap) });
+        note(
+          w,
+          'herb_' + bed.kind,
+          HERBS[bed.kind].icon,
+          'notice.herb',
+          { what: capName(cap) },
+          'calm',
+        );
+      }
+      return true;
+    }
+    /** Mint, brought to somebody with a poorly tummy: kinder and quicker than
+     * waiting it out, and nobody needed to build anything for it. */
+    case 'herb.give': {
+      const v = byId(w.villagers, a.villagerId);
+      if (!v || v.poorly <= 0) return false;
+      const p = w.players[a.role];
+      if ((p.herbs[HERB_REMEDY] || 0) <= 0) return false;
+      p.herbs[HERB_REMEDY] -= 1;
+      v.poorly = 0;
+      v.hearts = w.tick;
+      fx(w, 'hearts', v.x, v.y - 0.7);
+      tally(w, a.role, 'heal');
+      journal(w, '🌿', 'j.healed', { name: v.name });
+      return true;
+    }
+
+    /* ---------------- the meadow ---------------- */
+    /** Noticing something is the whole of it — nothing is caught, nothing is
+     * kept. The first sighting of a kind is worth a name; after that it is
+     * just nice to see again. */
+    case 'nature.spot': {
+      const c = (w.visitors || []).find(v => v.id === a.id);
+      if (!c || !CAPS['spot_' + c.kind]) return false;
+      const cap = 'spot_' + c.kind;
+      const firstTime = !w.players[a.role].caps[cap];
+      if (firstTime) w.players[a.role].caps[cap] = 1;
+      tally(w, a.role, cap);
+      fx(w, 'hearts', c.x, c.y - 0.6);
+      if (firstTime) {
+        journal(w, CRITTERS[c.kind].icon, 'j.spotted', { what: capName(cap) });
+        note(
+          w,
+          'spot_' + c.kind,
+          CRITTERS[c.kind].icon,
+          'notice.spotted',
+          { what: capName(cap) },
+          'calm',
+        );
+      }
+      // a bird or a butterfly does not hang about once it has been noticed
+      if (CRITTERS[c.kind]?.flighty) c.life = Math.min(c.life, 20);
+      return true;
+    }
+
+    /* ---------------- the mine ---------------- */
+    /**
+     * A tile can only be dug next to one that already is (world.mineCanDig),
+     * so the tunnels are always one connected thing rather than a scatter of
+     * holes — and an unstable tile nobody has shored up yet stops the way
+     * through, not the tile itself.
+     */
+    case 'mine.dig': {
+      if (!mineCanDig(w, a.x, a.y)) return false;
+      let total = 0;
+      for (const f of MINE_FINDS) total += f.weight;
+      let r = rnd(w) * total,
+        chosen = MINE_FINDS[0];
+      for (const f of MINE_FINDS) {
+        r -= f.weight;
+        if (r <= 0) {
+          chosen = f;
+          break;
+        }
+      }
+      w.mine.dug[mineKey(a.x, a.y)] = { kind: chosen.kind, supported: chosen.kind !== 'unstable' };
+      for (const k in chosen.res || {}) gain(w, a.role, k, chosen.res[k]);
+      if (!w.players[a.role].caps.dig) w.players[a.role].caps.dig = 1;
+      tally(w, a.role, 'dig');
+      fx(w, 'sparkle', a.x + 0.5, a.y + 0.5);
+      journal(w, '⛏️', 'j.dug');
+      return true;
+    }
+    /** Shoring up a tunnel nobody trusts yet, so digging can carry on past
+     * it. Anybody can — it is a plank and a decision, not a rank. */
+    case 'mine.support': {
+      const cell = mineCellAt(w, a.x, a.y);
+      if (!cell || cell.kind !== 'unstable' || cell.supported) return false;
+      if (!pay(w, a.role, MINE_SUPPORT_COST)) return false;
+      cell.supported = true;
+      if (!w.players[a.role].caps.support) w.players[a.role].caps.support = 1;
+      tally(w, a.role, 'support');
+      fx(w, 'sparkle', a.x + 0.5, a.y + 0.5);
+      journal(w, '🛠️', 'j.supported');
+      return true;
+    }
+
+    /* ---------------- the strange machine ---------------- */
+    /**
+     * No explanation anywhere: turning the valve or pulling the lever always
+     * does exactly what it did last time, and `machineSpinning()` works out
+     * whether the wheel is turning from the two of them together — nothing
+     * here remembers "spinning" as a fact of its own, the same way a house's
+     * comfort is never stored either.
+     */
+    case 'machine.turn': {
+      if (a.part === 'valve') w.machine.valve = w.machine.valve === 'open' ? 'closed' : 'open';
+      else if (a.part === 'lever') w.machine.lever = !w.machine.lever;
+      else return false;
+      if (machineSpinning(w)) {
+        if (!w.players[a.role].caps.machine) {
+          w.players[a.role].caps.machine = 1;
+          journal(w, '⚙️', 'j.machine');
+          note(w, 'machine', '⚙️', 'notice.machine', null, 'calm');
+        }
+        tally(w, a.role, 'machine');
+      }
+      return true;
+    }
+
     /* ---------------- sharing ---------------- */
     case 'give': {
       const from = w.players[a.from],
@@ -700,17 +854,20 @@ function applyWorldEvent(w, a) {
     case 'critter': {
       w.visitors = w.visitors || [];
       if (w.visitors.length) return false;
+      const kinds = Object.keys(CRITTERS);
+      const kind = kinds[rndInt(w, kinds.length)];
+      const [bx0, by0, bx1, by1] = MEADOW_BOX;
       w.visitors.push({
         id: newId('cr'),
-        kind: a.kind || 'deer',
-        x: 2.5,
-        y: 9.5,
+        kind,
+        x: bx0 + rndInt(w, bx1 - bx0 + 1) + 0.5,
+        y: by0 + rndInt(w, by1 - by0 + 1) + 0.5,
         path: [],
         wait: 0,
-        life: 1400,
+        life: CRITTERS[kind].flighty ? 260 : 1400,
       });
-      note(w, 'critter', '🦌', 'notice.critter', null, 'calm');
-      journal(w, '🦌', 'j.deer');
+      note(w, 'critter_' + kind, CRITTERS[kind].icon, 'notice.critter', null, 'calm');
+      journal(w, CRITTERS[kind].icon, 'j.critter');
       return true;
     }
     case 'goodharvest': {

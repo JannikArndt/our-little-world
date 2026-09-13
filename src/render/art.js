@@ -587,12 +587,7 @@ export function drawSheepSay(ctx, s, tick) {
   else if (SHEEP_GLYPH[s.mood]) bubble(ctx, x + 8, y - 15, SHEEP_GLYPH[s.mood], 12);
 }
 
-export function drawDeer(ctx, c, _time) {
-  const x = c.x * TILE,
-    y = c.y * TILE;
-  shadow(ctx, x, y + 3, 8, 3);
-  ctx.save();
-  ctx.translate(x, y);
+function drawDeerBody(ctx) {
   ctx.strokeStyle = '#7c5a3c';
   ctx.lineWidth = 1.8;
   ctx.lineCap = 'round';
@@ -624,6 +619,100 @@ export function drawDeer(ctx, c, _time) {
   ctx.beginPath();
   ctx.arc(7.6, -10.4, 0.6, 0, Math.PI * 2);
   ctx.fill();
+}
+
+/** A rabbit: round, low, two ears — the whole of what makes it read as one. */
+function drawRabbitBody(ctx) {
+  ctx.fillStyle = '#c9b79a';
+  ctx.beginPath();
+  ctx.ellipse(0, -3, 5.6, 4.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(4.4, -5, 2.6, 2.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#a9987c';
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-2.4, -7.6);
+  ctx.lineTo(-3.4, -14);
+  ctx.moveTo(-0.2, -7.8);
+  ctx.lineTo(0, -14.4);
+  ctx.stroke();
+  ctx.fillStyle = C.ink;
+  ctx.beginPath();
+  ctx.arc(5.6, -5.4, 0.6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** A bird: a small round body on the ground, or a shallow wingbeat aloft. */
+function drawBirdBody(ctx, time) {
+  const lift = 1 + Math.sin(time * 0.02) * 1.4;
+  ctx.fillStyle = '#8a7350';
+  ctx.beginPath();
+  ctx.ellipse(0, -5 - lift, 4.4, 3.4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#5f4f38';
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = 'round';
+  const wing = Math.sin(time * 0.035) * 5;
+  ctx.beginPath();
+  ctx.moveTo(-2, -5 - lift);
+  ctx.lineTo(-6, -5 - lift - wing);
+  ctx.moveTo(2, -5 - lift);
+  ctx.lineTo(6, -5 - lift - wing);
+  ctx.stroke();
+  ctx.fillStyle = '#c98a4a';
+  ctx.beginPath();
+  ctx.moveTo(4, -5 - lift);
+  ctx.lineTo(6.6, -4.6 - lift);
+  ctx.lineTo(4, -4.2 - lift);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/** A butterfly: two small wings, opening and closing, nothing underneath. */
+function drawButterflyBody(ctx, time) {
+  const open = 0.5 + Math.abs(Math.sin(time * 0.012)) * 0.5;
+  ctx.save();
+  ctx.translate(0, -10);
+  ctx.fillStyle = '#e0a03e';
+  ctx.save();
+  ctx.scale(open, 1);
+  ctx.beginPath();
+  ctx.ellipse(-3.2, 0, 3.6, 4.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.scale(open, 1);
+  ctx.beginPath();
+  ctx.ellipse(3.2, 0, 3.6, 4.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = C.ink;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 0.8, 3.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+const CRITTER_BODY = {
+  rabbit: drawRabbitBody,
+  bird: drawBirdBody,
+  butterfly: drawButterflyBody,
+};
+
+/** Whatever turned up in the meadow. `deer` is the original shape; anything
+ * else is drawn by its own small function, keyed by `c.kind`. */
+export function drawDeer(ctx, c, time) {
+  const x = c.x * TILE,
+    y = c.y * TILE;
+  shadow(ctx, x, y + 3, 8, 3);
+  ctx.save();
+  ctx.translate(x, y);
+  const body = CRITTER_BODY[c.kind];
+  if (body) body(ctx, time);
+  else drawDeerBody(ctx);
   ctx.restore();
 }
 
@@ -1173,6 +1262,72 @@ export function drawWorkshop(ctx, b, time, tick) {
   ctx.fillText(tr('art.workshop'), x + w / 2, y + h + 6);
 }
 
+/** The mine: a rocky mound with a dark mouth in the hillside. Nothing about
+ * it says what is inside — that is the whole point of going in. */
+export function drawMineEntrance(ctx, b, _time) {
+  const x = b.x * TILE + (b.w * TILE) / 2,
+    y = b.y * TILE + b.h * TILE;
+  shadow(ctx, x, y - 2, 20, 6);
+  ctx.fillStyle = C.stoneDark;
+  ctx.beginPath();
+  ctx.ellipse(x, y - 14, 24, 20, 0, Math.PI, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = C.stone;
+  ctx.beginPath();
+  ctx.ellipse(x - 6, y - 16, 16, 15, 0, Math.PI, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2c241c';
+  ctx.beginPath();
+  ctx.ellipse(x, y - 8, 8, 12, 0, Math.PI, Math.PI * 2, true);
+  ctx.fill();
+  ctx.strokeStyle = C.woodDark;
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.moveTo(x - 9, y - 8);
+  ctx.lineTo(x - 9, y - 19);
+  ctx.moveTo(x + 9, y - 8);
+  ctx.lineTo(x + 9, y - 19);
+  ctx.stroke();
+}
+
+/**
+ * The strange machine. `spinning` is worked out fresh by the caller from the
+ * world's own state (`machineSpinning`), never stored here — this only draws
+ * what is true right now.
+ */
+export function drawMachine(ctx, b, time, spinning) {
+  const x = b.x * TILE + (b.w * TILE) / 2,
+    y = b.y * TILE + b.h * TILE;
+  shadow(ctx, x, y - 2, 18, 5);
+  ctx.fillStyle = C.woodDark;
+  rr(ctx, x - 16, y - 22, 32, 20, 4);
+  ctx.fill();
+  ctx.fillStyle = spinning ? '#cfd6d1' : '#9aa39c';
+  ctx.save();
+  ctx.translate(x, y - 22);
+  ctx.rotate((spinning ? time * 0.006 : time * 0.0006) % (Math.PI * 2));
+  ctx.beginPath();
+  ctx.arc(0, 0, 11, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#5c655f';
+  ctx.lineWidth = 1.6;
+  for (let i = 0; i < 8; i++) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos((i * Math.PI) / 4) * 11, Math.sin((i * Math.PI) / 4) * 11);
+    ctx.stroke();
+  }
+  ctx.restore();
+  if (spinning) {
+    ctx.strokeStyle = 'rgba(127,179,204,.7)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - 14, y);
+    ctx.lineTo(x - 20, y + 6);
+    ctx.stroke();
+  }
+}
+
 export function drawLarder(ctx, l, _time) {
   const x = l.x * TILE,
     y = l.y * TILE;
@@ -1217,6 +1372,35 @@ export function drawStoneBank(ctx, s) {
     ctx.ellipse(x + Math.cos(a) * 6.5, y + Math.sin(a) * 4, 4.2, 3.2, a, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+  }
+  if (n === 0) {
+    ctx.fillStyle = 'rgba(67,55,42,.35)';
+    ctx.font = '9px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('…', x, y);
+  }
+}
+
+const HERB_COLOUR = { mint: '#5aa66a', basil: '#3f8f4f', thyme: '#8ba85a', sage: '#9fae7e' };
+
+/** A little clump of one plant. It looks the same whether you know its name
+ * or not — the picture is what teaches the name, not the other way round. */
+export function drawHerbBed(ctx, h) {
+  const x = h.x * TILE + TILE / 2,
+    y = h.y * TILE + TILE / 2;
+  shadow(ctx, x, y + 3, 9, 3);
+  ctx.fillStyle = '#8a6b45';
+  ctx.beginPath();
+  ctx.ellipse(x, y + 2, 9, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const n = Math.max(1, h.count);
+  const colour = HERB_COLOUR[h.kind] || C.sprout;
+  for (let i = 0; i < Math.min(3, n); i++) {
+    const a = i * 2.1;
+    ctx.fillStyle = colour;
+    ctx.beginPath();
+    ctx.ellipse(x + Math.cos(a) * 4, y - 1 + Math.sin(a) * 2, 4.4, 3, a, 0, Math.PI * 2);
+    ctx.fill();
   }
   if (n === 0) {
     ctx.fillStyle = 'rgba(67,55,42,.35)';

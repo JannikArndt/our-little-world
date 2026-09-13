@@ -12,6 +12,7 @@ import {
   hasWell,
   riverClean,
   fieldFenced,
+  machineSpinning,
   SAPLING_TICKS,
 } from './world.js';
 import {
@@ -28,6 +29,7 @@ import {
   AWAY_TICKS_PER_HOUR,
   AWAY_CAP_TICKS,
   AWAY_MIN_MS,
+  MACHINE_PLOT_BONUS,
 } from './content.js';
 import { rnd, rndInt } from './rng.js';
 import { fx, journal, note, setAct, clearAct } from './actions.js';
@@ -657,10 +659,13 @@ function nearestDrink(w, s) {
 }
 
 function tickPlots(w) {
+  // the one thing the machine is good for so far: while the wheel is
+  // turning, the water it moves helps the field along too
+  const bonus = machineSpinning(w) ? MACHINE_PLOT_BONUS : 0;
   for (const p of w.plots) {
     if (p.state === 'growing') {
       if (p.water > 0) {
-        p.growth += PLOT_GROW_WET;
+        p.growth += PLOT_GROW_WET + bonus;
         p.water -= PLOT_DRINK;
       } else p.growth += PLOT_GROW_DRY;
       if (p.growth >= 100) {
@@ -747,6 +752,7 @@ function tickSaplings(w) {
 
 function tickPlaces(w) {
   if (w.tick % 300 === 0) for (const b of w.stones) if (b.count < 6) b.count++;
+  if (w.tick % 300 === 0) for (const b of w.herbs) if (b.count < 3) b.count++;
   for (const b of w.buildings) {
     if (b.state !== 'built') continue;
     const lived = b.residents?.length;

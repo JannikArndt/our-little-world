@@ -10,9 +10,14 @@ import {
   dayPhase,
   isDusk,
 } from '../src/core/world.js';
-import { SCENARIOS } from '../src/core/content.js';
+import {
+  SCENARIOS,
+  SAPLING_TICKS,
+  AWAY_CAP_TICKS,
+  AWAY_TICKS_PER_HOUR,
+} from '../src/core/content.js';
 import { applyAction, journal } from '../src/core/actions.js';
-import { tick } from '../src/core/sim.js';
+import { tick, catchUp } from '../src/core/sim.js';
 import { maybeEvent } from '../src/core/events.js';
 import { findPath } from '../src/core/pathfind.js';
 import { T, tileAt, walkable } from '../src/core/grid.js';
@@ -607,4 +612,109 @@ test('a new day clears the journal but never the since-list — that is the whol
   assert.equal(w.journal.length, 0, 'the journal is cleared every in-game day');
   assert.equal(w.ext.since.B.length, 1, 'but the welcome-back screen still remembers');
   assert.equal(w.ext.since.B[0].key, 'j.shared');
+});
+
+/* --- kind things while nobody is there, and only kind ones (law 9) --- */
+
+const HOUR = 3600000;
+
+// a village left with a sapling in the ground, wheat coming on and a bare sheep
+const away = seed => {
+  const w = createWorld(seed);
+  const stump = w.trees.find(t => t.state === 'standing');
+  stump.state = 'sapling';
+  stump.plantedTick = w.tick;
+  const p = w.plots[0];
+  applyAction(w, { type: 'plot.plant', role: 'B', plotId: p.id });
+  w.sheep[0].fluff = 10;
+  w.ext.awayAt = 1000000;
+  return w;
+};
+
+test('a world left alone grows, and the growing is all that happens', () => {
+  const w = away(71);
+  const before = {
+    hunger: w.villagers.map(v => v.hunger),
+    poorly: w.villagers.map(v => v.poorly),
+    food: w.larder.food,
+    notices: w.notices.length,
+    tick: w.tick,
+    sheepHunger: w.sheep.map(s => s.hunger),
+  };
+  const ticks = catchUp(w, w.ext.awayAt + 2 * HOUR);
+  assert.ok(ticks > 0, 'two hours away is worth something');
+
+  assert.ok(w.plots[0].growth > 0, 'the wheat came on');
+  assert.ok(w.sheep[0].fluff > 10, 'the wool came back in');
+
+  assert.deepEqual(
+    w.villagers.map(v => v.hunger),
+    before.hunger,
+    'nobody got hungry while nobody was there',
+  );
+  assert.deepEqual(
+    w.sheep.map(s => s.hunger),
+    before.sheepHunger,
+    'no sheep got hungry either',
+  );
+  assert.deepEqual(
+    w.villagers.map(v => v.poorly),
+    before.poorly,
+    'nobody fell ill while nobody was there',
+  );
+  assert.equal(w.larder.food, before.food, 'nothing was eaten out of the basket');
+  assert.equal(w.notices.length, before.notices, 'no problem arrived on its own');
+  assert.equal(w.tick, before.tick, 'the day is told by w.tick, which does not move');
+  // nothing out of events.js can fire: it is the host's tick loop that asks,
+  // and only while a play block is running
+  assert.equal(w.block.active, false);
+  assert.equal(maybeEvent(w), null);
+});
+
+test('a sapling left overnight is a tree when you look', () => {
+  const w = away(72);
+  catchUp(w, w.ext.awayAt + 8 * HOUR);
+  const sap = w.trees.find(t => t.plantedTick != null);
+  assert.ok(w.tick - sap.plantedTick >= SAPLING_TICKS, 'it is owed its growing');
+  run(w, 20); // tickSaplings only looks every tenth tick
+  assert.equal(sap.state, 'standing', 'and it takes it on the first tick anybody watches');
+});
+
+test('a month away is worth no more than three days', () => {
+  const three = away(73);
+  const month = away(73);
+  catchUp(three, three.ext.awayAt + 3 * HOUR); // the cap, in hours away
+  catchUp(month, month.ext.awayAt + 30 * 24 * HOUR);
+  assert.equal(three.ext.awayAt !== month.ext.awayAt, true);
+  three.ext.awayAt = month.ext.awayAt = 0;
+  assert.equal(serialize(month), serialize(three), 'a month arrives as a village, not a forest');
+  assert.ok(AWAY_CAP_TICKS > SAPLING_TICKS, 'three days is still enough for a sapling');
+  // content.js cannot import world.js, so the day length is written out there
+  assert.equal(AWAY_TICKS_PER_HOUR, BLOCK_TICKS, 'an hour away is one day of play');
+  assert.equal(AWAY_CAP_TICKS, 3 * BLOCK_TICKS, 'and the cap is three of them');
+});
+
+test('catching up twice does nothing the second time', () => {
+  const w = away(74);
+  const now = w.ext.awayAt + 5 * HOUR;
+  catchUp(w, now);
+  const once = serialize(w);
+  assert.equal(catchUp(w, now), 0, 'the stamp has been used up');
+  assert.equal(serialize(w), once);
+  // and a moment later is still not an absence
+  assert.equal(catchUp(w, now + 30000), 0);
+  w.ext.awayAt = now;
+  assert.equal(serialize(w), once);
+});
+
+test('a clock that disagrees costs nothing either way', () => {
+  const w = away(75);
+  const before = serialize(w);
+  assert.equal(catchUp(w, w.ext.awayAt - 10 * HOUR), 0, 'a stamp from the future is no gift');
+  w.ext.awayAt = JSON.parse(before).ext.awayAt;
+  assert.equal(serialize(w), before);
+
+  const fresh = createWorld(76);
+  delete fresh.ext.awayAt;
+  assert.equal(catchUp(fresh, Date.now()), 0, 'a world from before any of this stands still');
 });

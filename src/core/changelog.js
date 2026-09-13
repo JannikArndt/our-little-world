@@ -4,9 +4,25 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '2.4';
+export const VERSION = '2.5';
 
 export const CHANGELOG = [
+  {
+    v: '2.5',
+    date: '2026-09-13',
+    en: [
+      'The village carries on without you now — gently. Plant a sapling and come back after tea and it is a tree. Water the wheat before you go and you may well come back to a ripe field. The sheep grow their wool back while nobody is looking.',
+      'Only the kind things, though. Nobody goes hungry while you are away, nobody gets a poorly tummy, and no problem ever turns up on its own. Coming back is a small present and nothing else.',
+      'And the village does not run off without you either: three days of growing is the most it will ever do, however long it has been. Leave it for a month and you come back to a village, not a forest.',
+      'Both of you see exactly the same thing when you come back, because the village works it out once and tells you both.',
+    ],
+    de: [
+      'Das Dorf macht jetzt auch ohne euch weiter — ganz sachte. Pflanz einen Setzling, komm nach dem Abendessen wieder, und er ist ein Baum. Gieß den Weizen, bevor du gehst, und das Feld ist vielleicht schon reif, wenn du zurückkommst. Die Schafe lassen ihre Wolle nachwachsen, während niemand hinsieht.',
+      'Aber wirklich nur die guten Dinge. Niemand wird hungrig, während du weg bist, niemand bekommt Bauchweh, und kein Problem taucht von allein auf. Zurückzukommen ist ein kleines Geschenk und sonst nichts.',
+      'Und das Dorf läuft euch auch nicht davon: höchstens drei Tage Wachstum, egal wie lange es her ist. Lass es einen Monat liegen, und du kommst in ein Dorf zurück, nicht in einen Wald.',
+      'Ihr beide seht beim Zurückkommen genau dasselbe, denn das Dorf rechnet es einmal aus und erzählt es euch beiden.',
+    ],
+  },
   {
     v: '2.4',
     date: '2026-09-13',

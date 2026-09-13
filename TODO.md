@@ -9,27 +9,6 @@ on the live site. Delete an item when it lands — this file should get shorter.
 
 ---
 
-## 1. 🌱 Kind things while nobody is there
-
-**Law 9.** The world is frozen between visits; saplings only grow while somebody
-is watching, because `SAPLING_TICKS` counts play ticks.
-
-- On load, work out how long the world was away and advance **only the kind
-  things**: saplings toward trees, plots toward ripe, sheep toward woolly. Never
-  hunger (`HUNGER_RISE`), never `POORLY_CHANCE`, never anything from
-  `events.js`.
-- **Cap it**, and put the number next to the constant with a comment. A world
-  opened after a month must not arrive as a forest.
-- Deterministic and identical on both screens: derive it from the wall-clock
-  stamp stored in the snapshot, apply it once on adoption, never from each
-  device's own clock independently.
-- Idempotent, so law 12 holds — applying the catch-up twice must do nothing the
-  second time.
-- `tests/sim.test.mjs`: a world aged by N days grows, never starves, and gives
-  the same result applied twice.
-
----
-
 ## 2. 🧹 The modern-JavaScript sweep
 
 House style says modern JS everywhere; the code still avoids optional chaining,

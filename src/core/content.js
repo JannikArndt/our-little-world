@@ -191,6 +191,21 @@ for (const k in PROJECTS) PROJECT[k] = PROJECTS[k].cost;
 export const SAPLING_TICKS = 1500; // a sapling is a tree again after ~2.5 min of play
 export const REPLANT_GOAL = 3; // stumps worth replanting before the forest looks whole
 
+// How wheat comes on. Kept here rather than in the simulation because the
+// catch-up does the same sum in one step for the hours nobody was watching.
+export const PLOT_GROW_WET = 0.062; // per tick, while there is water in the ground
+export const PLOT_GROW_DRY = 0.004; // per tick, once it has drunk it all
+export const PLOT_DRINK = 0.09; // how fast a watering is used up
+export const FLUFF_RISE = 0.012; // per tick, a sheep's wool coming back in
+
+// Kind things go on while nobody is there (law 9). The world does not race:
+// an hour away grows as much as a day of playing does, and three days is as
+// much as it ever adds up to — a village opened after a month is a village,
+// not a forest. A minute away is not being away at all.
+export const AWAY_TICKS_PER_HOUR = 5 * 60 * 10; // one in-game day, same as BLOCK_TICKS
+export const AWAY_CAP_TICKS = 3 * 5 * 60 * 10; // three days, and never a fourth
+export const AWAY_MIN_MS = 60 * 1000; // a reload is not an absence
+
 // Nobody is ever really ill in this world: a poorly tummy from river water
 // means a slow walk home, a rest, and a village that can fix the cause.
 export const POORLY_TICKS = 900; // ~90 s of resting, then up again

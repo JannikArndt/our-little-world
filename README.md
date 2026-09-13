@@ -443,6 +443,13 @@ card to tap away, the village simply wakes up again a day older. The world is
 saved on the way past, exactly as it is, with nothing rotting while you are
 away.
 
+What does happen while nobody is there is the kind half of it: saplings come on
+towards being trees, watered wheat ripens, wool grows back. Never hunger, never
+anybody poorly, never a problem that turned up on its own — and never more than
+three days of it however long it has been, so a village left for a month is
+still a village. Both screens are told the same answer rather than each working
+one out, so coming back looks the same to both of you.
+
 In between, the village gets on with itself. People dance, run, sit down, stop
 and natter in twos, walk over to the basket when bread turns up in it, and every
 so often two of them squabble until somebody taps them. None of it ever happens

@@ -13,7 +13,7 @@
 // first — that used to be the one way to lose a village.
 
 import { applyAction } from '../core/actions.js';
-import { tick } from '../core/sim.js';
+import { tick, catchUp } from '../core/sim.js';
 import { maybeEvent, resetEventBudget } from '../core/events.js';
 import { createWorld, deserialize, serialize, TICK_MS } from '../core/world.js';
 import { save, load } from '../core/persist.js';
@@ -111,6 +111,12 @@ export class Session {
 
   becomeHost() {
     this.isHost = true;
+    // Nobody has been here for a while and the kind things went on without
+    // them — law 9. Done here and nowhere else: whoever runs the clock works
+    // it out once, before the first tick, and the other player is handed the
+    // result in the snapshot below rather than working out a second answer
+    // from a second device's clock.
+    catchUp(this.world, Date.now());
     this.status = this.solo ? 'solo' : 'hosting';
     this.emit('status', this.status);
     this.emit('world', this.world);
@@ -249,6 +255,11 @@ export class Session {
 
   update(dtMs) {
     if (!this.world) return;
+    // Somebody is watching, this moment. It goes with the world into every
+    // save, upload and snapshot, so the next person in can tell how long the
+    // village was on its own — see catchUp(). Out here rather than inside
+    // tick(), which stays a pure function of the ticks it is given.
+    if (this.world.ext) this.world.ext.awayAt = Date.now();
     this.acc += Math.min(dtMs, 500); // a backgrounded tab does not fast-forward
     let steps = 0;
     while (this.acc >= TICK_MS && steps < 8) {

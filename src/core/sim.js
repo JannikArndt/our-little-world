@@ -21,6 +21,13 @@ import {
   HUNGRY_AT,
   EAGER_AT,
   LOAF_RELIEF,
+  PLOT_GROW_WET,
+  PLOT_GROW_DRY,
+  PLOT_DRINK,
+  FLUFF_RISE,
+  AWAY_TICKS_PER_HOUR,
+  AWAY_CAP_TICKS,
+  AWAY_MIN_MS,
 } from './content.js';
 import { rnd, rndInt } from './rng.js';
 import { fx, journal, note, setAct, clearAct } from './actions.js';
@@ -546,7 +553,7 @@ function tickSheep(w, s) {
   const tile = tileAt(w, Math.floor(s.x), Math.floor(s.y));
   s.hunger = Math.min(100, s.hunger + 0.045);
   s.thirst = Math.min(100, s.thirst + 0.016);
-  s.fluff = Math.min(100, s.fluff + 0.012);
+  s.fluff = Math.min(100, s.fluff + FLUFF_RISE);
 
   if (tile === T.GRASS || tile === T.FOREST) s.hunger = Math.max(0, s.hunger - 0.062);
   if (tile === T.FIELD) {
@@ -650,9 +657,9 @@ function tickPlots(w) {
   for (const p of w.plots) {
     if (p.state === 'growing') {
       if (p.water > 0) {
-        p.growth += 0.062;
-        p.water -= 0.09;
-      } else p.growth += 0.004;
+        p.growth += PLOT_GROW_WET;
+        p.water -= PLOT_DRINK;
+      } else p.growth += PLOT_GROW_DRY;
       if (p.growth >= 100) {
         p.state = 'ripe';
         p.growth = 100;
@@ -801,4 +808,63 @@ export function tick(w) {
     return 'block-ended';
   }
   return null;
+}
+
+/* --------------------------------------------------------------------- */
+/* kind things while nobody is there                                      */
+/* --------------------------------------------------------------------- */
+
+/**
+ * Law 9. Saplings come on towards being trees, wheat ripens, wool grows back
+ * — and nothing else at all. Never hunger, nobody poorly, nothing out of
+ * events.js, no problem that arrived on its own. Coming back is a small gift
+ * and only ever a gift.
+ *
+ * The clock is `w.ext.awayAt`, the moment somebody was last watching, which
+ * travels with the world through save, load and the network. Only whoever is
+ * running the clock does this, once, before the first tick — the other player
+ * is handed the result in a snapshot, so the two screens cannot disagree
+ * about how long the village was on its own. It uses the stamp up, so doing
+ * it twice does nothing the second time (law 12).
+ *
+ * Two devices' clocks do not agree to the second and one of them may be
+ * plainly wrong, which costs nothing here: a stamp in the future is no gift
+ * at all, and a stamp from long ago is the cap, which is three days.
+ *
+ * Returns the ticks it gave, which is only of interest to a test.
+ */
+export function catchUp(w, now) {
+  if (!w.ext || typeof w.ext !== 'object') w.ext = {};
+  const was = w.ext.awayAt;
+  w.ext.awayAt = now;
+  if (typeof was !== 'number') return 0; // a world saved before any of this existed
+  const ms = now - was;
+  if (ms < AWAY_MIN_MS) return 0;
+  const ticks = Math.min(AWAY_CAP_TICKS, Math.floor((ms / 3600000) * AWAY_TICKS_PER_HOUR));
+  if (ticks <= 0) return 0;
+
+  // A sapling is measured from the tick it was planted on, so the away time
+  // goes to the sapling rather than to w.tick — the day is told by w.tick and
+  // moving it would end one. tickSaplings then turns it into a tree on the
+  // first tick somebody is watching, with its sparkle and its notice, and
+  // without ever closing a tile somebody is standing on.
+  for (const t of w.trees) if (t.state === 'sapling') t.plantedTick = (t.plantedTick || 0) - ticks;
+
+  // the sum tickPlots does one tick at a time, done once for all of them
+  for (const p of w.plots) {
+    if (p.state !== 'growing') continue;
+    const wet = Math.min(ticks, Math.max(0, p.water || 0) / PLOT_DRINK);
+    p.growth += wet * PLOT_GROW_WET + (ticks - wet) * PLOT_GROW_DRY;
+    p.water = Math.max(0, (p.water || 0) - ticks * PLOT_DRINK);
+    if (p.growth >= 100) {
+      p.state = 'ripe';
+      p.growth = 100;
+    }
+  }
+
+  // Wool comes in. Hunger and thirst deliberately do not: nobody is ever
+  // worse off for having been left alone.
+  for (const s of w.sheep) s.fluff = Math.min(100, s.fluff + ticks * FLUFF_RISE);
+
+  return ticks;
 }

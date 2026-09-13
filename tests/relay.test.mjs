@@ -186,13 +186,19 @@ test('a frame that claims more is coming is closed, not believed', async t => {
   assert.equal(wasClosed, true, 'a peer that fragments is not a real client');
 });
 
-test('a room holds at most the two who are playing', async t => {
+test("a room's peer count is bounded, not unlimited", async t => {
   const { server, port } = await listen();
   t.after(() => server.close());
 
-  const a = await open(port, 'crowded');
-  const b = await open(port, 'crowded');
-  await assert.rejects(open(port, 'crowded'), 'a third arrival is not let in');
-  a.close();
-  b.close();
+  // one role, several of somebody's own devices, still well inside the
+  // bound — this is the ordinary "a seat belongs to a person" case
+  const mine = [];
+  for (let i = 0; i < 5; i++) mine.push(await open(port, 'crowded'));
+  for (const ws of mine) ws.close();
+
+  // but it does not grow without end
+  const opened = [];
+  for (let i = 0; i < 20; i++) opened.push(await open(port, 'crowded'));
+  await assert.rejects(open(port, 'crowded'), 'the room does not grow without bound');
+  for (const ws of opened) ws.close();
 });

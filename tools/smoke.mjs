@@ -109,6 +109,16 @@ async function main() {
   console.log('asking for the page again:', again.status, '(304 means it only had to check)');
   if (again.status !== 304) throw new Error('the page has no working tag to revalidate with');
 
+  // the server's own code and a world's save both live under the same root
+  // this hands out files from — neither is a page a browser gets to ask for
+  const blocked = await Promise.all(
+    ['/server/api.mjs', '/package.json', '/data/anything-at-all.json'].map(p =>
+      fetch(BASE + p).then(r => r.status),
+    ),
+  );
+  console.log('paths that must stay private:', blocked.join(', '));
+  if (blocked.some(s => s !== 404)) throw new Error('a private path is being served');
+
   await page.click('[data-role="BOTH"]');
   await page.waitForSelector('#game:not(.hidden)');
   await page.waitForFunction(() => window.OLW?.world, null, { timeout: 8000 });

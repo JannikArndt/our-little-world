@@ -271,7 +271,8 @@ export class Worlds {
     const o = opts || {};
     const w = this.worlds.get(name);
     if (!w) return { ok: false, reason: 'no-world' };
-    const text = String(o.world || '');
+    if (typeof o.world !== 'string') return { ok: false, reason: 'bad-world' };
+    const text = o.world;
     if (!text || text.length > MAX_SNAPSHOT) return { ok: false, reason: 'size' };
     const tick = Number(o.tick) || 0;
     if (w.snapshot && tick < w.snapshot.tick && !o.reset)

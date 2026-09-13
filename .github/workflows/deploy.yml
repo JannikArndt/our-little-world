@@ -10,9 +10,9 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
 
@@ -29,19 +29,22 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # checkout leaves the workspace at the git root on a real "main" branch,
       # which is all the CapRover CLI needs: it tars that branch and the server
-      # builds the Dockerfile named by captain-definition.
+      # builds the Dockerfile named by captain-definition. Pinned, and the
+      # token rides in an env var rather than an argument — a CLI argument
+      # sits in plain sight of anything else running in the same step.
       - name: Deploy to dev
         run: |
-          npm install -g caprover
+          npm install -g caprover@2.4.4
           caprover deploy \
             --caproverUrl ${{ secrets.CAPROVER_SERVER }} \
-            --appToken ${{ secrets.CAPROVER_APP_TOKEN_DEV }} \
             --appName ${{ secrets.CAPROVER_APP_DEV }} \
             --branch main
+        env:
+          CAPROVER_APP_TOKEN: ${{ secrets.CAPROVER_APP_TOKEN_DEV }}
 
       # dev is the gate prod never used to get: catch a CapRover-side failure
       # (a bad image, a crash on boot) here, before a player ever sees it.
@@ -54,16 +57,17 @@ jobs:
     needs: deploy-dev
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Deploy to prod
         run: |
-          npm install -g caprover
+          npm install -g caprover@2.4.4
           caprover deploy \
             --caproverUrl ${{ secrets.CAPROVER_SERVER }} \
-            --appToken ${{ secrets.CAPROVER_APP_TOKEN }} \
             --appName ${{ secrets.CAPROVER_APP }} \
             --branch main
+        env:
+          CAPROVER_APP_TOKEN: ${{ secrets.CAPROVER_APP_TOKEN }}
 
       - name: Confirm prod is serving this build
         run: npm run deployed -- --wait=300

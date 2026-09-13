@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # devDependencies only — nothing here ships (see CLAUDE.md), but a stale
+  # tool in CI is still worth knowing about.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+
+  # the base image in the Dockerfile, pinned by digest on purpose — this is
+  # how that pin gets a proposed update instead of quietly going stale.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+
+  # the checkout/setup-node SHAs in deploy.yml.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

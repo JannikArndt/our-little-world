@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
+import { connect } from 'node:net';
 import { attachRelay, forgetRooms } from '../server/relay.mjs';
 
 function listen() {
@@ -27,6 +28,50 @@ const next = ws =>
   new Promise(resolve => {
     ws.onmessage = e => resolve(e.data);
   });
+
+/** A hand-rolled client for the one thing a real WebSocket won't do: send a
+ *  frame that claims more is coming. Handshakes over a raw socket and hands
+ *  it back once the 101 response has arrived. */
+function rawClient(port, room) {
+  return new Promise((resolve, reject) => {
+    const socket = connect(port, 'localhost', () => {
+      socket.write(
+        'GET /relay?room=' +
+          room +
+          ' HTTP/1.1\r\n' +
+          'Host: localhost\r\n' +
+          'Upgrade: websocket\r\n' +
+          'Connection: Upgrade\r\n' +
+          'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n' +
+          'Sec-WebSocket-Version: 13\r\n\r\n',
+      );
+    });
+    let buf = Buffer.alloc(0);
+    const onData = chunk => {
+      buf = Buffer.concat([buf, chunk]);
+      if (buf.includes('\r\n\r\n')) {
+        socket.removeListener('data', onData);
+        resolve(socket);
+      }
+    };
+    socket.on('data', onData);
+    socket.on('error', reject);
+    setTimeout(() => reject(new Error('handshake timed out')), 3000);
+  });
+}
+
+/** A masked client frame, built the way the relay itself expects one — with
+ *  the option to leave FIN unset, which no real client here ever does. */
+function clientFrame(opcode, fin, text) {
+  const data = Buffer.from(text, 'utf8');
+  const mask = Buffer.from([1, 2, 3, 4]);
+  const head = Buffer.alloc(2);
+  head[0] = (fin ? 0x80 : 0) | opcode;
+  head[1] = 0x80 | data.length; // masked, length < 126 is all these tests need
+  const masked = Buffer.alloc(data.length);
+  for (let i = 0; i < data.length; i++) masked[i] = data[i] ^ mask[i % 4];
+  return Buffer.concat([head, mask, masked]);
+}
 
 test('the relay passes messages to the other player in the room', async t => {
   const { server, port } = await listen();
@@ -126,6 +171,28 @@ test('what one room is holding never reaches another', async t => {
   };
   await new Promise(r => setTimeout(r, 120));
   assert.equal(heard, null, 'a different room starts empty');
+  a.close();
+  b.close();
+});
+
+test('a frame that claims more is coming is closed, not believed', async t => {
+  const { server, port } = await listen();
+  t.after(() => server.close());
+
+  const socket = await rawClient(port, 'fragment-test');
+  const closed = new Promise(resolve => socket.on('close', () => resolve(true)));
+  socket.write(clientFrame(0x1, false, 'only half a message'));
+  const wasClosed = await Promise.race([closed, new Promise(r => setTimeout(() => r(false), 500))]);
+  assert.equal(wasClosed, true, 'a peer that fragments is not a real client');
+});
+
+test('a room holds at most the two who are playing', async t => {
+  const { server, port } = await listen();
+  t.after(() => server.close());
+
+  const a = await open(port, 'crowded');
+  const b = await open(port, 'crowded');
+  await assert.rejects(open(port, 'crowded'), 'a third arrival is not let in');
   a.close();
   b.close();
 });

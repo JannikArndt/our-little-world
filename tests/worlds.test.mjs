@@ -151,6 +151,10 @@ test('a snapshot that is not a world is refused', () => {
   const { world } = s.create({ device: 'kid' });
   assert.equal(s.putSnapshot(world.name, { tick: 1, world: 'x'.repeat(600 * 1024) }).ok, false);
   assert.equal(s.putSnapshot('nowhere', { tick: 1, world: '{}' }).ok, false);
+  // whatever sent this knows the room's name, nothing more — the world field
+  // has to actually be the text a client would send, not just anything at all
+  assert.equal(s.putSnapshot(world.name, { tick: 1, world: { tick: 1 } }).ok, false);
+  assert.equal(s.putSnapshot(world.name, { tick: 1, world: undefined }).ok, false);
 });
 
 test('a real world snapshot survives a restart of the server', async t => {
@@ -354,6 +358,14 @@ test('the api does not answer for anything it does not own', async t => {
   assert.equal((await fetch(base + '/api/nonsense')).status, 404);
   const bad = await fetch(base + '/api/worlds', { method: 'POST', body: 'not json' });
   assert.equal(bad.status, 400);
+});
+
+test('health only answers a plain GET', async t => {
+  const { server, base } = await listen();
+  t.after(() => server.close());
+  assert.equal((await fetch(base + '/api/health', { method: 'POST' })).status, 405);
+  assert.equal((await fetch(base + '/api/health', { method: 'PUT' })).status, 405);
+  assert.equal((await fetch(base + '/api/health')).status, 200);
 });
 
 test('nobody can fill the directory from one machine', async t => {

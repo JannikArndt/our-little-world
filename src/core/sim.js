@@ -365,10 +365,13 @@ function finishVillagerTask(w, v) {
       v.wait = 15;
       break;
     case 'sitdown': {
+      // No line above their head for this one: they are sitting on the
+      // playground step or their own front door, which is the whole of what
+      // there is to say, and a caption hanging there for ten seconds only
+      // gets in the way of the village behind it.
       const ticks = SIT_TICKS + rndInt(w, SIT_TICKS);
       setAct(w, v, 'sit', ticks);
       v.wait = ticks;
-      say(w, v, 'say.sitDown', ticks);
       break;
     }
     case 'run':

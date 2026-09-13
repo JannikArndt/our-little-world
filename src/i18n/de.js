@@ -52,6 +52,13 @@ export const de = {
   'seat.send': '📱 An mich selbst schicken',
   'seat.shareText': '{emoji} Ich mache bei {name} hier weiter.',
   'menu.thisDevice': 'Auf einem anderen Gerät spielen',
+  'seat.twoTitle': '📱 Das auf zwei Geräten spielen',
+  'seat.twoLead':
+    'Gerade seid ihr beide auf diesem einen Bildschirm. Sag, wer von beiden du hier bist — der andere Platz wird frei, und der andere Spieler kann ihn nehmen.',
+  'seat.twoWorld': 'Dieses Dorf kommt mit',
+  'seat.twoNote':
+    'Es geht nichts verloren: Dieses Dorf läuft weiter, hier und auf dem Server. Der andere Spieler macht über den Namen mit, so wie man bei jeder Welt mitmacht.',
+  'menu.twoDevices': 'Auf zwei Geräten spielen',
 
   'invite.title': '📨 Lade jemanden ein',
   'invite.lead': 'Der Platz für {role} {emoji} ist in dieser Welt noch frei.',
@@ -550,7 +557,6 @@ export const de = {
   'say.restingUp': 'ich setz mich mal kurz…',
   'say.natter': 'hast du das gehört…?',
   'say.laLa': 'lalala!',
-  'say.sitDown': 'ich sitz hier mal',
 
   /* ---- Der Wegweiser ---- */
   'guide.who.A': 'Baumeister',

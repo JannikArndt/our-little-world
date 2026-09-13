@@ -15,7 +15,7 @@
 
 import { el, openPanel, openMenu, message, loop } from './overlay.js';
 import { openGive } from './share.js';
-import { openSeat } from './invite.js';
+import { openSeat, openTwoDevices } from './invite.js';
 import {
   RESOURCES,
   ROLE,
@@ -221,6 +221,9 @@ export class Hud {
         label: tr('menu.swap', { role: roleName(g.other) }),
         fn: () => g.swapRole(),
       });
+      // and the way out of one screen, for the afternoon the two of you are
+      // not on the same sofa any more
+      items.push({ icon: '📱', label: tr('menu.twoDevices'), fn: () => openTwoDevices(g) });
     } else {
       // your seat, on a second browser — the Home Screen copy, mostly
       items.push({ icon: '📱', label: tr('menu.thisDevice'), fn: () => openSeat(g) });

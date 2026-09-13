@@ -123,6 +123,51 @@ export function openInvite(game, role) {
 }
 
 /**
+ * Opening a one-screen village up to two devices.
+ *
+ * "Both of us, one screen" is a whole game on its own: nothing is shared,
+ * nothing is uploaded, and the village lives on this device alone. That is
+ * right for an afternoon on the sofa and wrong for ever, so this is the way
+ * out of it — say which of the two you are here, and the village goes on the
+ * server with the other spot free for somebody to take.
+ *
+ * Nothing is lost on the way: the village on this screen is the one that keeps
+ * going, and it is saved before the door swings.
+ */
+export function openTwoDevices(game) {
+  const name = game.worldName;
+  const p = openPanel({ title: tr('seat.twoTitle'), lead: tr('seat.twoLead'), center: true });
+
+  const card = el('div', 'world-card wide still');
+  card.appendChild(el('span', 'w-emoji', worldEmoji(name)));
+  const t = el('span', 'w-text');
+  t.appendChild(el('span', 'w-name', prettyName(name)));
+  t.appendChild(el('span', 'w-line', tr('seat.twoWorld')));
+  card.appendChild(t);
+  p.body.appendChild(card);
+
+  for (const id of ['A', 'B']) {
+    const b = el('button', 'role-btn wide');
+    b.type = 'button';
+    b.setAttribute('data-role', id);
+    b.appendChild(el('span', 'role-emoji', ROLE[id].emoji));
+    b.appendChild(el('span', 'role-name', tr('seat.iAm', { role: roleName(id) })));
+    b.appendChild(el('span', 'role-desc', tr('role.' + id + '.desc')));
+    b.addEventListener('click', () => {
+      p.close();
+      game.goOnline(id);
+    });
+    p.body.appendChild(b);
+  }
+
+  p.body.appendChild(el('p', 'lead center', tr('seat.twoNote')));
+
+  const row = p.row();
+  row.appendChild(p.button(tr('ui.neverMind'), 'soft', () => p.close()));
+  return p;
+}
+
+/**
  * Taking your own seat to another browser.
  *
  * A world holds two spots and a spot belongs to whichever browser took it.

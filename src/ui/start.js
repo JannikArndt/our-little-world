@@ -195,8 +195,14 @@ export function startScreen(opts) {
     both.appendChild(el('span', 'role-name', tr('role.both.name')));
     if (!quiet) both.appendChild(el('span', 'role-desc', tr('role.both.desc')));
     both.addEventListener('click', () => {
-      const name = invited || mine[0]?.name || randomName();
-      play(name, 'A', true);
+      // Only ever a world this device already plays on one screen, or a brand
+      // new one. It used to reach for the link in the address or whatever was
+      // most recent — which quietly took a village the two of you play on two
+      // devices and cut it off from the other player on this one, with no way
+      // back. One mistaken tap is not a decision to stop playing together.
+      const onScreen = mine.filter(w => !w.role);
+      const carryOn = onScreen.some(w => w.name === invited) ? invited : onScreen[0]?.name;
+      play(carryOn || randomName(), 'A', true);
     });
     host.appendChild(both);
 

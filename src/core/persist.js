@@ -100,11 +100,19 @@ export function recentWorlds() {
   }
 }
 
-/** Put a world at the top of that list, with the role we play in it. */
+/**
+ * Put a world at the top of that list, with the role we play in it.
+ *
+ * A seat, once this browser has one, is not given up by playing an afternoon
+ * with both of you on this screen. Forgetting it there turned a shared village
+ * into a one-screen village for good on that device: the card at the front
+ * door offered nothing but one screen ever after.
+ */
 export function rememberWorld(name, role) {
   if (!OK || !name) return;
+  const known = recentWorlds().filter(w => w.name === name)[0];
   const list = recentWorlds().filter(w => w.name !== name);
-  list.unshift({ name, role: role || null, at: Date.now() });
+  list.unshift({ name, role: role || known?.role || null, at: Date.now() });
   try {
     localStorage.setItem(WORLDS_KEY, JSON.stringify(list.slice(0, KEEP_WORLDS)));
   } catch {

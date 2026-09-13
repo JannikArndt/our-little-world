@@ -13,7 +13,7 @@ import { TILE } from './core/grid.js';
 import { deviceId, rememberWorld } from './core/persist.js';
 import { newerBuild, watchForNewer, reloadNow, whenQuiet } from './core/fresh.js';
 import { startScreen } from './ui/start.js';
-import { openInvite } from './ui/invite.js';
+import { openInvite, seatLink } from './ui/invite.js';
 import { showChangelog, VERSION } from './ui/whatsnew.js';
 import { showWelcomeBack } from './ui/welcome.js';
 
@@ -309,6 +309,24 @@ async function startGame(choice) {
     refetch() {
       session.checkpoint();
       reloadNow(room);
+    },
+
+    /**
+     * Out of "both of us, one screen" and into a world with two spots in it.
+     *
+     * A one-screen game has no relay and nothing on the server: the village is
+     * on this device and nowhere else, which is exactly why there has to be a
+     * door out of it. The village is saved first, and then this is simply the
+     * seat link — the same address a second device is handed — so everything
+     * the front door already knows how to do happens once: the spot is taken
+     * in the directory, the world is put on the server, and whoever joins
+     * next gets this village rather than starting a second empty one.
+     */
+    goOnline(id) {
+      const seat = id === 'B' ? 'B' : 'A';
+      session.checkpoint();
+      rememberWorld(room, seat);
+      location.href = seatLink(room, seat);
     },
 
     swapRole() {

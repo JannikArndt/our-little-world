@@ -512,38 +512,82 @@ async function main() {
   // Any old bubble is not good enough: a villager wandering past her opens
   // their own, and then "Look after her" is nowhere. Keep going until it is
   // hers, putting the wrong one away each time.
-  for (let attempt = 0; attempt < 8 && !(await page.$('text=Look after her')); attempt++) {
-    const pt = await api(
-      dys => {
-        const g = window.OLW,
-          s = g.world.sheep[0];
-        g.setMode(null); // whatever came up last time, away
-        const canvas = document.getElementById('world');
-        for (const dy of dys) {
-          g.look(s.x, s.y + dy, 2);
-          const p = g.renderer.toScreen(s.x * 24, s.y * 24);
-          const r = canvas.getBoundingClientRect();
-          const x = r.left + p.x,
-            y = r.top + p.y;
-          if (x < r.left + 20 || x > r.right - 20 || y < r.top + 20 || y > r.bottom - 20) continue;
-          if (document.elementFromPoint(x, y) !== canvas) continue;
-          // somebody standing on her would answer first; wait for them to move on
-          if (g.world.villagers.some(v => Math.abs(v.x - s.x) < 1.1 && Math.abs(v.y - s.y) < 1.1))
-            continue;
-          return { x, y };
-        }
-        return null;
-      },
-      [-2, 0, -4, 2, -6],
-    );
-    if (!pt) {
+  const tapTheSheep = async words => {
+    for (let attempt = 0; attempt < 8 && !(await page.$('text=' + words)); attempt++) {
+      const pt = await api(
+        dys => {
+          const g = window.OLW,
+            s = g.world.sheep[0];
+          g.setMode(null); // whatever came up last time, away
+          const canvas = document.getElementById('world');
+          for (const dy of dys) {
+            g.look(s.x, s.y + dy, 2);
+            const p = g.renderer.toScreen(s.x * 24, s.y * 24);
+            const r = canvas.getBoundingClientRect();
+            const x = r.left + p.x,
+              y = r.top + p.y;
+            if (x < r.left + 20 || x > r.right - 20 || y < r.top + 20 || y > r.bottom - 20)
+              continue;
+            if (document.elementFromPoint(x, y) !== canvas) continue;
+            // somebody standing on her would answer first; wait for them to move on
+            if (g.world.villagers.some(v => Math.abs(v.x - s.x) < 1.1 && Math.abs(v.y - s.y) < 1.1))
+              continue;
+            return { x, y };
+          }
+          return null;
+        },
+        [-2, 0, -4, 2, -6],
+      );
+      if (!pt) {
+        await page.waitForTimeout(400);
+        continue;
+      }
+      await page.mouse.click(pt.x, pt.y); // straight away: a notice can arrive
       await page.waitForTimeout(400);
-      continue;
     }
-    await page.mouse.click(pt.x, pt.y); // straight away: a notice can arrive
-    await page.waitForTimeout(400);
-  }
+    if (!(await page.$('text=' + words))) throw new Error('the sheep never said: ' + words);
+  };
+
+  await tapTheSheep('Take her somewhere');
   await step(page, '17-sheep-bubble', 400);
+
+  // Walking her somewhere, and the tap that does it belonging to her alone.
+  // The finger that picks the spot used to be read a second time as a tap on
+  // the grass, so "Open ground — lay a road" came up on top of the answer.
+  await page.click('text=Take her somewhere');
+  await page.waitForTimeout(300);
+  const where = await api(() => {
+    // the same sums grid.js does, spelled out here because a page cannot
+    // import it from inside a test
+    const COST = [2.4, 3.3, Infinity, 1.0, 1.0, 2.8, Infinity, 1.8];
+    const w = window.OLW.world,
+      s = w.sheep[0];
+    const out = [];
+    for (let dx = -4; dx <= 4; dx++)
+      for (let dy = -4; dy <= 4; dy++) {
+        const x = Math.round(s.x) + dx,
+          y = Math.round(s.y) + dy;
+        if (x < 0 || y < 0 || x >= 40 || y >= 24) continue;
+        if (w.blocked[y * 40 + x]) continue;
+        if (COST[w.terrain[y * 40 + x]] === Infinity) continue;
+        out.push([x, y]);
+      }
+    return out.slice(0, 12);
+  });
+  if (!where.length) throw new Error('there is nowhere near the sheep to walk her to');
+  await tapTile(where);
+  await page.waitForTimeout(500);
+  const afterHerding = await api(() => ({
+    bubble: !!document.querySelector('.bubble'),
+    mode: window.OLW.mode ? window.OLW.mode.kind : null,
+    sent: !!window.OLW.world.sheep[0].path?.length,
+  }));
+  console.log('after walking the sheep somewhere:', JSON.stringify(afterHerding));
+  if (afterHerding.bubble)
+    throw new Error('the tap that sent the sheep also opened a bubble on the ground');
+  if (afterHerding.mode) throw new Error('walking the sheep somewhere did not put the mode away');
+
+  await tapTheSheep('Look after her');
   await page.click('text=Look after her');
   await step(page, '18-care', 700);
   // tapping an item is enough — no dragging required
@@ -995,7 +1039,9 @@ async function main() {
 
   // the world must still be there, and saved
   const saved = await api(() => {
-    const raw = localStorage.getItem('olw.world.smoke');
+    // whatever this world ended up being called — "both of us, one screen"
+    // starts a world of its own rather than taking over the one in the address
+    const raw = localStorage.getItem('olw.world.' + window.OLW.worldName);
     return raw ? JSON.parse(raw).buildings.length : 0;
   });
   console.log('saved buildings:', saved);

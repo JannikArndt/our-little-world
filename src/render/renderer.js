@@ -477,10 +477,10 @@ export class Renderer {
           art.drawStoneBank(ctx, o);
           break;
         case 'villager':
-          art.drawVillager(ctx, o, time, w.tick);
+          art.drawVillager(ctx, o, time, w.tick, true);
           break;
         case 'sheep':
-          art.drawSheep(ctx, o, time, w.tick);
+          art.drawSheep(ctx, o, time, w.tick, true);
           break;
         case 'deer':
           art.drawDeer(ctx, o, time);
@@ -491,6 +491,14 @@ export class Renderer {
         default:
           break;
       }
+    }
+
+    // and then, over the lot of it, whatever anybody is saying. A bubble is
+    // words to read and a picture to notice; a roof standing between you and
+    // it is only a roof in the way, so this pass comes after the village.
+    for (const th of things) {
+      if (th.kind === 'villager') art.drawVillagerSay(ctx, th.o);
+      else if (th.kind === 'sheep') art.drawSheepSay(ctx, th.o, w.tick);
     }
 
     if (w.regionBoxes?.length) this.drawMist(ctx, w, time);

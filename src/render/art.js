@@ -260,7 +260,7 @@ function nameTag(ctx, x, y, name) {
   ctx.fillText(name, x, y);
 }
 
-export function drawVillager(ctx, v, time, tick) {
+export function drawVillager(ctx, v, time, tick, noBubble) {
   const act = v.act ? v.act.kind : null;
   const x = v.x * TILE,
     y = v.y * TILE;
@@ -489,6 +489,19 @@ export function drawVillager(ctx, v, time, tick) {
     ctx.restore();
   }
 
+  if (!noBubble) drawVillagerSay(ctx, v);
+}
+
+/**
+ * What is floating over somebody's head: a line they are saying, their name,
+ * or how they are feeling. It is its own function so the village can paint it
+ * in a pass of its own, after everything that stands up — words behind a roof
+ * are words nobody can read, and a bubble is there to be read.
+ */
+export function drawVillagerSay(ctx, v) {
+  const act = v.act ? v.act.kind : null;
+  const x = v.x * TILE,
+    y = v.y * TILE;
   if (v.said) speech(ctx, x, y - 22, tr(v.said));
   else if (TAP_ANSWER[act]) nameTag(ctx, x, y - 20, v.name);
   else if (MOOD_GLYPH[v.mood]) bubble(ctx, x + 9, y - 18, MOOD_GLYPH[v.mood], 12);
@@ -563,7 +576,13 @@ export function drawSheep(ctx, s, time, tick, noBubble) {
   ctx.fill();
   ctx.restore();
 
-  if (noBubble) return;
+  if (!noBubble) drawSheepSay(ctx, s, tick);
+}
+
+/** The same, for a sheep: a heart just now, or what she is short of. */
+export function drawSheepSay(ctx, s, tick) {
+  const x = s.x * TILE,
+    y = s.y * TILE;
   if (tick - (s.hearts || -999) < 30) bubble(ctx, x, y - 16, '💚', 12);
   else if (SHEEP_GLYPH[s.mood]) bubble(ctx, x + 8, y - 15, SHEEP_GLYPH[s.mood], 12);
 }

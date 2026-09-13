@@ -51,6 +51,13 @@ export const en = {
   'seat.send': '📱 Send it to myself',
   'seat.shareText': '{emoji} Carrying on with {name} over here.',
   'menu.thisDevice': 'Play this on another device',
+  'seat.twoTitle': '📱 Play this on two devices',
+  'seat.twoLead':
+    'Right now you are both on this one screen. Say which of the two you are here, and the other spot is free for the other player to take.',
+  'seat.twoWorld': 'This village comes with you',
+  'seat.twoNote':
+    'Nothing is lost: this village carries on, here and on the server. The other player joins it by its name, the way anybody joins a world.',
+  'menu.twoDevices': 'Play this on two devices',
 
   'invite.title': '📨 Invite the other player',
   'invite.lead': 'The {role} {emoji} spot in this world is still free.',
@@ -549,7 +556,6 @@ export const en = {
   'say.restingUp': 'just going to sit down…',
   'say.natter': 'did you hear…?',
   'say.laLa': 'la la la!',
-  'say.sitDown': 'just sitting a while',
 
   /* ---- the guide ---- */
   'guide.who.A': 'Builder',

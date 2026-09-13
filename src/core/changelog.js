@@ -4,9 +4,21 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '2.5';
+export const VERSION = '2.6';
 
 export const CHANGELOG = [
+  {
+    v: '2.6',
+    date: '2026-09-13',
+    en: [
+      'A village the two of you started on one screen can move onto two now. Behind your own chip: “Play this on two devices”. Say which of the two you are, and the village goes with you — the other spot is then free, and the other player joins with the world’s name, exactly as if it had always been that way.',
+      'Nothing is lost on the way across, and nothing has to be built again.',
+    ],
+    de: [
+      'Ein Dorf, das ihr zu zweit auf einem Bildschirm angefangen habt, kann jetzt auf zwei umziehen. Hinter deinem eigenen Bild: „Auf zwei Geräten spielen“. Sag, wer von beiden du bist, und das Dorf kommt mit — der andere Platz wird frei, und der andere Spieler macht mit dem Namen der Welt mit, als wäre es immer so gewesen.',
+      'Beim Umzug geht nichts verloren, und nichts muss noch einmal gebaut werden.',
+    ],
+  },
   {
     v: '2.5',
     date: '2026-09-13',

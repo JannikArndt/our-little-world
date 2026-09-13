@@ -555,6 +555,12 @@ export function installInput(game, renderer, canvas) {
     lastY = 0;
   let pinch = null;
   let pinched = false; // two fingers were down at some point in this gesture
+  // This gesture began in a mode — laying a road, walking a sheep. It belongs
+  // to that mode for the whole of its life, even when the mode finishes on the
+  // way down: sending a sheep somewhere ends the mode there and then, and
+  // without this the same finger coming up was read as a fresh tap on the
+  // grass and opened "build a road here" on top of the sheep's answer.
+  let inMode = false;
 
   const worldFrom = (clientX, clientY) => {
     const r = canvas.getBoundingClientRect();
@@ -567,6 +573,7 @@ export function installInput(game, renderer, canvas) {
     startT = Date.now();
     lastX = x;
     lastY = y;
+    inMode = !!game.mode;
     if (game.mode?.down) {
       const p = worldFrom(x, y);
       game.mode.down(toTileX(p.x), toTileY(p.y));
@@ -583,7 +590,9 @@ export function installInput(game, renderer, canvas) {
       const p = worldFrom(x, y);
       game.mode.drag(toTileX(p.x), toTileY(p.y));
       renderModeBar(game);
-    } else {
+    } else if (!inMode) {
+      // a finger that has just finished a mode does not also drag the village
+      // about behind it
       const s = renderer.scale();
       renderer.cam.x -= dx / s;
       renderer.cam.y -= dy / s;
@@ -596,8 +605,8 @@ export function installInput(game, renderer, canvas) {
   const end = (x, y) => {
     if (!dragging) return;
     dragging = false;
-    if (game.mode) {
-      if (game.mode.up) game.mode.up();
+    if (inMode || game.mode) {
+      if (game.mode?.up) game.mode.up();
       renderModeBar(game);
       return;
     }
@@ -740,7 +749,7 @@ export function installInput(game, renderer, canvas) {
   // still enough to be a tap at all.
   let lastTap = 0;
   canvas.addEventListener('touchend', e => {
-    if (pinched || e.touches?.length > 0) {
+    if (pinched || inMode || e.touches?.length > 0) {
       lastTap = 0;
       return;
     }

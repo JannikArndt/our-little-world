@@ -62,7 +62,12 @@ Three ways to play:
   this works from GitHub Pages or a plain file server too.
 - **Both roles on one screen** — pick "Both, on one screen" and tap the role
   chip in the top left to swap. Good for sitting next to each other, and for
-  trying things out.
+  trying things out. It is a world of its own: nothing is shared and nothing
+  goes to the server, so it never takes over a village you play on two
+  devices. When that afternoon on the sofa turns into two places, "Play this
+  on two devices" behind your own chip moves the village across — you say
+  which of the two you are, and the other spot comes free for the other
+  player.
 
 There is no build step. The whole game is static files plus one small Node
 server. On a static host (GitHub Pages, a file server) there is no directory

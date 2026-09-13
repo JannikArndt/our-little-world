@@ -61,6 +61,7 @@ for (const [i, day] of [1, 3, 6].entries()) {
   await post('/api/worlds/' + made.world.name + '/join', { device: 'seed-' + i + '-b', role: 'B' });
   const w = playedWorld(100 + i, day);
   const r = await post('/api/worlds/' + made.world.name + '/snapshot', {
+    device: 'seed-' + i,
     tick: w.tick,
     world: serialize(w),
   });

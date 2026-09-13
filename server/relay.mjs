@@ -13,7 +13,12 @@ import { createServer } from 'node:http';
 
 const GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const rooms = new Map();
-const MAX_PEERS_PER_ROOM = 2; // a world has two seats; a third arrival is nobody's
+// A seat belongs to a person, not a browser (see worlds.mjs): the same role
+// legitimately shows up as more than one live connection — a phone and an
+// iPad, or a Home Screen copy opened while the browser tab is still open.
+// This is a resource bound against something unbounded connecting over and
+// over, not a model of "two seats", so it stays well above any real family.
+const MAX_PEERS_PER_ROOM = 20;
 
 // the last world seen in a room, kept for a while after everybody has gone
 const kept = new Map();
@@ -195,8 +200,6 @@ export function attachRelay(server, path = '/relay') {
 
     const probing = url.searchParams.get('probe') === '1';
     const room = (url.searchParams.get('room') || 'home').slice(0, 40);
-    // a third arrival is not a third player — either a name guessed or handed
-    // out late, and either way it does not get to sit in on the two who are
     if (!probing && (rooms.get(room)?.size || 0) >= MAX_PEERS_PER_ROOM) {
       socket.destroy();
       return;

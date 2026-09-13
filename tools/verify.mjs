@@ -125,8 +125,30 @@ if (only && !chosen.length) {
   process.exit(1);
 }
 
+// smoke is the long pole and German is a minute of its own against a different
+// world, so they run together. The lobby and /stats both read the directory as
+// a whole and would see each other's worlds, so those stay in single file.
+const together = chosen.filter(st => st[2] === 'smoke' || st[2] === 'german');
+const alone = chosen.filter(st => st[2] !== 'smoke' && st[2] !== 'german' && st[2] !== 'check');
+const first = chosen.filter(st => st[2] === 'check');
+
 let ok = true;
-for (const [name, go] of chosen) {
+if (first.length) {
+  console.log('\n──── ' + first[0][0] + ' ────');
+  ok = await first[0][1]();
+  if (!ok) console.error('\n' + first[0][0] + ': FAILED');
+}
+if (ok && together.length) {
+  console.log('\n──── ' + together.map(st => st[0]).join('  +  ') + ' ────');
+  const results = await Promise.all(together.map(st => st[1]()));
+  results.forEach((passed, i) => {
+    if (!passed) {
+      ok = false;
+      console.error('\n' + together[i][0] + ': FAILED');
+    }
+  });
+}
+for (const [name, go] of ok ? alone : []) {
   console.log('\n──── ' + name + ' ────');
   const passed = await go();
   if (!passed) {

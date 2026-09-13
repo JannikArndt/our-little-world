@@ -131,7 +131,8 @@ npm run check      # seconds:  format + lint + unit tests. After every edit.
 npm run verify -- quick   # ~1 min: check + a shortened play-through in a browser
 npm run verify     # ~5 min: everything, incl. German, the lobby and /stats
 npm run verify -- only=german   # one pass on its own, for the middle of a fix
-npm run deployed   # after pushing: is that code actually live?
+npm run shipped    # one question, answered now: is what is here what is live?
+npm run deployed   # only when you want to sit and wait for a push to land
 ```
 
 - **`npm run check`** is the inner loop: Prettier in check mode, ESLint, and
@@ -142,12 +143,14 @@ npm run deployed   # after pushing: is that code actually live?
   into a behaviour change.
 - **`npm run verify -- quick`** adds the browser play-through with every
   assertion, minus the screenshots, the second browser, the three screen sizes,
-  German, the lobby and the stats page. This is the bar for a push.
-- **`npm run verify`** is everything, and it is what CI runs. Locally it is the
-  bar for anything that changes what a player sees. About five minutes: run it
-  in the background and wait rather than polling — one
-  `while pgrep -f "tools/(smoke|german|lobby|stats).mjs"; do sleep 15; done`
-  beats ten `sleep`s.
+  German, the lobby and the stats page. **This is the bar for a push**, and it
+  is meant to be — see the next line.
+- **`npm run verify`** is everything, and **it is what CI runs — so do not sit
+  through it here as well.** The gate exists so that a push costs a minute
+  rather than five: run `verify -- quick`, push, and let CI be the gate it was
+  built to be. Running it in both places doubles the wait and catches nothing
+  twice. Run the whole thing locally only when CI has gone red and you need the
+  failure in front of you, and then reach for `only=` first.
 
 - **`npm run verify -- only=<pass>`** runs one of `check`, `smoke`, `german`,
   `lobby`, `stats` against a fresh server and nothing else. It is for the middle
@@ -156,7 +159,14 @@ npm run deployed   # after pushing: is that code actually live?
 
 Every run ends with one line in the same shape, so it can be found without
 reading the five minutes above it: `verify: all good`, or
-`verify: something is broken`.
+`verify: something is broken`. The play-through and the German pass run at the
+same time, because they take a minute off each other and share nothing.
+
+**On waiting.** Three habits cost whole afternoons and none of them buy
+anything: running the full gate here when CI is about to run it anyway; polling
+a deploy with a quarter of an hour of dots when `npm run shipped` answers in one
+second; and re-running five passes to see whether a one-line fix took, when
+`only=` runs the one that failed. Push small, ask later, and let the gate work.
 
 `npm run verify` brings up its own server on a free port and takes it down
 again. **Do not start a server by hand for testing, and never `pkill` broadly** —
@@ -230,8 +240,12 @@ fourth is still being written.
   code is being served, ask the site: `GET /version` answers
   `{ version, schema, build, startedAt }`, where `build` is a hash of every file
   that ships (`server/buildid.mjs`, also `npm run build-id`). `npm run deployed`
-  compares the live `build` with the working tree's and waits up to **fifteen
-  minutes** for them to match. **The push is not finished until that says yes.**
+  compares the live `build` with the working tree's. **`npm run shipped` asks
+  once and answers immediately** — that is the one to reach for. `npm run
+  deployed` is the same question with a wait attached, for when you have just
+  pushed and intend to sit there; it waits up to fifteen minutes because the
+  gate runs before the deploy does. **A push is not finished until one of them
+  says yes**, but "not finished" does not mean "stand and watch".
   It waits that long because a push now goes through the whole gate before it
   deploys at all — installing, fetching a browser, five minutes of verify, and
   only then CapRover building an image. It waited three minutes once, which was

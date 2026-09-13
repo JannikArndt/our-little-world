@@ -88,7 +88,7 @@ function advance(w, e, mult) {
 function goTo(w, e, tx, ty, within, avoid) {
   const p = findPath(w, Math.floor(e.x), Math.floor(e.y), tx, ty, {
     within: within || 0,
-    avoid: avoid == null ? -1 : avoid,
+    avoid: avoid ?? -1,
   });
   if (!p) {
     e.path = [];
@@ -180,7 +180,7 @@ function chooseVillagerTask(w, v) {
   // 4. the children go and play, because there is a playground now
   if (v.kid) {
     const pg = project(w, 'play');
-    if (pg && pg.state === 'built' && rnd(w) < 0.4) {
+    if (pg?.state === 'built' && rnd(w) < 0.4) {
       const px = pg.x + rndInt(w, pg.w),
         py = pg.y + rndInt(w, pg.h);
       if (goTo(w, v, px, py, 1)) {
@@ -232,9 +232,9 @@ function nearbyFree(w, v, dist) {
 function sitSpot(w, v) {
   const spots = [];
   const pg = project(w, 'play');
-  if (pg && pg.state === 'built') spots.push({ x: pg.x + 1, y: pg.y + pg.h });
+  if (pg?.state === 'built') spots.push({ x: pg.x + 1, y: pg.y + pg.h });
   const well = project(w, 'well');
-  if (well && well.state === 'built') spots.push({ x: well.x, y: well.y + 1 });
+  if (well?.state === 'built') spots.push({ x: well.x, y: well.y + 1 });
   if (v.homeId) {
     const home = byId(w.buildings, v.homeId);
     if (home) spots.push({ x: home.door.x, y: home.door.y });
@@ -377,7 +377,7 @@ function finishVillagerTask(w, v) {
       break;
     case 'movein': {
       const b = byId(w.buildings, t.id);
-      if (b && b.state === 'built' && b.residents.length < b.beds) {
+      if (b?.state === 'built' && b.residents.length < b.beds) {
         b.residents.push(v.id);
         v.homeId = b.id;
         v.hearts = w.tick;
@@ -447,7 +447,7 @@ function goToBed(w, v) {
   if (!v.homeId) return false;
   const b = byId(w.buildings, v.homeId);
   if (!b) return false;
-  if (v.path && v.path.length) return false;
+  if (v.path?.length) return false;
   if (Math.abs(v.x - (b.door.x + 0.5)) < 1.2 && Math.abs(v.y - (b.door.y + 0.5)) < 1.2) {
     v.inside = true;
     v.path = [];
@@ -474,7 +474,7 @@ function tickVillager(w, v) {
     const home = v.homeId ? byId(w.buildings, v.homeId) : null;
     const ease = home ? Math.min(0.6, (home.comfort || 0) * 0.04) : 0;
     v.hunger = Math.min(100, v.hunger + 0.004 * (1 - ease));
-    if (v.poorly > 0 && home && home.warm) v.poorly -= 2; // warm beats a chill
+    if (v.poorly > 0 && home?.warm) v.poorly -= 2; // warm beats a chill
     return;
   }
 
@@ -495,15 +495,15 @@ function tickVillager(w, v) {
     }
     if (v.act) clearAct(v); // bedtime outranks a dance
     if (goToBed(w, v)) return;
-    if (v.path && v.path.length) {
+    if (v.path?.length) {
       if (advance(w, v, 1.15)) goToBed(w, v);
       return;
     }
     return;
   }
 
-  if (v.path && v.path.length) {
-    const mult = v.poorly > 0 ? 0.6 : v.task && v.task.kind === 'run' ? RUN_SPEED : 1;
+  if (v.path?.length) {
+    const mult = v.poorly > 0 ? 0.6 : v.task?.kind === 'run' ? RUN_SPEED : 1;
     if (advance(w, v, mult)) finishVillagerTask(w, v);
     return;
   }
@@ -534,7 +534,7 @@ function drinkAt(w, x, y) {
   for (let dy = -1; dy <= 1; dy++)
     for (let dx = -1; dx <= 1; dx++) if (tileAt(w, x + dx, y + dy) === T.WATER) return true;
   const well = project(w, 'well');
-  if (well && well.state === 'built') {
+  if (well?.state === 'built') {
     if (Math.abs(x - well.x) <= 1 && Math.abs(y - well.y) <= 1) return true;
   }
   return false;
@@ -578,7 +578,7 @@ function tickSheep(w, s) {
   if (nearWater(w, s)) s.thirst = Math.max(0, s.thirst - 0.5);
   s.mood = sheepMood(s);
 
-  if (s.path && s.path.length) {
+  if (s.path?.length) {
     advance(w, s, 0.62);
     return;
   }
@@ -673,7 +673,7 @@ function tickVisitors(w) {
   if (!w.visitors || !w.visitors.length) return;
   for (const c of w.visitors) {
     c.life--;
-    if (c.path && c.path.length) {
+    if (c.path?.length) {
       advance(w, c, 0.8);
       continue;
     }
@@ -746,7 +746,7 @@ function tickPlaces(w) {
   if (w.tick % 300 === 0) for (const b of w.stones) if (b.count < 6) b.count++;
   for (const b of w.buildings) {
     if (b.state !== 'built') continue;
-    const lived = b.residents && b.residents.length;
+    const lived = b.residents?.length;
     b.smoke = b.warm && lived ? 1 : 0;
     // a window is only warm once somebody is home and the light has gone
     // a candle or a lit stove is what makes the windows glow at dusk, so

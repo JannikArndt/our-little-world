@@ -69,7 +69,7 @@ export function rebuildBlocked(world) {
     if (t.state === 'standing' && inBounds(t.x, t.y)) b[idx(t.x, t.y)] = 1;
   }
   // a broken bridge is a bridge nobody dares to cross
-  if (world.bridge && world.bridge.built && world.bridge.damaged) {
+  if (world.bridge?.built && world.bridge.damaged) {
     for (const t of world.bridge.tiles) if (inBounds(t.x, t.y)) b[idx(t.x, t.y)] = 1;
   }
 }

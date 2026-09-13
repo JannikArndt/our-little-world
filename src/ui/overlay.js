@@ -159,8 +159,7 @@ export function makeCanvas(w, h) {
 export function onPointer(canvas, logicalW, logicalH, handlers) {
   const pos = e => {
     const r = canvas.getBoundingClientRect();
-    const t =
-      e.touches && e.touches.length ? e.touches[0] : (e.changedTouches && e.changedTouches[0]) || e;
+    const t = e.touches?.length ? e.touches[0] : e.changedTouches?.[0] || e;
     return {
       x: ((t.clientX - r.left) / r.width) * logicalW,
       y: ((t.clientY - r.top) / r.height) * logicalH,

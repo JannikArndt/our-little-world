@@ -100,7 +100,7 @@ export class Session {
     const candidates = [load(this.room), this.kept];
     try {
       const got = fromServer ? await fromServer : null;
-      if (got && got.world) candidates.push(deserialize(got.world));
+      if (got?.world) candidates.push(deserialize(got.world));
     } catch {
       /* the directory having nothing is not a problem */
     }

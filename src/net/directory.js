@@ -8,7 +8,7 @@ const TIMEOUT = 5000;
 
 /** Where the directory is: next to the page, unless a relay elsewhere was named. */
 export function apiBase(qs) {
-  const given = qs && qs.get ? qs.get('server') : null;
+  const given = qs?.get ? qs.get('server') : null;
   if (given) {
     // ws://host/relay -> http://host
     try {
@@ -51,7 +51,7 @@ export class Directory {
       /* no storage: ask every time */
     }
     return this.get('/health').then(r => {
-      const ok = !!(r && r.ok);
+      const ok = !!r?.ok;
       this.reachable = ok;
       try {
         localStorage.setItem(key, ok ? 'yes' : 'no');
@@ -65,10 +65,10 @@ export class Directory {
   /* ---- the calls the game makes ---- */
 
   list() {
-    return this.get('/worlds').then(r => (r && r.worlds) || []);
+    return this.get('/worlds').then(r => r?.worlds || []);
   }
   world(name) {
-    return this.get('/worlds/' + encodeURIComponent(name)).then(r => (r && r.world) || null);
+    return this.get('/worlds/' + encodeURIComponent(name)).then(r => r?.world || null);
   }
   create(device, role) {
     return this.post('/worlds', { device, role });

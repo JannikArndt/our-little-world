@@ -111,7 +111,7 @@ function paintValley(w, scen) {
     for (let x = 0; x < 13; x++) if (y + x * 0.35 < 11) t[idx(x, y)] = T.FOREST;
 
   // the river, north to south, at its narrowest where the bridge belongs
-  const crossY = (scen && scen.crossingRow != null ? scen.crossingRow : 12) + 0.5;
+  const crossY = (scen?.crossingRow ?? 12) + 0.5;
   for (let y = 0; y < GH; y++) {
     const cx = riverCentre(y),
       hw = riverHalfWidth(y, crossY);
@@ -619,7 +619,7 @@ export function otherRole(r) {
   return r === 'A' ? 'B' : 'A';
 }
 export function can(w, role, cap) {
-  return !!(w.players[role] && w.players[role].caps[cap]);
+  return !!w.players[role]?.caps[cap];
 }
 
 export function freeBed(w) {
@@ -710,7 +710,7 @@ export function project(w, type) {
 }
 export function hasProject(w, type) {
   const b = project(w, type);
-  return !!(b && b.state === 'built');
+  return !!(b?.state === 'built');
 }
 export function stumps(w) {
   return w.trees.filter(t => t.state === 'stump');

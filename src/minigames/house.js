@@ -224,7 +224,7 @@ export function openHouse(game, house) {
       bits.join(' ') +
       '</span>';
     b.addEventListener('click', () => {
-      if (making && making.kind === k) {
+      if (making?.kind === k) {
         making = null;
         showTrace();
         paint();
@@ -538,7 +538,7 @@ export function openHouse(game, house) {
 
   function piece(ctx, s, a, t) {
     const it = HOUSE_STUFF[s.kind];
-    const picked = held && held.from === s.slot;
+    const picked = held?.from === s.slot;
     ctx.save();
     if (picked) {
       ctx.globalAlpha = 0.5;

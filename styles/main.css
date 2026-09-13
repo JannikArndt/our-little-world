@@ -89,17 +89,11 @@ button {
     var(--paper) 55%,
     var(--paper-deep) 100%
   );
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
   /* Centring with align-items would cut the top off as soon as the card is
      taller than the screen, and no amount of scrolling brings it back. Start at
      the top and let an auto margin do the centring instead. */
-  -webkit-box-align: start;
-  -ms-flex-align: start;
   align-items: flex-start;
-  -webkit-box-pack: center;
-  -ms-flex-pack: center;
   justify-content: center;
   padding: calc(16px + var(--safe-t)) calc(16px + var(--safe-r)) calc(16px + var(--safe-b))
     calc(16px + var(--safe-l));
@@ -144,19 +138,18 @@ button {
   font-size: 17px;
 }
 
+/* The six pixels above and below used to be margins on the buttons, and were
+   therefore inside the row. Padding keeps them there; a margin here would
+   collapse with whatever comes next and move everything up. */
 .roles {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-wrap: wrap;
   flex-wrap: wrap;
-  margin: 0 -6px;
+  gap: 12px;
+  padding: 6px 0;
 }
 .roles .role-btn {
-  -webkit-box-flex: 1;
-  -ms-flex: 1 1 200px;
   flex: 1 1 200px;
-  margin: 6px;
+  margin: 0;
 }
 
 .role-btn {
@@ -221,15 +214,13 @@ button {
   opacity: 0.55;
   pointer-events: none;
 }
+/* The margins here are not a gutter written the old way: they are outside the
+   row as well as between its buttons, and that outer half collapses with the
+   row's own margin. gap plus padding moves every button six pixels. */
 #startBody .row {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-wrap: wrap;
   flex-wrap: wrap;
   margin: 10px 2px 0;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
 }
 #startBody .row > * {
@@ -237,11 +228,7 @@ button {
 }
 
 .world-card {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
   width: calc(100% - 12px);
   margin: 6px;
@@ -262,16 +249,12 @@ button {
   box-shadow: none;
 } /* not a button: just the world */
 .w-emoji {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   font-size: 38px;
   line-height: 1.1;
   margin-right: 12px;
 }
 .w-text {
-  -webkit-box-flex: 1;
-  -ms-flex: 1 1 auto;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -320,14 +303,10 @@ button {
 }
 
 .name-row {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
   margin: 6px;
 }
 .name-row input {
-  -webkit-box-flex: 1;
-  -ms-flex: 1 1 auto;
   flex: 1 1 auto;
   min-width: 0;
   height: var(--tap);
@@ -337,8 +316,6 @@ button {
   background: #fffdf8;
 }
 .name-row .btn {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   margin-left: 8px;
 }
@@ -389,25 +366,14 @@ button {
 
 /* ---------------- game shell ---------------- */
 #game {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-orient: vertical;
-  -webkit-box-direction: normal;
-  -ms-flex-direction: column;
   flex-direction: column;
 }
 
 #topbar,
 #bottombar {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
   padding: 6px 8px;
   background: var(--paper);
@@ -427,11 +393,7 @@ button {
 }
 
 .chip {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
   min-height: 44px;
   padding: 0 12px;
@@ -454,21 +416,14 @@ button {
 
 /* the roles: who is playing, and what you can do with them */
 .rolebar {
-  -webkit-box-flex: 1;
-  -ms-flex: 1 1 auto;
   flex: 1 1 auto;
   min-width: 0;
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-wrap: nowrap;
   flex-wrap: nowrap;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 .role-chip {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   opacity: 0.62;
 }
@@ -513,8 +468,6 @@ button {
    button never disappears; a fixed width keeps the row still as its icon
    changes underneath it. */
 .mission-chip {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   justify-content: center;
   min-width: 44px;
@@ -537,14 +490,8 @@ button {
 /* the day, as an icon and a number — never a countdown. It is also the door to
    the world's own menu, which is why it has a handle on the end. */
 .day-badge {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
   min-height: 44px;
   padding: 0 12px;
@@ -630,11 +577,7 @@ button {
   border-radius: 2px;
 }
 .menu-item {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
   width: 100%;
   min-height: 46px;
@@ -660,8 +603,6 @@ button {
   font-weight: 700;
 }
 .menu-item .mi-ico {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   width: 26px;
   font-size: 18px;
@@ -693,8 +634,6 @@ button {
 
 /* stage */
 #stage {
-  -webkit-box-flex: 1;
-  -ms-flex: 1 1 auto;
   flex: 1 1 auto;
   position: relative;
   overflow: hidden;
@@ -721,21 +660,14 @@ button {
 
 /* resources — the whole bottom row */
 .resbar {
-  -webkit-box-flex: 1;
-  -ms-flex: 1 1 auto;
   flex: 1 1 auto;
   min-width: 0;
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-wrap: nowrap;
   flex-wrap: nowrap;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 .res {
-  -webkit-box-flex: 1;
-  -ms-flex: 1 1 0px;
   flex: 1 1 0;
   display: block;
   min-width: 58px;
@@ -888,11 +820,7 @@ button {
 }
 .msg {
   pointer-events: auto;
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
   margin-top: 6px;
   padding: 10px 6px 10px 14px;
@@ -919,14 +847,10 @@ button {
   }
 }
 .msg .m-text {
-  -webkit-box-flex: 1;
-  -ms-flex: 1 1 auto;
   flex: 1 1 auto;
   text-wrap: pretty;
 }
 .msg .m-x {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   width: 40px;
   height: 40px;
@@ -975,14 +899,8 @@ button {
   bottom: 0;
   z-index: 40;
   background: rgba(43, 35, 26, 0.55);
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
-  -webkit-box-pack: center;
-  -ms-flex-pack: center;
   justify-content: center;
   overflow: hidden;
   padding: calc(10px + var(--safe-t)) calc(10px + var(--safe-r)) calc(10px + var(--safe-b))
@@ -997,18 +915,11 @@ button {
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
   -webkit-animation: panelIn 0.2s ease-out;
   animation: panelIn 0.2s ease-out;
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-orient: vertical;
-  -webkit-box-direction: normal;
-  -ms-flex-direction: column;
   flex-direction: column;
   overflow: hidden;
 }
 .panel-scroll {
-  -webkit-box-flex: 1;
-  -ms-flex: 1 1 auto;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -1016,15 +927,8 @@ button {
   padding: 12px 12px 0;
 }
 .panel-foot {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-orient: vertical;
-  -webkit-box-direction: normal;
-  -ms-flex-direction: column;
   flex-direction: column;
   max-height: 60%;
   padding: 0 12px 12px;
@@ -1034,16 +938,12 @@ button {
    buttons never do — that is the whole point of the foot. */
 .p-cost,
 .p-readout {
-  -webkit-box-flex: 0;
-  -ms-flex: 0 1 auto;
   flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 .p-rows {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
 }
 /* a hairline only when there is something above it to separate from */
@@ -1089,22 +989,15 @@ button {
   margin-right: auto;
 }
 .panel .row {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-wrap: wrap;
   flex-wrap: wrap;
   margin: 10px -4px 0;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
 }
 .panel .row > * {
   margin: 4px;
 }
 .btn {
-  -webkit-box-flex: 1;
-  -ms-flex: 1 1 auto;
   flex: 1 1 auto;
   min-height: var(--tap);
   padding: 0 18px;
@@ -1144,8 +1037,6 @@ button {
   transform: none;
 }
 .btn.small {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   min-height: 44px;
   font-size: 15px;
@@ -1153,16 +1044,11 @@ button {
 }
 
 .tools {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-wrap: wrap;
   flex-wrap: wrap;
   margin: 8px -4px 0;
 }
 .tool {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   margin: 4px;
   min-width: 74px;
@@ -1203,13 +1089,8 @@ button {
   margin: 4px 2px 0;
 }
 .step {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
-  -ms-flex-wrap: wrap;
   flex-wrap: wrap;
   margin: 7px 2px;
   padding: 10px 12px;
@@ -1220,14 +1101,8 @@ button {
   line-height: 1.3;
 }
 .step .s-meta {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
   margin-left: auto;
 }
@@ -1236,8 +1111,6 @@ button {
   border-color: #c3ddb6;
 }
 .step .s-n {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   width: 28px;
   height: 28px;
@@ -1255,8 +1128,6 @@ button {
   color: #fff;
 }
 .step .s-tick {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   margin-left: 8px;
   color: var(--keeper);
@@ -1264,22 +1135,16 @@ button {
   font-weight: 800;
 }
 .step .s-ico {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   font-size: 22px;
   margin-right: 10px;
 }
 .step .s-txt {
-  -webkit-box-flex: 1;
-  -ms-flex: 1 1 0%;
   flex: 1 1 0%;
   min-width: 0;
   text-wrap: pretty;
 }
 .step .s-who {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   margin-left: 10px;
   padding: 3px 9px;
@@ -1295,8 +1160,6 @@ button {
 }
 /* why a step is ticked: 2/3 🪨 rather than a bare tick */
 .step .s-count {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   margin-left: 8px;
   padding: 2px 8px;
@@ -1321,8 +1184,6 @@ button {
 @media (max-width: 560px) {
   .step .s-meta {
     /* a full line, minus the room the number takes on the line above */
-    -webkit-box-flex: 1;
-    -ms-flex: 1 0 calc(100% - 38px);
     flex: 1 0 calc(100% - 38px);
     margin: 8px 0 0 38px;
   }
@@ -1336,11 +1197,7 @@ button {
 
 /* whoever the card is talking about */
 .guide-who {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
   margin: 8px 2px 2px;
   padding: 6px 12px 6px 6px;
@@ -1351,8 +1208,6 @@ button {
 .guide-who .who-face {
   width: 64px;
   height: 64px;
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
 }
 .guide-who .who-name {
@@ -1406,11 +1261,7 @@ button {
   margin: 10px 4px 0;
 }
 .cost-row {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
   margin-top: 6px;
   padding: 6px 10px;
@@ -1423,8 +1274,6 @@ button {
   background: #f4faf0;
 }
 .cost-pips {
-  -webkit-box-flex: 1;
-  -ms-flex: 1 1 auto;
   flex: 1 1 auto;
   line-height: 1;
 }
@@ -1444,8 +1293,6 @@ button {
   color: var(--ink-soft);
 }
 .cost-txt {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   margin-left: 10px;
   font-size: 16px;
@@ -1494,11 +1341,7 @@ button {
   background: #fffdf8;
 }
 .give-row .g-head {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
 }
 .give-row .g-ico {
@@ -1506,8 +1349,6 @@ button {
   margin-right: 10px;
 }
 .give-row .g-name {
-  -webkit-box-flex: 1;
-  -ms-flex: 1 1 auto;
   flex: 1 1 auto;
   font-weight: 700;
 }
@@ -1535,11 +1376,7 @@ button {
   color: var(--keeper);
 }
 .stepper {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
 }
 .stepper button {
@@ -1638,8 +1475,6 @@ button {
 /* everybody who lives here. No word on it: the role chips carry the words and
    a phone row has none to spare, so it is a picture and a number. */
 .folk-chip {
-  -webkit-box-flex: 0;
-  -ms-flex: none;
   flex: none;
   padding: 0 10px;
 }

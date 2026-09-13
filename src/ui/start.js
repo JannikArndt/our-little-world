@@ -97,7 +97,7 @@ export function startScreen(opts) {
 
   function guessRole(name) {
     const known = recentWorlds().filter(w => w.name === name)[0];
-    return (known && known.role) || 'A';
+    return known?.role || 'A';
   }
 
   function busy(on) {
@@ -195,7 +195,7 @@ export function startScreen(opts) {
     both.appendChild(el('span', 'role-name', tr('role.both.name')));
     if (!quiet) both.appendChild(el('span', 'role-desc', tr('role.both.desc')));
     both.addEventListener('click', () => {
-      const name = invited || (mine[0] && mine[0].name) || randomName();
+      const name = invited || mine[0]?.name || randomName();
       play(name, 'A', true);
     });
     host.appendChild(both);

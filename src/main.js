@@ -82,7 +82,7 @@ function showReloadLabel() {
 function quietForReload() {
   // half a typed world name is the one thing the front door can lose
   const typing = document.activeElement;
-  if (typing && typing.tagName === 'INPUT') return false;
+  if (typing?.tagName === 'INPUT') return false;
   if (!liveGame) return true;
   const menu = document.getElementById('menuLayer');
   return !isPanelOpen() && menu.classList.contains('hidden') && !liveGame.mode && !pointerDown;
@@ -138,7 +138,7 @@ function trackViewportHeight() {
     // while the keyboard is up the viewport is tiny; leave the layout alone
     const el = document.activeElement;
     if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
-    const h = Math.round((vv && vv.height) || window.innerHeight || 0);
+    const h = Math.round(vv?.height || window.innerHeight || 0);
     if (h > 0) document.documentElement.style.setProperty('--app-h', h + 'px');
   };
   apply();
@@ -348,7 +348,7 @@ async function startGame(choice) {
      * with a ring around whoever was named, so a name is never just a name.
      */
     showMe(problem, maxZoom) {
-      const pts = (problem && problem.points) || [];
+      const pts = problem?.points || [];
       game.spotlight = null;
       if (!pts.length) {
         renderer.userZoom = false;
@@ -443,7 +443,7 @@ async function startGame(choice) {
           const b = byId(w.buildings, 'site_east');
           return b ? [b.x + 1.5, b.y + 1] : null;
         },
-        critter: () => (w.visitors && w.visitors[0] ? [w.visitors[0].x, w.visitors[0].y] : null),
+        critter: () => (w.visitors?.[0] ? [w.visitors[0].x, w.visitors[0].y] : null),
       }[n.id];
       const p = at ? at() : null;
       if (p) game.look(p[0], p[1], 1.9);
@@ -472,7 +472,7 @@ async function startGame(choice) {
     }
     if (what === 'status') updatePartner();
     // the other player started the next day: come along with them
-    if (what === 'acted' && data && data.type === 'block.start') {
+    if (what === 'acted' && data?.type === 'block.start') {
       closePanel();
       clearMessages();
     }
@@ -519,7 +519,7 @@ async function startGame(choice) {
     if (now - lastSeen < 60000) return;
     lastSeen = now;
     dir.seen(room, device, chosenRole).then(r => {
-      if (r && r.world) game.freeRoles = r.world.free || [];
+      if (r?.world) game.freeRoles = r.world.free || [];
     });
   }
   tellServer();
@@ -535,8 +535,8 @@ async function startGame(choice) {
     const w = session.world;
     if (w) {
       renderer.render(w, t, {
-        overlay: game.mode && game.mode.overlay ? ctx => game.mode.overlay(ctx) : null,
-        highlight: game.mode && game.mode.highlight ? game.mode.highlight() : null,
+        overlay: game.mode?.overlay ? ctx => game.mode.overlay(ctx) : null,
+        highlight: game.mode?.highlight ? game.mode.highlight() : null,
         spotlight: game.spotlightAt(),
       });
       if (frame++ % 5 === 0) {
@@ -556,7 +556,7 @@ async function startGame(choice) {
 
   // Coming back explains itself (law 10) — but only once, after the day's own
   // panels are out of the way, and only when there is something to tell.
-  const since = (session.world.ext.since && session.world.ext.since[chosenRole]) || [];
+  const since = session.world.ext.since?.[chosenRole] || [];
   if (since.length) showWelcomeBack(game, since);
 
   window.OLW = game; // handy when poking at it from a console

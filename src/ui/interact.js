@@ -25,7 +25,7 @@ import { openGive } from './share.js';
 let bubble = null;
 
 export function closeBubble() {
-  if (bubble && bubble.parentNode) bubble.parentNode.removeChild(bubble);
+  if (bubble?.parentNode) bubble.parentNode.removeChild(bubble);
   bubble = null;
 }
 
@@ -496,7 +496,7 @@ let modeBar = null;
 export function renderModeBar(game) {
   const stage = document.getElementById('stage');
   if (!game.mode) {
-    if (modeBar && modeBar.parentNode) modeBar.parentNode.removeChild(modeBar);
+    if (modeBar?.parentNode) modeBar.parentNode.removeChild(modeBar);
     modeBar = null;
     stage.className = stage.className.replace(/\s*has-mode/, '');
     return;
@@ -538,7 +538,7 @@ export function renderModeBar(game) {
   }
   modeBar._say.innerHTML = game.mode.say ? game.mode.say() : '';
   const items = game.mode.costItems ? game.mode.costItems() : null;
-  if (items && items.length) renderCost(modeBar._cost, items);
+  if (items?.length) renderCost(modeBar._cost, items);
   else modeBar._cost.innerHTML = '';
   for (const b of modeBar._btns || []) b.el.disabled = b.spec.enabled ? !b.spec.enabled() : false;
 }
@@ -567,7 +567,7 @@ export function installInput(game, renderer, canvas) {
     startT = Date.now();
     lastX = x;
     lastY = y;
-    if (game.mode && game.mode.down) {
+    if (game.mode?.down) {
       const p = worldFrom(x, y);
       game.mode.down(toTileX(p.x), toTileY(p.y));
       renderModeBar(game);
@@ -579,7 +579,7 @@ export function installInput(game, renderer, canvas) {
     const dx = x - lastX,
       dy = y - lastY;
     moved += Math.abs(dx) + Math.abs(dy);
-    if (game.mode && game.mode.drag) {
+    if (game.mode?.drag) {
       const p = worldFrom(x, y);
       game.mode.drag(toTileX(p.x), toTileY(p.y));
       renderModeBar(game);
@@ -702,7 +702,7 @@ export function installInput(game, renderer, canvas) {
       }
       return;
     }
-    const t = e.changedTouches && e.changedTouches[0];
+    const t = e.changedTouches?.[0];
     if (t) end(t.clientX, t.clientY);
   };
   canvas.addEventListener('touchend', finish);
@@ -740,7 +740,7 @@ export function installInput(game, renderer, canvas) {
   // still enough to be a tap at all.
   let lastTap = 0;
   canvas.addEventListener('touchend', e => {
-    if (pinched || (e.touches && e.touches.length > 0)) {
+    if (pinched || e.touches?.length > 0) {
       lastTap = 0;
       return;
     }

@@ -66,5 +66,5 @@ export function trn(key, n, vars) {
 
 /** For a stored {key, vars} pair. */
 export function tk(o) {
-  return o && o.key ? tr(o.key, o.vars) : (o && o.text) || '';
+  return o?.key ? tr(o.key, o.vars) : o?.text || '';
 }

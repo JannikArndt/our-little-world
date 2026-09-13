@@ -121,7 +121,7 @@ function hungryCard(w) {
     counted('🧺', tr('guide.step.basket'), EITHER, '🍞', w.larder.food, 1),
   ];
   // a boat is a shortcut to supper, so it is worth saying out loud
-  if (boat && boat.state === 'built') {
+  if (boat?.state === 'built') {
     steps.unshift(step('🎣', tr('guide.step.orFish'), B, (w.players.B.res.food || 0) > 0));
   }
   return {
@@ -292,7 +292,7 @@ function calmCard(_w) {
 
 const planWaiting = type => w => {
   const p = project(w, type);
-  return !!(p && p.state === 'plan');
+  return !!(p?.state === 'plan');
 };
 
 export const CONCERNS = [

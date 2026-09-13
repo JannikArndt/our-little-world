@@ -84,8 +84,8 @@ function h(ax, ay, bx, by) {
  * @returns {Array<{x:number,y:number}>|null} tile path including the goal, or null.
  */
 export function findPath(world, sx, sy, gx, gy, opts) {
-  const nearEnough = (opts && opts.within) || 0;
-  const avoid = opts && opts.avoid != null ? opts.avoid : -1;
+  const nearEnough = opts?.within || 0;
+  const avoid = opts?.avoid ?? -1;
   if (!inBounds(sx, sy) || !inBounds(gx, gy)) return null;
   epoch++;
   open.clear();

@@ -123,7 +123,7 @@ export function prettyName(name) {
  * is nothing usable left.
  */
 export function cleanName(text) {
-  const n = String(text == null ? '' : text)
+  const n = String(text ?? '')
     .trim()
     .toLowerCase()
     .replace(/\s+/g, '-')

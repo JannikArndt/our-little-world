@@ -200,7 +200,7 @@ export function openBridge(game) {
     for (const s of sp) {
       const ax = px(s.a),
         bx = px(s.b);
-      const broke = test && test.broke === s.a;
+      const broke = test?.broke === s.a;
       const sag = broke ? 60 * Math.min(1, (test.t - 0.5) * 2) : sagOf(s.d, load);
       ctx.strokeStyle = broke ? '#8a5c30' : C.wood;
       ctx.lineWidth = 10;
@@ -283,7 +283,7 @@ export function openBridge(game) {
           }, 1500);
         }
       }
-      if (test && test.t >= 1.05 && test.broke === null) {
+      if (test?.t >= 1.05 && test.broke === null) {
         p.readout(tr(test.verdict === 'strong' ? 'bridge.holdsWell' : 'bridge.holdsCreak'));
         test = null;
       }

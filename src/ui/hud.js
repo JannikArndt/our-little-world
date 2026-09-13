@@ -87,7 +87,7 @@ export class Hud {
     const w = this.game.world;
     if (!v.homeId) return tr('villagers.nowhere');
     const b = byId(w.buildings, v.homeId);
-    return tr('villagers.livesIn', { house: (b && b.name) || tr('w.house') });
+    return tr('villagers.livesIn', { house: b?.name || tr('w.house') });
   }
 
   /** What they want, in the words the game has always used for it. */
@@ -322,7 +322,7 @@ export class Hud {
 
     // nobody has taken this spot: the one thing worth doing here is asking
     // somebody to. It goes first, and the sharing below it still works.
-    if (g.freeRoles && g.freeRoles.indexOf(id) >= 0) {
+    if (g.freeRoles?.indexOf(id) >= 0) {
       items.push({
         icon: '📨',
         label: tr('menu.invite', { role: roleName(id) }),
@@ -452,7 +452,7 @@ export class Hud {
       const mine = id === g.role;
       chip.classList.toggle('me', mine);
       chip.classList.toggle('here', mine || g.isOnline(id));
-      const busy = w.players[id] && w.players[id].busy;
+      const busy = w.players[id]?.busy;
       const name = roleName(id) + (mine && g.canSwap ? ' ⇄' : '');
       const label = chip.querySelector('.r-name');
       if (label.textContent !== name) label.textContent = name;
@@ -548,7 +548,7 @@ export class Hud {
 
     const r = p.row();
     r.appendChild(p.button(tr('ui.gotIt'), 'go', () => p.close()));
-    if (pr.points && pr.points.length) {
+    if (pr.points?.length) {
       r.appendChild(
         p.button(tr('ui.where'), 'soft', () => {
           p.close();
@@ -660,7 +660,7 @@ const DEEDS = [
 export function deedsOf(done) {
   const out = [];
   for (const d of DEEDS) {
-    const n = (done && done[d.key]) || 0;
+    const n = done?.[d.key] || 0;
     if (n > 0) out.push({ icon: d.icon, text: trn(d.word, n) });
   }
   return out;

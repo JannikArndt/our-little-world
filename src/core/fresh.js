@@ -49,7 +49,7 @@ export function askIfNewer() {
       return r.ok ? r.json() : null;
     })
     .then(function (v) {
-      if (v && v.build && v.build !== BUILD) newer = v;
+      if (v?.build && v.build !== BUILD) newer = v;
       return newer;
     })
     .catch(function () {

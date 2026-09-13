@@ -28,7 +28,7 @@ export function maybeEvent(w) {
     options.push({ event: 'newfamily', weight: 4 });
 
   // something wanders out of the forest
-  if (!(w.visitors && w.visitors.length) && w.trees.some(t => t.state === 'stump'))
+  if (!w.visitors?.length && w.trees.some(t => t.state === 'stump'))
     options.push({ event: 'critter', weight: 3 });
 
   // a good growing night

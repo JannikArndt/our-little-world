@@ -15,7 +15,7 @@ import { resName } from '../core/world.js';
  */
 function line(entry) {
   const vars = entry.vars ? Object.assign({}, entry.vars) : null;
-  if (vars && vars.res) vars.res = resName(vars.res);
+  if (vars?.res) vars.res = resName(vars.res);
   return tr(entry.key, vars);
 }
 

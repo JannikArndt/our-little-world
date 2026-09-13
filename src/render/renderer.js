@@ -493,9 +493,9 @@ export class Renderer {
       }
     }
 
-    if (w.regionBoxes && w.regionBoxes.length) this.drawMist(ctx, w, time);
+    if (w.regionBoxes?.length) this.drawMist(ctx, w, time);
     if (w.fx) for (const f of w.fx) art.drawFx(ctx, f, w.tick - f.born);
-    if (extra && extra.overlay) extra.overlay(ctx, s);
+    if (extra?.overlay) extra.overlay(ctx, s);
 
     ctx.restore();
     this.drawDayLight(ctx, w);
@@ -574,11 +574,11 @@ export class Renderer {
         34,
         'rgba(200,90,70,.95)',
       );
-    if (extra && extra.highlight) {
+    if (extra?.highlight) {
       const h = extra.highlight;
       ring(h.x * TILE, h.y * TILE, h.r || 20, 'rgba(255,255,255,.95)');
     }
-    if (extra && extra.spotlight) {
+    if (extra?.spotlight) {
       // who the guide is talking about: a slower, wider ring than the rest
       const sp = extra.spotlight;
       const beat = 0.45 + 0.35 * Math.sin(time * 0.0022);

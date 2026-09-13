@@ -350,5 +350,5 @@ export const SCENARIOS = {
 export const DEFAULT_SCENARIO = 'valley';
 
 export function scenarioOf(w) {
-  return SCENARIOS[(w && w.scenario) || DEFAULT_SCENARIO] || SCENARIOS[DEFAULT_SCENARIO];
+  return SCENARIOS[w?.scenario || DEFAULT_SCENARIO] || SCENARIOS[DEFAULT_SCENARIO];
 }

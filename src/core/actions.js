@@ -106,7 +106,7 @@ function trotAway(w, v, tiles) {
     const y = sy + rndInt(w, tiles * 2 + 1) - tiles;
     if (!inBounds(x, y) || !walkable(w, x, y)) continue;
     const p = findPath(w, sx, sy, x, y);
-    if (p && p.length) {
+    if (p?.length) {
       v.path = p;
       return true;
     }
@@ -492,7 +492,7 @@ function applyOne(w, a) {
       if (!v) return false;
 
       // squabbling, and somebody tapped either one of them: that is the end of it
-      if (v.act && v.act.kind === 'squabble') {
+      if (v.act?.kind === 'squabble') {
         const other = byId(w.villagers, v.act.with);
         clearAct(v);
         v.hearts = w.tick;
@@ -651,7 +651,7 @@ function applyOne(w, a) {
      * law 12 asks of every action here.
      */
     case 'seen': {
-      const list = w.ext.since && w.ext.since[a.role];
+      const list = w.ext.since?.[a.role];
       if (!list || !list.length) return false;
       w.ext.since[a.role] = [];
       return true;

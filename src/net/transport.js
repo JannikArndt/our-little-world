@@ -121,7 +121,7 @@ export class WsTransport extends Transport {
 
   send(msg) {
     const text = JSON.stringify(msg);
-    if (this.ws && this.ws.readyState === 1) this.ws.send(text);
+    if (this.ws?.readyState === 1) this.ws.send(text);
     else if (this.queue.length < 40) this.queue.push(text);
   }
 

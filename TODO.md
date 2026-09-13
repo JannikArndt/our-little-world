@@ -4,22 +4,13 @@
 the rest is a promise the code has not kept yet. This file is that gap, in the
 order it should be done.
 
-Each item is meant to be one commit, one push, one thing the owner can look at
-on the live site. Delete an item when it lands — this file should get shorter.
+**The gap is empty just now** — every law in `CLAUDE.md` is a law the code
+keeps. What is below is the other half of this file: the questions that have
+already been answered, kept so they are not asked again.
 
----
-
-## 2. 🧹 The modern-JavaScript sweep
-
-House style says modern JS everywhere; the code still avoids optional chaining,
-`??` and flexbox `gap` from when the floor was Safari 12.
-
-- ESLint now holds the line afterwards, so this is safe to do.
-- One mechanical pass, its own commit, touching nothing else. `npm run verify`
-  green before and after; no behaviour should change.
-- Do it when nothing else is in flight — it conflicts with everything.
-
-*Low risk, high noise, not urgent.*
+Each new item is meant to be one commit, one push, one thing the owner can look
+at on the live site. Delete an item when it lands — this file should get
+shorter.
 
 ---
 

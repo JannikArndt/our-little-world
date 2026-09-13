@@ -38,7 +38,7 @@ function handOver(url, text) {
         .then(() => 'shared')
         // a cancelled share sheet is not a failure, but a browser that refuses
         // outright (no gesture, or not a secure page) should still copy
-        .catch(e => (e && e.name === 'AbortError' ? 'shared' : copy(url)))
+        .catch(e => (e?.name === 'AbortError' ? 'shared' : copy(url)))
     );
   }
   return Promise.resolve(copy(url));
@@ -56,7 +56,7 @@ export function shareWorld(name, otherRole) {
 }
 
 function copy(url) {
-  if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(url).catch(() => {});
     return 'copied';
   }

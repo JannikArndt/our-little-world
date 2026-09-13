@@ -109,6 +109,10 @@ function applyStartText() {
   const version = document.getElementById('versionBtn');
   if (version) version.textContent = 'v' + VERSION + ' · ✨ ' + tr('hist.whatsNewShort');
   showReloadLabel();
+  // the foot stayed hidden behind a loading animation so nobody saw it
+  // half-filled; now that both buttons carry real text, swap them in
+  document.getElementById('startFootLoading')?.classList.add('hidden');
+  document.getElementById('startFootLinks')?.classList.remove('hidden');
   const nodes = document.querySelectorAll('[data-t]');
   for (let i = 0; i < nodes.length; i++) nodes[i].textContent = tr(nodes[i].getAttribute('data-t'));
   const row = document.getElementById('langRow');

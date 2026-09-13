@@ -13,7 +13,7 @@ export const de = {
 
   /* ---- einander finden ---- */
   'world.invited': 'Jemand hat dich eingeladen',
-  'world.joinThis': 'In diese Welt gehen',
+  'world.joinThis': 'Diese Welt betreten',
   'world.yours': 'Deine Welten',
   'world.youAre': 'Du bist {role} {emoji}',
   'world.start': 'Eine Welt anfangen',
@@ -40,7 +40,7 @@ export const de = {
   'join.needName': 'Da steht noch kein Name.',
   'join.gone': 'Diese Welt gibt es nicht mehr. Eine neue anfangen?',
   'seat.title': 'Beide Plätze sind besetzt',
-  'seat.full': 'Auf beiden Stühlen sitzt schon jemand',
+  'seat.full': 'Es gibt schon einen Baumeister und einen Tierhüter',
   'seat.why':
     'Wenn einer davon deiner ist, sag welcher, und mach weiter. Eine Welt auf dem Home-Bildschirm ist ein eigener Browser mit eigenem Gedächtnis — er kennt dich hier noch nicht.',
   'seat.iAm': 'Ich bin {role}',
@@ -48,7 +48,7 @@ export const de = {
   'seat.moveLead':
     'Öffne das auf deinem anderen Gerät — oder in der App auf dem Home-Bildschirm —, dann weiß es, dass du {role} {emoji} bist.',
   'seat.moveNote':
-    'Der hier ist für dich, nicht für den anderen Spieler. Er sagt, auf welchen der beiden Stühle man sich setzt.',
+    'Der hier ist für dich, nicht für den anderen Spieler. Er sagt, welche Rolle man spielt.',
   'seat.send': '📱 An mich selbst schicken',
   'seat.shareText': '{emoji} Ich mache bei {name} hier weiter.',
   'menu.thisDevice': 'Auf einem anderen Gerät spielen',
@@ -175,10 +175,10 @@ export const de = {
   'ui.where': '👀 Wo denn?',
   'ui.neverMind': 'Doch nicht',
   'ui.backToStart': 'Zurück zum Startbildschirm',
-  'ui.reload': 'Das Spiel neu holen',
-  'ui.reloadNew': 'Eine neuere Fassung ist da — hol sie',
-  'ui.reloadNote': 'Vorher wird alles gespeichert. Das Dorf kommt genau so zurück.',
-  'ui.reloadFetching': 'Die neue Fassung wird geholt …',
+  'ui.reload': 'Das Spiel neu laden',
+  'ui.reloadNew': 'Eine neuere Fassung ist da — lad sie',
+  'ui.reloadNote': 'Vorher wird alles gespeichert. Das Dorf bleibt wie es ist.',
+  'ui.reloadFetching': 'Die neue Fassung wird geladen …',
   'ui.back': 'Zurück',
   'ui.have': 'hast',
   'ui.need': 'brauchst',
@@ -195,17 +195,17 @@ export const de = {
 
   /* ---- Fähigkeiten ---- */
   'cap.fell': 'Bäume fällen',
-  'cap.saw': 'das Sägewerk',
+  'cap.saw': 'Bretter sägen',
   'cap.bridge': 'Brücken bauen',
   'cap.house': 'Häuser bauen',
-  'cap.mill': 'die Mühle',
+  'cap.mill': 'Mehl mahlen',
   'cap.herd': 'Tiere führen',
   'cap.care': 'Tiere versorgen',
   'cap.road': 'Wege bauen',
   'cap.farm': 'Feldarbeit',
 
   /* ---- Fragen und Zeigen ---- */
-  'w.theirJob': 'Nur {role} kann {what}.',
+  'w.theirJob': 'Nur der {role} kann {what}.',
   'verb.fell': 'den Baum fällen',
   'verb.saw': 'Bretter sägen',
   'verb.bridge': 'dich um die Brücke kümmern',
@@ -221,7 +221,7 @@ export const de = {
   'verb.plant': 'einen neuen Baum pflanzen',
   'verb.well': 'den Brunnen graben',
   'verb.privy': 'das Häuschen bauen',
-  'verb.fence': 'das Weizenfeld einzäunen',
+  'verb.fence': 'das Feld einzäunen',
   'teach.theyKnow': '{role} kann Sachen, die du noch nicht kannst — frag danach:',
   'teach.done': '👐 Du hast es gezeigt. Jetzt könnt ihr beide {what}.',
   'teach.notice': 'Jetzt könnt ihr beide {what}.',
@@ -270,7 +270,7 @@ export const de = {
   'basket.more': 'Jeder neue Nachbar ist ein Mund mehr — derselbe Korb reicht dann weniger Tage.',
 
   /* ---- Alle im Dorf ---- */
-  'menu.villagers': 'Alle hier',
+  'menu.villagers': 'Bewohner',
   'villagers.livesIn': 'Wohnt in {house}',
   'villagers.nowhere': 'Hat noch keinen Schlafplatz',
   'villagers.kid': 'eins von den Kindern',
@@ -299,9 +299,9 @@ export const de = {
   'w.siteNewFamily': 'Die neue Familie hat ihn abgesteckt.',
   'w.buildHouse': '🏠 Hier ein Haus bauen',
   'w.workshop': 'Die Werkstatt',
-  'w.workshopHint': 'Vorne kommt Holz rein, hinten kommen Bretter raus.',
+  'w.workshopHint': 'Verarbeitet Holz und Getreide',
   'w.sawHere': '🪚 Holz zu Brettern sägen',
-  'w.millHere': '🌀 Weizen zu Brot mahlen',
+  'w.millHere': '🌀 Weizen mahle und zu Brot backen',
   'w.house': 'Ein Haus',
   'w.livesHere_one': 'Hier wohnt {names}. ',
   'w.livesHere_other': 'Hier wohnen {names}. ',
@@ -329,8 +329,8 @@ export const de = {
   'w.wellHint': 'Kaltes, sauberes Wasser — und ein Trog, den die Schafe schon entdeckt haben.',
   'w.privyPlan': 'Hinten im Garten',
   'w.privyPlanHint': 'Aus dem Weg, gegen den Wind und ein gutes Stück vom Fluss entfernt.',
-  'w.buildPrivy': '🚪 Das Häuschen bauen',
-  'w.privy': 'Das Häuschen',
+  'w.buildPrivy': '🚽 Ein Plumpsklo bauen',
+  'w.privy': 'Das Plumpsklo',
   'w.privyHint': 'Was hier hineingeht, landet nicht im Fluss. Darüber sind alle froh.',
   'w.fencePlan': 'Das Weizenfeld',
   'w.fencePlanHint':
@@ -379,11 +379,11 @@ export const de = {
 
   /* ---- Teilen ---- */
   'give.title': '🤝 Teilen',
-  'give.lead': 'Was soll zu {role} rübergehen?',
+  'give.lead': 'Was möchtest du dem {role} geben?',
   'give.give': 'gibst',
   'give.button': 'An {role} geben {emoji}',
   'give.basket': '🧺 In den Dorfkorb',
-  'give.nothing': 'Bei dir ist der Tisch gerade leer.',
+  'give.nothing': 'Dein Tisch ist gerade leer.',
 
   /* ---- Fällen ---- */
   'chop.title': '🪓 Einen Baum fällen',
@@ -468,7 +468,7 @@ export const de = {
   'house.notEnough': 'Das reicht noch nicht. Grau ist das, was fehlt.',
   'house.window': 'Fenster',
   'house.lamp': 'Kerze',
-  'house.shelf': 'Brotbrett',
+  'house.shelf': 'Brotkorb',
   'house.bed': 'Bett',
   'house.stove': 'Ofen',
   'house.table': 'Tisch',

@@ -12,7 +12,7 @@
 
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { randomName, worldEmoji } from '../src/core/names.js';
+import { cleanName, randomName, worldEmoji } from '../src/core/names.js';
 import { ROLE_ORDER } from '../src/core/world.js';
 import { Stats } from './stats.mjs';
 
@@ -53,9 +53,13 @@ export class Worlds {
     const files = await readdir(this.dir).catch(() => []);
     for (const f of files) {
       if (!f.endsWith('.json')) continue;
+      // the filename is the name, not whatever a field inside the file says —
+      // a file this code did not itself write is not one it will load
+      const name = cleanName(f.slice(0, -'.json'.length));
+      if (!name || name + '.json' !== f) continue;
       try {
         const w = JSON.parse(await readFile(join(this.dir, f), 'utf8'));
-        if (w?.name) this.worlds.set(w.name, normalise(w));
+        this.worlds.set(name, normalise(Object.assign({}, w, { name })));
       } catch {
         /* a half-written file is not worth a crash */
       }
@@ -72,6 +76,9 @@ export class Worlds {
     const names = [...this.dirty];
     this.dirty.clear();
     for (const name of names) {
+      // belt and braces: every caller already cleans a name before it gets
+      // this far, but this is the one place a bad name becomes a bad path
+      if (cleanName(name) !== name) continue;
       const w = this.worlds.get(name);
       const file = join(this.dir, name + '.json');
       try {
@@ -208,16 +215,20 @@ export class Worlds {
     return role;
   }
 
-  /** A player says they are still there. Keeps the world (and the spot) alive. */
+  /**
+   * A player says they are still there. Keeps the world (and the spot) alive
+   * — and claims a spot if this device does not already have one, the same
+   * way join() would. That is what makes the periodic heartbeat self-healing:
+   * a join that never reached the server (a dropped request, not a refusal)
+   * is repaired by the next "still here" rather than left stuck outside.
+   */
   touch(name, opts) {
     const o = opts || {};
     const w = this.worlds.get(name);
     if (!w) return null;
-    const t = this.now();
-    w.seen = t;
-    const s = o.role ? w.slots[o.role] : null;
-    if (s && (!o.device || s.device === o.device)) s.seen = t;
-    this.counts.mark(w, s ? o.role : null);
+    w.seen = this.now();
+    const role = this.claim(w, o.device, o.role);
+    this.counts.mark(w, role);
     this.dirty.add(name);
     return w;
   }
@@ -271,6 +282,10 @@ export class Worlds {
     const o = opts || {};
     const w = this.worlds.get(name);
     if (!w) return { ok: false, reason: 'no-world' };
+    // knowing the name gets you a look; changing the village needs a seat in
+    // it — otherwise a stranger who only knows the name could reset a family's
+    // saved world with nothing more than a guess
+    if (!inWorld(w, o.device)) return { ok: false, reason: 'not-a-player' };
     if (typeof o.world !== 'string') return { ok: false, reason: 'bad-world' };
     const text = o.world;
     if (!text || text.length > MAX_SNAPSHOT) return { ok: false, reason: 'size' };
@@ -318,6 +333,11 @@ export class Worlds {
 /** Which spots nobody has taken. */
 export function free(w) {
   return w.roles.filter(r => !w.slots[r]);
+}
+
+/** Does this device currently hold one of the world's spots? */
+function inWorld(w, device) {
+  return !!device && w.roles.some(r => w.slots[r]?.device === device);
 }
 
 /** What a browser is allowed to know about a world: no devices, no snapshot. */

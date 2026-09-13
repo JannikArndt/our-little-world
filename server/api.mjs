@@ -28,17 +28,38 @@ import { publicView } from './worlds.mjs';
 
 const MAX_BODY = 1024 * 1024;
 const CREATE_PER_HOUR = 30; // per address; a family needs a handful
+// join/seen/leave/snapshot, all together: real play is a heartbeat every
+// minute or so plus a save every half minute, per device — generous
+// headroom for a household with a few devices, or several behind one shared
+// address, while still bounding somebody scanning or hammering a name.
+const ACTIVITY_PER_HOUR = 1200;
 const STATS_FOR = 30000; // the same answer for half a minute
 
 export function createApi(store, opts) {
   const o = opts || {};
   const now = o.now || (() => Date.now());
   const live = o.live || (() => null);
-  const buckets = new Map();
+  const createBuckets = new Map();
+  const activityBuckets = new Map();
   let cached = null;
 
-  function allowedToCreate(req) {
-    const ip = req.socket?.remoteAddress || 'local';
+  // Off by default: this only tells the truth when every request actually
+  // comes through one trusted reverse proxy that sets (and cannot be told to
+  // lie about) X-Forwarded-For — otherwise a client could hand itself a fresh
+  // address on every request and rate limiting would be pure theatre. Set
+  // TRUST_PROXY=1 once that is confirmed for wherever this is deployed.
+  const trustProxy = process.env.TRUST_PROXY === '1';
+
+  function clientIp(req) {
+    if (trustProxy) {
+      const xff = req.headers['x-forwarded-for'];
+      if (xff) return String(xff).split(',')[0].trim();
+    }
+    return req.socket?.remoteAddress || 'local';
+  }
+
+  function allowed(buckets, req, limit) {
+    const ip = clientIp(req);
     const t = now();
     const b = buckets.get(ip) || { n: 0, until: t + 3600000 };
     if (t > b.until) {
@@ -48,8 +69,10 @@ export function createApi(store, opts) {
     b.n++;
     buckets.set(ip, b);
     if (buckets.size > 5000) buckets.clear();
-    return b.n <= CREATE_PER_HOUR;
+    return b.n <= limit;
   }
+  const allowedToCreate = req => allowed(createBuckets, req, CREATE_PER_HOUR);
+  const allowedActivity = req => allowed(activityBuckets, req, ACTIVITY_PER_HOUR);
 
   /** true when this request was ours to answer. */
   return async function handle(req, res) {
@@ -110,6 +133,7 @@ export function createApi(store, opts) {
 
       const name = cleanName(parts[2]);
       if (!name) return send(res, 400, { error: 'bad-name' });
+      if (!allowedActivity(req)) return send(res, 429, { error: 'too-many-requests' });
       const what = parts[3] || '';
 
       /* ---- one world ---- */
@@ -163,6 +187,7 @@ export function createApi(store, opts) {
         });
         if (r.ok) return send(res, 200, { ok: true });
         if (r.reason === 'no-world') return send(res, 404, { error: 'no-such-world' });
+        if (r.reason === 'not-a-player') return send(res, 403, { error: 'not-a-player' });
         if (r.reason === 'older') return send(res, 409, { error: 'older', snapshot: r.snapshot });
         if (r.reason === 'bad-world') return send(res, 400, { error: 'bad-world' });
         return send(res, 413, { error: 'too-big' });

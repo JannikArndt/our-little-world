@@ -9,9 +9,10 @@
 // hash of the files it is serving, and that is compared with the same hash
 // taken from the working tree.
 //
-// It waits a quarter of an hour by default, because a push now goes through
-// the whole gate before it deploys at all: installing, fetching a browser and
-// five minutes of verify, and only then CapRover building an image. The wait
+// It waits half an hour by default, because a push now goes through the whole
+// gate before it deploys at all: installing, fetching a browser and five
+// minutes of verify, then a deploy to dev and a wait for dev's own /version to
+// answer, and only once that holds does prod get the same build. The wait
 // used to be three minutes, which was right when a push went straight out and
 // meant this could never once say yes afterwards.
 
@@ -22,7 +23,7 @@ const url = (
   process.env.DEPLOY_URL ||
   'https://ourlittleworld.timpanini.com'
 ).replace(/\/$/, '');
-const waitFor = Number((process.argv.find(a => /^--wait=/.test(a)) || '--wait=900').split('=')[1]);
+const waitFor = Number((process.argv.find(a => /^--wait=/.test(a)) || '--wait=1800').split('=')[1]);
 
 const mine = buildId();
 console.log('here:  ' + mine);

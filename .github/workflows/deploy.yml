@@ -10,11 +10,11 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
 
       - run: npm ci
 
@@ -25,16 +25,38 @@ jobs:
       # that is how local and CI drift apart.
       - run: npm run verify
 
-  deploy:
+  deploy-dev:
     needs: verify
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # checkout leaves the workspace at the git root on a real "main" branch,
       # which is all the CapRover CLI needs: it tars that branch and the server
       # builds the Dockerfile named by captain-definition.
-      - name: Deploy to CapRover
+      - name: Deploy to dev
+        run: |
+          npm install -g caprover
+          caprover deploy \
+            --caproverUrl ${{ secrets.CAPROVER_SERVER }} \
+            --appToken ${{ secrets.CAPROVER_APP_TOKEN_DEV }} \
+            --appName ${{ secrets.CAPROVER_APP_DEV }} \
+            --branch main
+
+      # dev is the gate prod never used to get: catch a CapRover-side failure
+      # (a bad image, a crash on boot) here, before a player ever sees it.
+      - name: Confirm dev is serving this build
+        run: npm run deployed -- --wait=300
+        env:
+          DEPLOY_URL: https://ourlittleworld-dev.timpanini.com
+
+  deploy-prod:
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Deploy to prod
         run: |
           npm install -g caprover
           caprover deploy \
@@ -42,3 +64,6 @@ jobs:
             --appToken ${{ secrets.CAPROVER_APP_TOKEN }} \
             --appName ${{ secrets.CAPROVER_APP }} \
             --branch main
+
+      - name: Confirm prod is serving this build
+        run: npm run deployed -- --wait=300

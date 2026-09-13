@@ -228,11 +228,29 @@ fourth is still being written.
 
 ## 🚀 Branch, deploy, confirm
 
-- **All changes go straight to `main`.** There is no dev deployment yet, so
-  `main` is what people play. A push to `main` runs
-  `.github/workflows/deploy.yml`: **check and verify first, CapRover only if
-  they pass.** A red run leaves the last good build serving, and never make the
-  deploy step independent of the gate.
+- **Develop straight on `main`.** There is no long-lived feature branch; the
+  goal is a change reaching `main`, and from there a player, as fast as a
+  clean gate allows. A push to `main` runs `.github/workflows/deploy.yml` in
+  three stages, each gating the next: **`verify`, then `deploy-dev`, then
+  `deploy-prod` — a stage only runs once the one before it passed.** A red
+  `verify` deploys nothing at all, and a red `deploy-dev` never lets
+  `deploy-prod` start; either way both apps keep serving their last good
+  build.
+- **`dev` is where a change gets caught before a player sees it, not a second
+  review to wait on.** `deploy-dev` ships the build to
+  `https://ourlittleworld-dev.timpanini.com` (`CAPROVER_APP_DEV` /
+  `CAPROVER_APP_TOKEN_DEV`) and then polls its `/version` until it answers
+  with this commit's own build id, so a CapRover-side failure — a bad image, a
+  crash on boot — shows up on `dev` rather than on `prod`. Only once that
+  holds does `deploy-prod` deploy the identical build to
+  `https://ourlittleworld.timpanini.com` (`CAPROVER_APP` /
+  `CAPROVER_APP_TOKEN`, unchanged) the same way. There is no manual approval
+  in between — that would slow `main` down for no test it does not already
+  get from `verify` and from `dev` answering `/version`.
+- **The game itself needed no change for this.** Nothing in `server/` or
+  `src/` is written for one hostname: CORS is wide open, nothing reads its own
+  origin, and CapRover already keeps `dev` and `prod` as separate containers
+  with separate persisted worlds. The same build simply runs twice.
 - After `git push origin main`, point any session working branch at the same
   commit (`git branch -f <branch> main && git push -f origin <branch>`) so the
   two never drift.
@@ -243,24 +261,29 @@ fourth is still being written.
   compares the live `build` with the working tree's. **`npm run shipped` asks
   once and answers immediately** — that is the one to reach for. `npm run
   deployed` is the same question with a wait attached, for when you have just
-  pushed and intend to sit there; it waits up to fifteen minutes because the
-  gate runs before the deploy does. **A push is not finished until one of them
-  says yes**, but "not finished" does not mean "stand and watch".
+  pushed and intend to sit there; it waits up to half an hour because the gate
+  runs before either deploy does, and `dev` has to answer before `prod` even
+  starts. **A push is not finished until one of them says yes**, but "not
+  finished" does not mean "stand and watch".
   It waits that long because a push now goes through the whole gate before it
-  deploys at all — installing, fetching a browser, five minutes of verify, and
-  only then CapRover building an image. It waited three minutes once, which was
-  right when a push went straight out, and which quietly meant it could never
-  say yes again once the gate existed.
+  deploys at all — installing, fetching a browser, five minutes of verify, a
+  deploy to `dev` and a wait for `dev`'s own `/version`, and only then a deploy
+  to `prod`. It waited three minutes once, which was right when a push went
+  straight to one app with no gate, and which quietly meant it could never say
+  yes again once the gate existed.
 - **A push is not finished when the command returns, either.** Check the
   workflow run: a red gate means nothing deployed and the old build is still
   what people are playing. Saying "pushed" is not saying "live", and only the
   site can settle which.
-- The site is <https://ourlittleworld.timpanini.com>; `npm run deployed` knows
-  that address, and takes another as an argument or in `DEPLOY_URL`. If a
-  sandbox will not let a session reach it, check the workflow run instead and
-  say plainly that the deployment itself was not verified from here — do not
-  call it live. And check the host before assuming it: this one was guessed
-  wrong once, from a truncated address bar.
+- The site is <https://ourlittleworld.timpanini.com>, and `npm run deployed`
+  knows that address by default; `dev` is
+  <https://ourlittleworld-dev.timpanini.com>, reached with
+  `npm run deployed -- https://ourlittleworld-dev.timpanini.com` or
+  `DEPLOY_URL=https://ourlittleworld-dev.timpanini.com npm run deployed`. If a
+  sandbox will not let a session reach either, check the workflow run instead
+  and say plainly that the deployment itself was not verified from here — do
+  not call it live. And check the host before assuming it: this one was
+  guessed wrong once, from a truncated address bar.
 - Only what ships is hashed — the page, `src`, `styles`, `server`, `icons`. A
   change to the tests, the tooling or the docs leaves the build id alone, which
   is right: nothing a player downloads changed, and `npm run deployed` will

@@ -204,7 +204,7 @@ docker build -t our-little-world .
 docker run -p 8080:8080 our-little-world      # or: docker compose up -d
 ```
 
-`node:22-alpine` plus the files it serves. No dependencies, no build step, no
+`node:24-alpine` plus the files it serves. No dependencies, no build step, no
 volumes, nothing to mount. It listens on `$PORT` (8080 by default) and answers
 `/rooms`, which is also its health check.
 

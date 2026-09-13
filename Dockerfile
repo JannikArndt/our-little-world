@@ -1,6 +1,6 @@
 # The whole game is static files plus one small Node server, and it has no
 # dependencies at all, so there is nothing to install and nothing to build.
-FROM node:22-alpine
+FROM node:24-alpine
 
 ENV NODE_ENV=production
 ENV PORT=8080

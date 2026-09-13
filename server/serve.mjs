@@ -47,6 +47,12 @@ const TYPES = {
   '.webmanifest': 'application/manifest+json',
 };
 
+// What a browser may fetch by name. Not server/ (the code that runs it), not
+// package.json, and not DATA_DIR — which defaults to living right under here
+// too — so a world's save file is never one guessed URL away.
+const PUBLIC_FILES = ['/index.html', '/stats.html', '/site.webmanifest'];
+const PUBLIC_DIRS = ['src', 'styles', 'icons'];
+
 // worked out once, at boot: what this server is actually serving
 const BUILD = buildId();
 const STARTED = new Date().toISOString();
@@ -66,6 +72,10 @@ function stamp(html) {
 
 const server = createServer(async (req, res) => {
   try {
+    res.setHeader('x-content-type-options', 'nosniff');
+    res.setHeader('referrer-policy', 'no-referrer');
+    res.setHeader('x-frame-options', 'DENY');
+    res.setHeader('content-security-policy', "frame-ancestors 'none'");
     const url = new URL(req.url, 'http://localhost');
     if (await api(req, res)) return;
     // "is what I pushed live?" — compare `build` with `node server/buildid.mjs`
@@ -86,7 +96,14 @@ const server = createServer(async (req, res) => {
     // the one address here meant to be typed into a browser: the page reads
     // /api/stats, which is the same numbers without the pictures
     if (p === '/stats') p = '/stats.html';
-    const file = join(ROOT, normalize(p).replace(/^(\.\.[/\\])+/, ''));
+    const clean = normalize(p).replace(/^(\.\.[/\\])+/, '');
+    const top = clean.split('/')[1] || '';
+    if (!PUBLIC_FILES.includes(clean) && !PUBLIC_DIRS.includes(top)) {
+      res.writeHead(404);
+      res.end('not found');
+      return;
+    }
+    const file = join(ROOT, clean);
     if (!file.startsWith(ROOT)) {
       res.writeHead(403);
       res.end('no');
@@ -124,6 +141,12 @@ const server = createServer(async (req, res) => {
 });
 
 attachRelay(server, '/relay');
+
+// A slow-trickled request never gets to hold a socket open for good — this
+// governs only the http request/header phase, not a relay socket, which is
+// handed off to attachRelay's own upgrade handling the moment it arrives.
+server.headersTimeout = 20000;
+server.requestTimeout = 30000;
 
 server.listen(PORT, () => {
   const nets = networkInterfaces();

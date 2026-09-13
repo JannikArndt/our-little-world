@@ -1,6 +1,10 @@
 # The whole game is static files plus one small Node server, and it has no
 # dependencies at all, so there is nothing to install and nothing to build.
-FROM node:24-alpine
+# Pinned by digest (node:24-alpine, all architectures) so a rebuild months
+# from now starts from exactly this image rather than whatever the tag has
+# since become; bump it deliberately with `docker buildx imagetools inspect
+# node:24-alpine`.
+FROM node:24-alpine@sha256:50c8e8ca1d27439048670df5883f32d57cf81cff6233222c893fd0d9884cbd81
 
 ENV NODE_ENV=production
 ENV PORT=8080

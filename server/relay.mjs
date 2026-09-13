@@ -13,6 +13,7 @@ import { createServer } from 'node:http';
 
 const GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const rooms = new Map();
+const MAX_PEERS_PER_ROOM = 2; // a world has two seats; a third arrival is nobody's
 
 // the last world seen in a room, kept for a while after everybody has gone
 const kept = new Map();
@@ -86,7 +87,6 @@ class Peer {
     this.socket = socket;
     this.room = room;
     this.buf = Buffer.alloc(0);
-    this.fragments = [];
     this.alive = true;
   }
   send(text) {
@@ -160,13 +160,20 @@ function readFrames(peer, onText) {
       continue;
     }
     if (opcode === 0xa) continue;
-    if (opcode === 0x1 || opcode === 0x2 || opcode === 0x0) {
-      peer.fragments.push(payload);
-      if (fin) {
-        const text = Buffer.concat(peer.fragments).toString('utf8');
-        peer.fragments = [];
-        onText(text);
+    // nothing on either side of this ever sends a message in more than one
+    // frame (see src/net/transport.js) — a continuation frame, or one
+    // claiming "more to come", is not a real client and is closed rather
+    // than believed, so nothing here ever grows an unbounded buffer
+    if (opcode === 0x0) {
+      peer.close();
+      return;
+    }
+    if (opcode === 0x1 || opcode === 0x2) {
+      if (!fin) {
+        peer.close();
+        return;
       }
+      onText(payload.toString('utf8'));
     }
   }
   peer.buf = buf;
@@ -186,6 +193,15 @@ export function attachRelay(server, path = '/relay') {
       return;
     }
 
+    const probing = url.searchParams.get('probe') === '1';
+    const room = (url.searchParams.get('room') || 'home').slice(0, 40);
+    // a third arrival is not a third player — either a name guessed or handed
+    // out late, and either way it does not get to sit in on the two who are
+    if (!probing && (rooms.get(room)?.size || 0) >= MAX_PEERS_PER_ROOM) {
+      socket.destroy();
+      return;
+    }
+
     socket.write(
       'HTTP/1.1 101 Switching Protocols\r\n' +
         'Upgrade: websocket\r\n' +
@@ -196,7 +212,7 @@ export function attachRelay(server, path = '/relay') {
     );
     socket.setNoDelay(true);
 
-    if (url.searchParams.get('probe') === '1') {
+    if (probing) {
       setTimeout(() => {
         try {
           socket.write(controlFrame(0x8));
@@ -208,7 +224,6 @@ export function attachRelay(server, path = '/relay') {
       return;
     }
 
-    const room = (url.searchParams.get('room') || 'home').slice(0, 40);
     const peer = new Peer(socket, room);
     if (!rooms.has(room)) rooms.set(room, new Set());
     rooms.get(room).add(peer);

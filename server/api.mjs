@@ -69,6 +69,7 @@ export function createApi(store, opts) {
     const parts = url.pathname.split('/').filter(p => p.length); // ['api','worlds',name,what]
     try {
       if (parts[1] === 'health' && parts.length === 2) {
+        if (req.method !== 'GET') return send(res, 405, { error: 'method' });
         return send(res, 200, Object.assign({ ok: true, relay: true }, store.stats()));
       }
 
@@ -163,6 +164,7 @@ export function createApi(store, opts) {
         if (r.ok) return send(res, 200, { ok: true });
         if (r.reason === 'no-world') return send(res, 404, { error: 'no-such-world' });
         if (r.reason === 'older') return send(res, 409, { error: 'older', snapshot: r.snapshot });
+        if (r.reason === 'bad-world') return send(res, 400, { error: 'bad-world' });
         return send(res, 413, { error: 'too-big' });
       }
 

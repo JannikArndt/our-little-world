@@ -33,6 +33,28 @@ const MIN_BUCKETS = [0, 5, 10, 15, 20, 30, 45, 60, 90, 120];
 // them, and something everybody has is not something anybody reached.
 const PROJECT_TYPES = Object.keys(PROJECTS).map(k => PROJECTS[k].type);
 
+// Every key `tally()` in actions.js can put in a player's `done` — the fixed
+// ones plus a project's own type. A snapshot is posted by whoever's browser
+// sends it, not checked against a seat, so anything outside this list is a
+// stranger's word for it, not a deed, and does not belong on a public page.
+const DEED_TYPES = new Set([
+  'fell',
+  'saw',
+  'sawPerfect',
+  'mill',
+  'bridge',
+  'house',
+  'furnish',
+  'fish',
+  'plant',
+  'road',
+  'care',
+  'farm',
+  'sow',
+  'reap',
+  ...PROJECT_TYPES,
+]);
+
 /** The calendar day (UTC) a moment falls in. Nothing finer is ever kept. */
 export function dayKey(t) {
   return new Date(t).toISOString().slice(0, 10);
@@ -256,7 +278,10 @@ export function deedsOf(w) {
   const ps = w.players && typeof w.players === 'object' ? w.players : {};
   for (const r in ps) {
     const done = ps[r] && ps[r].done;
-    for (const k in done || {}) out[k] = (out[k] || 0) + num(done[k]);
+    for (const k in done || {}) {
+      if (!DEED_TYPES.has(k)) continue;
+      out[k] = (out[k] || 0) + num(done[k]);
+    }
   }
   return out;
 }

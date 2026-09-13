@@ -131,6 +131,18 @@ test('nothing in the report belongs to anybody', () => {
   assert.equal(/\d\d:\d\d/.test(text), false, 'no times of day');
 });
 
+test('a snapshot cannot plant an arbitrary word on the public page', () => {
+  const { s } = store();
+  const { world } = s.create({ device: 'kid', role: 'A' });
+  s.putSnapshot(world.name, {
+    tick: 10,
+    world: snap({ players: { A: { done: { fell: 1, 'a-stranger-wrote-this': 99 } } } }),
+  });
+  const r = s.report();
+  assert.equal(r.deeds.fell, 1);
+  assert.equal(r.deeds['a-stranger-wrote-this'], undefined);
+});
+
 test('the counting survives a restart', async t => {
   const dir = await mkdtemp(join(tmpdir(), 'olw-stats-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
@@ -177,8 +189,14 @@ test('a world started over keeps what was done in it', () => {
 test('the pieces on their own', () => {
   assert.equal(dayKey(Date.UTC(2026, 0, 2, 23, 59)), '2026-01-02');
   assert.deepEqual(
-    deedsOf({ players: { A: { done: { fell: 1 } }, B: { done: { fell: 2, road: 1 } } } }),
+    deedsOf({
+      players: {
+        A: { done: { fell: 1, 'a-stranger-wrote-this': 99 } },
+        B: { done: { fell: 2, road: 1 } },
+      },
+    }),
     { fell: 3, road: 1 },
+    'a key nothing in the game can produce is not a deed',
   );
   assert.deepEqual(marksOf({ bridge: { built: false }, buildings: [], villagers: [] }), {});
   // a village with nobody in it is not a village where everybody has a bed

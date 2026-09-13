@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Worlds, free, publicView } from '../server/worlds.mjs';
@@ -68,6 +68,21 @@ test('a device that comes back gets its own spot again, not a new one', () => {
   assert.equal(Object.keys(s.get(world.name).slots).length, 2);
 });
 
+test('a heartbeat claims a spot for a device that never managed to join', () => {
+  // a join that never reached the server — a dropped request, not a refusal
+  // — should not leave a device stuck outside once it starts sending "still
+  // here" instead
+  const s = new Worlds({});
+  const { world } = s.create({ device: 'kid', role: 'A' });
+  const w = s.touch(world.name, { device: 'dad', role: 'B' });
+  assert.equal(w.slots.B.device, 'dad');
+  assert.equal(
+    s.putSnapshot(world.name, { device: 'dad', tick: 1, world: '{"tick":1}' }).ok,
+    true,
+    'the repaired spot is enough to save from',
+  );
+});
+
 test("a third player is turned away rather than given somebody else's role", () => {
   const s = new Worlds({});
   const { world } = s.create({ device: 'kid', role: 'A' });
@@ -127,34 +142,65 @@ test('playing keeps a world alive indefinitely', async () => {
 test('the server keeps the last world a host sent, and refuses an older one', () => {
   const s = new Worlds({});
   const { world } = s.create({ device: 'kid', role: 'A' });
-  assert.equal(s.putSnapshot(world.name, { tick: 100, world: '{"tick":100}' }).ok, true);
+  assert.equal(
+    s.putSnapshot(world.name, { device: 'kid', tick: 100, world: '{"tick":100}' }).ok,
+    true,
+  );
   assert.equal(s.getSnapshot(world.name).tick, 100);
-  const stale = s.putSnapshot(world.name, { tick: 40, world: '{"tick":40}' });
+  const stale = s.putSnapshot(world.name, { device: 'kid', tick: 40, world: '{"tick":40}' });
   assert.equal(stale.ok, false);
   assert.equal(stale.snapshot.tick, 100, 'the stale device is handed the good world back');
-  assert.equal(s.putSnapshot(world.name, { tick: 220, world: '{"tick":220}' }).ok, true);
+  assert.equal(
+    s.putSnapshot(world.name, { device: 'kid', tick: 220, world: '{"tick":220}' }).ok,
+    true,
+  );
   assert.equal(s.getSnapshot(world.name).tick, 220);
 });
 
 test('starting a world over is the one time a fresh world beats the kept one', () => {
   const s = new Worlds({});
   const { world } = s.create({ device: 'kid', role: 'A' });
-  s.putSnapshot(world.name, { tick: 900, world: '{"tick":900}' });
+  s.putSnapshot(world.name, { device: 'kid', tick: 900, world: '{"tick":900}' });
   // without saying so, the village that was just cleared is handed back
-  assert.equal(s.putSnapshot(world.name, { tick: 0, world: '{"tick":0}' }).ok, false);
-  assert.equal(s.putSnapshot(world.name, { tick: 0, world: '{"tick":0}', reset: true }).ok, true);
+  assert.equal(
+    s.putSnapshot(world.name, { device: 'kid', tick: 0, world: '{"tick":0}' }).ok,
+    false,
+  );
+  assert.equal(
+    s.putSnapshot(world.name, { device: 'kid', tick: 0, world: '{"tick":0}', reset: true }).ok,
+    true,
+  );
   assert.equal(s.getSnapshot(world.name).tick, 0);
 });
 
 test('a snapshot that is not a world is refused', () => {
   const s = new Worlds({});
   const { world } = s.create({ device: 'kid' });
-  assert.equal(s.putSnapshot(world.name, { tick: 1, world: 'x'.repeat(600 * 1024) }).ok, false);
-  assert.equal(s.putSnapshot('nowhere', { tick: 1, world: '{}' }).ok, false);
+  assert.equal(
+    s.putSnapshot(world.name, { device: 'kid', tick: 1, world: 'x'.repeat(600 * 1024) }).ok,
+    false,
+  );
+  assert.equal(s.putSnapshot('nowhere', { device: 'kid', tick: 1, world: '{}' }).ok, false);
   // whatever sent this knows the room's name, nothing more — the world field
   // has to actually be the text a client would send, not just anything at all
-  assert.equal(s.putSnapshot(world.name, { tick: 1, world: { tick: 1 } }).ok, false);
-  assert.equal(s.putSnapshot(world.name, { tick: 1, world: undefined }).ok, false);
+  assert.equal(s.putSnapshot(world.name, { device: 'kid', tick: 1, world: { tick: 1 } }).ok, false);
+  assert.equal(s.putSnapshot(world.name, { device: 'kid', tick: 1, world: undefined }).ok, false);
+});
+
+test('a stranger who only knows the name cannot touch the saved world', () => {
+  const s = new Worlds({});
+  const { world } = s.create({ device: 'kid', role: 'A' });
+  const r = s.putSnapshot(world.name, { device: 'a-stranger', tick: 1, world: '{"tick":1}' });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'not-a-player');
+  assert.equal(s.getSnapshot(world.name), null, 'nothing was written');
+  // and joining first is all it takes — a spot, not a password
+  const joined = s.join(world.name, { device: 'a-stranger', role: 'B' });
+  assert.equal(joined.role, 'B');
+  assert.equal(
+    s.putSnapshot(world.name, { device: 'a-stranger', tick: 1, world: '{"tick":1}' }).ok,
+    true,
+  );
 });
 
 test('a real world snapshot survives a restart of the server', async t => {
@@ -165,7 +211,7 @@ test('a real world snapshot survives a restart of the server', async t => {
   const first = await new Worlds({ dir }).load();
   const { world } = first.create({ device: 'kid', role: 'A' });
   const text = serialize(createWorld(7));
-  first.putSnapshot(world.name, { tick: 500, world: text });
+  first.putSnapshot(world.name, { device: 'kid', tick: 500, world: text });
   await first.close();
 
   const files = await readdir(dir);
@@ -177,6 +223,60 @@ test('a real world snapshot survives a restart of the server', async t => {
   assert.equal(kept.tick, 500);
   assert.ok(deserialize(kept.world), 'what comes back off disk is still a world');
   assert.deepEqual(publicView(second.get(world.name)).taken, ['A']);
+});
+
+test('a world is known by its filename, not a field inside the file', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'olw-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const w = {
+    name: 'somebody-elses-name',
+    created: Date.now(),
+    seen: Date.now(),
+    roles: ['A', 'B'],
+    slots: {},
+    snapshot: null,
+    active: {},
+    far: null,
+  };
+  await writeFile(join(dir, 'honest-otter.json'), JSON.stringify(w));
+
+  const s = await new Worlds({ dir }).load();
+  assert.ok(s.get('honest-otter'), 'known by the name of the file it came from');
+  assert.equal(s.get('somebody-elses-name'), null, 'not by whatever the file claims about itself');
+});
+
+test('a file with a name this code would never have written is left alone', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'olw-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeFile(join(dir, '..evil.json'), JSON.stringify({ name: '..evil' }));
+  const s = await new Worlds({ dir }).load();
+  assert.equal(s.worlds.size, 0, 'a name that is not already clean is not trusted');
+});
+
+test('flush refuses to write a name it did not clean itself', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'olw-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const s = new Worlds({ dir });
+  // reaching past the public API on purpose: this is the belt-and-braces
+  // check for a name that should never get this far in the first place
+  s.worlds.set('../evil', {
+    name: '../evil',
+    created: Date.now(),
+    seen: Date.now(),
+    roles: ['A', 'B'],
+    slots: {},
+    snapshot: null,
+    active: {},
+    far: null,
+  });
+  s.dirty.add('../evil');
+  await s.flush();
+  const files = await readdir(dir).catch(() => []);
+  assert.equal(
+    files.some(f => f.indexOf('evil') >= 0),
+    false,
+    'nothing escaped the data directory',
+  );
 });
 
 /* ---------------- over HTTP ---------------- */
@@ -377,4 +477,49 @@ test('nobody can fill the directory from one machine', async t => {
     if (r.status === 429) refused++;
   }
   assert.ok(refused >= 5, 'a flood of new worlds should start being refused');
+});
+
+test('a flood of activity on one world is throttled too, not just creating one', async t => {
+  const { server, base } = await listen();
+  t.after(() => server.close());
+  const made = await post(base, '/api/worlds', { device: 'kid' });
+  const name = made.body.world.name;
+  let refused = 0;
+  for (let i = 0; i < 1210; i++) {
+    const r = await fetch(base + '/api/worlds/' + name);
+    if (r.status === 429) refused++;
+  }
+  assert.ok(refused >= 5, 'a flood of lookups on one world should start being refused too');
+});
+
+test('without TRUST_PROXY, a claimed X-Forwarded-For buys no extra budget', async t => {
+  const { server, base } = await listen();
+  t.after(() => server.close());
+  const createAs = ip =>
+    fetch(base + '/api/worlds', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
+      body: JSON.stringify({ device: 'x' }),
+    }).then(r => r.status);
+
+  for (let i = 0; i < 30; i++) await createAs('9.9.9.9');
+  assert.equal(await createAs('8.8.8.8'), 429, 'a different claimed address changed nothing');
+});
+
+test('TRUST_PROXY=1 gives each forwarded address its own budget', async t => {
+  process.env.TRUST_PROXY = '1';
+  t.after(() => delete process.env.TRUST_PROXY);
+  const { server, base } = await listen();
+  t.after(() => server.close());
+  const createAs = ip =>
+    fetch(base + '/api/worlds', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
+      body: JSON.stringify({ device: 'x' }),
+    }).then(r => r.status);
+
+  let refused = 0;
+  for (let i = 0; i < 35; i++) if ((await createAs('1.1.1.1')) === 429) refused++;
+  assert.ok(refused >= 5, 'the first address did get throttled on its own');
+  assert.equal(await createAs('2.2.2.2'), 201, 'a different address still has its own budget');
 });

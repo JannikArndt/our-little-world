@@ -74,17 +74,17 @@ test('minutes come from the world clock, and only the new ones count', () => {
   const { s } = store();
   const { world } = s.create({ device: 'kid', role: 'A' });
 
-  s.putSnapshot(world.name, { tick: 1800, world: snap({ tick: 1800 }) }); // three minutes
+  s.putSnapshot(world.name, { device: 'kid', tick: 1800, world: snap({ tick: 1800 }) }); // three minutes
   assert.equal(s.report().days[0].minutes, 3);
 
-  s.putSnapshot(world.name, { tick: 3600, world: snap({ tick: 3600 }) }); // three more
+  s.putSnapshot(world.name, { device: 'kid', tick: 3600, world: snap({ tick: 3600 }) }); // three more
   assert.equal(s.report().days[0].minutes, 6, 'the difference, not the total again');
 });
 
 test('how far a world got, and what got built in it', () => {
   const { s } = store();
   const { world } = s.create({ device: 'kid', role: 'A' });
-  s.putSnapshot(world.name, { tick: 1800, world: snap() });
+  s.putSnapshot(world.name, { device: 'kid', tick: 1800, world: snap() });
 
   const r = s.report();
   assert.equal(r.howFar.worlds, 1);
@@ -101,7 +101,7 @@ test('how far a world got, and what got built in it', () => {
 test('a world that is forgotten leaves its numbers and takes its name', async () => {
   const { s, on } = store();
   const { world } = s.create({ device: 'kid', role: 'A' });
-  s.putSnapshot(world.name, { tick: 1800, world: snap() });
+  s.putSnapshot(world.name, { device: 'kid', tick: 1800, world: snap() });
 
   const before = s.report();
   assert.equal(before.howFar.worlds, 1);
@@ -121,7 +121,7 @@ test('nothing in the report belongs to anybody', () => {
   const { s } = store();
   const { world } = s.create({ device: 'an-ipad-in-a-kitchen', role: 'A' });
   s.join(world.name, { device: 'a-phone-on-a-train', role: 'B' });
-  s.putSnapshot(world.name, { tick: 1800, world: snap() });
+  s.putSnapshot(world.name, { device: 'an-ipad-in-a-kitchen', tick: 1800, world: snap() });
 
   const text = JSON.stringify(s.report(1));
   for (const secret of ['an-ipad-in-a-kitchen', 'a-phone-on-a-train', world.name])
@@ -135,6 +135,7 @@ test('a snapshot cannot plant an arbitrary word on the public page', () => {
   const { s } = store();
   const { world } = s.create({ device: 'kid', role: 'A' });
   s.putSnapshot(world.name, {
+    device: 'kid',
     tick: 10,
     world: snap({ players: { A: { done: { fell: 1, 'a-stranger-wrote-this': 99 } } } }),
   });
@@ -150,7 +151,7 @@ test('the counting survives a restart', async t => {
   const first = store({ dir });
   await first.s.load();
   const { world } = first.s.create({ device: 'kid', role: 'A' });
-  first.s.putSnapshot(world.name, { tick: 1800, world: snap() });
+  first.s.putSnapshot(world.name, { device: 'kid', tick: 1800, world: snap() });
   await first.s.close();
 
   const again = new Worlds({ dir, now: () => START });
@@ -165,9 +166,10 @@ test('the counting survives a restart', async t => {
 test('a world started over keeps what was done in it', () => {
   const { s } = store();
   const { world } = s.create({ device: 'kid', role: 'A' });
-  s.putSnapshot(world.name, { tick: 3000, world: snap({ tick: 3000, day: 4 }) });
+  s.putSnapshot(world.name, { device: 'kid', tick: 3000, world: snap({ tick: 3000, day: 4 }) });
   // "start this world over": a fresh world at tick 0 in the same room
   s.putSnapshot(world.name, {
+    device: 'kid',
     tick: 0,
     reset: true,
     world: snap({

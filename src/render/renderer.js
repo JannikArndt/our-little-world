@@ -55,7 +55,11 @@ function scarecrow(ctx, x, y) {
 /** Draw one edge of the river as a smooth curve through the tile edges. */
 function ribbon(ctx, pts, grow, reverse) {
   const p = reverse ? pts.slice().reverse() : pts;
-  const first = { x: p[0].x + grow, y: p[0].y - 40 };
+  // Reversed travels bottom-to-top, so its cap at each end points the other
+  // way — otherwise the far (east) bank bled inward off the map instead of
+  // outward, and the river looked cut off square at the top and bottom.
+  const cap = reverse ? 40 : -40;
+  const first = { x: p[0].x + grow, y: p[0].y + cap };
   if (reverse) ctx.lineTo(first.x, first.y);
   else ctx.moveTo(first.x, first.y);
   for (let i = 0; i < p.length - 1; i++) {
@@ -64,7 +68,7 @@ function ribbon(ctx, pts, grow, reverse) {
     ctx.quadraticCurveTo(a.x + grow, a.y, (a.x + b.x) / 2 + grow, (a.y + b.y) / 2);
   }
   const last = p[p.length - 1];
-  ctx.lineTo(last.x + grow, last.y + 40);
+  ctx.lineTo(last.x + grow, last.y - cap);
 }
 
 function tileNoise(x, y) {

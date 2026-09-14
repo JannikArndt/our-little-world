@@ -692,6 +692,20 @@ export function otherRoles(w, id) {
   return Object.keys(w.players).filter(r => r !== id);
 }
 
+/** Whether anybody at all has ever done this — a tally never goes back to zero. */
+function everDone(w, what) {
+  for (const id in w.players) if ((w.players[id].done[what] || 0) > 0) return true;
+  return false;
+}
+
+/** Fish and wool earn their place on the resource bar only once they exist. */
+export function hasFished(w) {
+  return everDone(w, 'fish');
+}
+export function hasSheared(w) {
+  return everDone(w, 'shear');
+}
+
 /** Clean water to drink, and a river nobody has spoiled. */
 export function hasWell(w) {
   return hasProject(w, 'well');

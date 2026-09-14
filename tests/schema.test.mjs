@@ -88,6 +88,7 @@ test('what an old world already had is left alone', () => {
   const now = createWorld(7);
   now.players.A.res.plank = 9;
   now.players.A.res.stone = 9;
+  now.players.A.res.wool = 9;
   applyAction(now, { type: 'bridge.build', role: 'A', planks: 5, stone: 4, quality: 3 });
   applyAction(now, { type: 'boat.build', role: 'A' });
   const before = asVersion(now, 6);

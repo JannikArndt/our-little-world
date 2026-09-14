@@ -143,6 +143,7 @@ test('a calm world shows no jobs at all rather than an empty one', () => {
   for (const what of ['boat', 'play', 'well', 'privy']) {
     w.players.A.res.plank = 9;
     w.players.A.res.stone = 9;
+    w.players.A.res.wool = 9;
     applyAction(w, { type: 'project.build', role: 'A', what });
   }
   assert.deepEqual(activeProblems(w), [], 'nothing is wrong, so nothing is listed');
@@ -157,6 +158,7 @@ test('the projects queue up in the order a village would want them', () => {
   for (const what of order) {
     w.players.A.res.plank = 9;
     w.players.A.res.stone = 9;
+    w.players.A.res.wool = 9;
     assert.equal(applyAction(w, { type: 'project.build', role: 'A', what }), true, what);
   }
   // the fence waits until a sheep has actually been at the wheat
@@ -208,6 +210,7 @@ test('the boat costs what it says and then feeds people', () => {
 
   w.players.A.res.plank = PROJECT.boat.plank - 1;
   w.players.A.res.stone = PROJECT.boat.stone;
+  w.players.A.res.wool = PROJECT.boat.wool;
   assert.equal(
     applyAction(w, { type: 'boat.build', role: 'A' }),
     false,
@@ -215,10 +218,18 @@ test('the boat costs what it says and then feeds people', () => {
   );
 
   w.players.A.res.plank = PROJECT.boat.plank;
-  w.players.A.res.stone = PROJECT.boat.stone;
+  w.players.A.res.wool = PROJECT.boat.wool - 1;
+  assert.equal(
+    applyAction(w, { type: 'boat.build', role: 'A' }),
+    false,
+    'nor without wool for the sail',
+  );
+
+  w.players.A.res.wool = PROJECT.boat.wool;
   assert.equal(applyAction(w, { type: 'boat.build', role: 'A' }), true);
   assert.equal(w.players.A.res.plank, 0);
   assert.equal(w.players.A.res.stone, 0);
+  assert.equal(w.players.A.res.wool, 0);
 
   const fish = w.players.B.res.fish || 0;
   applyAction(w, { type: 'fish.catch', role: 'B', n: 2 });

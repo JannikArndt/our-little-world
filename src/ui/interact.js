@@ -15,6 +15,7 @@ import {
   larderTotal,
   FOODS,
   resName,
+  RESOURCES,
 } from '../core/world.js';
 import { PROJECTS } from '../core/content.js';
 import { canPay } from '../core/actions.js';
@@ -215,6 +216,19 @@ function theirs(game, verbs) {
  * The two things the village builds for itself. No plan to draw and no test to
  * run: it is planks, stone and somebody deciding to do it.
  */
+/** "4 🪚 + 1 🪨", whichever resources a cost names — never just plank and stone. */
+function costIcon(key) {
+  return RESOURCES.find(r => r.key === key)?.icon || '';
+}
+function costLine(cost, has) {
+  const bits = [];
+  for (const k in cost) {
+    if (!cost[k]) continue;
+    bits.push((has ? has[k] || 0 : cost[k]) + ' ' + costIcon(k));
+  }
+  return bits.join(' + ');
+}
+
 export function buildProject(game, type) {
   const w = game.world,
     r = game.role;
@@ -223,14 +237,7 @@ export function buildProject(game, type) {
   if (!plan || plan.state !== 'plan') return false;
   if (!canPay(w, r, cost)) {
     const me = w.players[r].res;
-    message(
-      tr('w.projectNeeds', {
-        plank: cost.plank,
-        stone: cost.stone,
-        hp: me.plank || 0,
-        hs: me.stone || 0,
-      }),
-    );
+    message(tr('w.projectNeeds', { need: costLine(cost), have: costLine(cost, me) }));
     return false;
   }
   const ok = game.dispatch({ type: 'project.build', role: r, what: type });
@@ -246,14 +253,12 @@ function projectActions(game, type, label) {
   if (!can(w, r, def.cap)) return [];
   const cost = def.cost;
   const me = w.players[r].res;
-  const bits = [];
-  if (cost.plank) bits.push(cost.plank + ' 🪚');
-  if (cost.stone) bits.push(cost.stone + ' 🪨');
+  const afford = Object.keys(cost).every(k => (me[k] || 0) >= cost[k]);
   return [
     {
       label: label,
-      cost: bits.join(' · '),
-      cls: me.plank >= (cost.plank || 0) && me.stone >= (cost.stone || 0) ? '' : 'soft',
+      cost: costLine(cost),
+      cls: afford ? '' : 'soft',
       fn: () => buildProject(game, type),
     },
   ];

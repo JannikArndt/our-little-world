@@ -477,6 +477,7 @@ function applyOne(w, a) {
         s.fluff = 0;
         gain(w, a.role, 'wool', got);
         fx(w, 'float', s.x, s.y - 0.6, '+' + got + ' 🧶');
+        tally(w, a.role, 'shear');
       }
       if (a.item === 'pet') s.hearts = w.tick;
       s.hearts = w.tick;

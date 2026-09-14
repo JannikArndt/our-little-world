@@ -4,6 +4,7 @@
 
 import { TILE } from '../core/grid.js';
 import { tr } from '../core/i18n.js';
+import { FOODS } from '../core/content.js';
 
 export const C = {
   grass: '#8ec96f',
@@ -1188,7 +1189,8 @@ export function drawLarder(ctx, l, _time) {
     ctx.lineTo(x + i, y + 6);
     ctx.stroke();
   }
-  const n = Math.min(4, l.food);
+  const total = FOODS.reduce((sum, f) => sum + (l[f.key] || 0), 0);
+  const n = Math.min(4, total);
   for (let i = 0; i < n; i++) {
     ctx.fillStyle = '#e2b268';
     ctx.beginPath();
@@ -1199,8 +1201,8 @@ export function drawLarder(ctx, l, _time) {
   ctx.font = '700 9px -apple-system, system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('🍞 ' + l.food, x, y + 13);
-  if (l.food === 0) bubble(ctx, x + 13, y - 8, '❔', 11);
+  ctx.fillText('🍞🐟 ' + total, x, y + 13);
+  if (total === 0) bubble(ctx, x + 13, y - 8, '❔', 11);
 }
 
 export function drawStoneBank(ctx, s) {

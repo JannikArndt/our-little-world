@@ -628,7 +628,15 @@ export function openHouse(game, house) {
 /* odds and ends                                                      */
 /* ------------------------------------------------------------------ */
 
-const RES_ICON = { wood: '🪵', plank: '🪚', stone: '🪨', wheat: '🌾', food: '🍞', wool: '🧶' };
+const RES_ICON = {
+  wood: '🪵',
+  plank: '🪚',
+  stone: '🪨',
+  wheat: '🌾',
+  food: '🍞',
+  fish: '🐟',
+  wool: '🧶',
+};
 function resIcon(k) {
   return RES_ICON[k] || '·';
 }

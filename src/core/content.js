@@ -121,7 +121,7 @@ export const HOUSE_FEEL = [0, 4, 9, 15, 22];
 export const PROJECTS = {
   boat: {
     type: 'boat',
-    cost: { plank: 4, stone: 1 },
+    cost: { plank: 4, stone: 1, wool: 2 },
     cap: 'bridge', // who knows how to make it
     verb: 'boat', // how to ask the other player for it
     journal: '⛵',

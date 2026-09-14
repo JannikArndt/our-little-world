@@ -47,6 +47,7 @@ function between(w, res) {
 const stonesBetween = w => between(w, 'stone');
 const planksBetween = w => between(w, 'plank');
 const woodBetween = w => between(w, 'wood');
+const woolBetween = w => between(w, 'wool');
 
 /** A step you can count: "2/3 🪨" is why it is ticked. */
 function counted(icon, text, whoKey, countIcon, have, need) {
@@ -119,7 +120,7 @@ function hungryCard(w) {
     counted('🌾', tr('guide.step.reap'), B, '🌾', w.players.B.res.wheat || 0, 2),
     counted('🤝', tr('guide.step.giveWheat'), B, '🌾', w.players.A.res.wheat || 0, 2),
     counted('🌀', tr('guide.step.bake'), A, '🍞', w.players.A.res.food || 0, 1),
-    counted('🧺', tr('guide.step.basket'), EITHER, '🍞', larderTotal(w), 1),
+    counted('🧺', tr('guide.step.basket'), EITHER, '🍞🐟', larderTotal(w), 1),
   ];
   // a boat is a shortcut to supper, so it is worth saying out loud
   if (boat?.state === 'built') {
@@ -393,6 +394,7 @@ function boatCard(w) {
     steps: [
       counted('🪚', tr('guide.step.boatPlanks'), A, '🪚', planksBetween(w), PROJECT.boat.plank),
       counted('🪨', tr('guide.step.boatStone'), EITHER, '🪨', stonesBetween(w), PROJECT.boat.stone),
+      counted('🧶', tr('guide.step.boatWool'), EITHER, '🧶', woolBetween(w), PROJECT.boat.wool),
       step('⛵', tr('guide.step.buildBoat'), A, false),
       step('🎣', tr('guide.step.fish'), B, false),
     ],

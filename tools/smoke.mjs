@@ -883,6 +883,7 @@ async function main() {
     g.other = 'B';
     w.players.A.res.plank = 9;
     w.players.A.res.stone = 9;
+    w.players.A.res.wool = 9;
   });
   const landing = await api(() => {
     const b = window.OLW.world.buildings.find(b => b.type === 'boat');

@@ -9,6 +9,8 @@ import {
   freeBed,
   dayPhase,
   isDusk,
+  hasFished,
+  hasSheared,
 } from '../src/core/world.js';
 import {
   SCENARIOS,
@@ -216,6 +218,29 @@ test('a sheep will not walk to a place it cannot reach', () => {
   applyAction(w, { type: 'sheep.send', role: 'B', sheepId: s.id, x: 8, y: 15 });
   run(w, 2200);
   assert.ok(s.x < 19, 'she crossed the bridge');
+});
+
+test('fishing and shearing earn fish and wool their place, once and for good', () => {
+  const w = createWorld(31);
+  assert.equal(hasFished(w), false, 'nobody has fished yet');
+  assert.equal(hasSheared(w), false, 'nobody has sheared yet');
+
+  w.players.A.res.plank = 9;
+  w.players.A.res.stone = 9;
+  w.players.A.res.wool = 9;
+  applyAction(w, { type: 'project.build', role: 'A', what: 'boat' });
+  applyAction(w, { type: 'fish.catch', role: 'B', n: 1 });
+  assert.equal(hasFished(w), true);
+  w.players.B.res.fish = 0;
+  assert.equal(hasFished(w), true, 'spending the catch does not undo it');
+
+  const s = w.sheep[0];
+  s.fluff = 80;
+  assert.equal(
+    applyAction(w, { type: 'sheep.care', role: 'B', sheepId: s.id, item: 'shear' }),
+    true,
+  );
+  assert.equal(hasSheared(w), true);
 });
 
 test('teaching hands a capability across, once', () => {
@@ -426,6 +451,37 @@ test('a loaf feeds one villager once, and the basket never goes below zero', () 
     w.villagers.filter(v => v.hunger < 40).length,
     1,
     'only the one who actually got the loaf is properly fed',
+  );
+});
+
+test('a fish in the basket feeds people too, not just bread', () => {
+  const w = createWorld(66);
+  w.larder.food = 0;
+  w.larder.fish = 0;
+  w.players.B.res.fish = 2;
+  for (const v of w.villagers) {
+    v.hunger = 90;
+    v.path = [];
+    v.task = null;
+    v.wait = 0;
+  }
+  applyAction(w, { type: 'larder.give', from: 'B', res: 'fish', n: 2 });
+  assert.equal(w.larder.fish, 2, 'fish landed in the basket under its own name');
+  run(w, 900);
+  assert.ok(w.larder.fish < 2, 'and somebody actually ate one');
+  assert.ok(
+    w.villagers.some(v => v.hunger < 40),
+    'a fish relieves hunger exactly like a loaf does',
+  );
+});
+
+test('the basket only ever holds food', () => {
+  const w = createWorld(67);
+  w.players.A.res.wood = 5;
+  assert.equal(
+    applyAction(w, { type: 'larder.give', from: 'A', res: 'wood', n: 2 }),
+    false,
+    'wood does not belong in the basket',
   );
 });
 

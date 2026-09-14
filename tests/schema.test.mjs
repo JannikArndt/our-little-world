@@ -88,6 +88,7 @@ test('what an old world already had is left alone', () => {
   const now = createWorld(7);
   now.players.A.res.plank = 9;
   now.players.A.res.stone = 9;
+  now.players.A.res.wool = 9;
   applyAction(now, { type: 'bridge.build', role: 'A', planks: 5, stone: 4, quality: 3 });
   applyAction(now, { type: 'boat.build', role: 'A' });
   const before = asVersion(now, 6);
@@ -96,6 +97,18 @@ test('what an old world already had is left alone', () => {
   assert.equal(w.bridge.built, true, 'the bridge they built is still there');
   assert.equal(project(w, 'boat').state, 'built', 'and so is the boat');
   assert.equal(w.buildings.filter(b => b.type === 'boat').length, 1, 'and only one of it');
+});
+
+test('a world saved before fish was its own food starts holding none, not nothing', () => {
+  const now = createWorld(21);
+  const before = asVersion(now, SCHEMA, o => {
+    for (const id in o.players) delete o.players[id].res.fish;
+    delete o.larder.fish;
+  });
+
+  const w = deserialize(before);
+  assert.equal(w.larder.fish, 0, 'an old basket has no fish in it, not a missing field');
+  for (const id in w.players) assert.equal(w.players[id].res.fish, 0);
 });
 
 test('anything an extension put in the world survives a round trip', () => {

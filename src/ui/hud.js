@@ -25,12 +25,20 @@ import {
   capName,
   roleName,
   dayPhase,
+  hasFished,
+  hasSheared,
 } from '../core/world.js';
 import { tr, trn, LANGUAGES, currentLang, setLang } from '../core/i18n.js';
 import { currentProblem, allProblems } from '../core/guide.js';
 import { showChangelog as openChangelog, VERSION } from './whatsnew.js';
 import { newerBuild } from '../core/fresh.js';
 import { drawPortrait } from '../render/art.js';
+
+// Wood, planks, stone and wheat are basic enough to sit on the bar from the
+// first moment; fish and wool only earn their place once somebody has
+// actually caught one or sheared one, so a new village is not shown two
+// things nobody has ever seen yet.
+const RES_GATE = { fish: hasFished, wool: hasSheared };
 
 const PHASE_ICON = {
   dawn: '🌅',
@@ -403,10 +411,13 @@ export class Hud {
   buildResources() {
     const bar = document.getElementById('resbar');
     bar.innerHTML = '';
+    const w = this.game.world;
     for (const r of RESOURCES) {
       const b = el('button', 'res');
       b.innerHTML = '<span class="ico">' + r.icon + '</span><span class="num">0</span>';
       b.addEventListener('click', () => openGive(this.game, r.key));
+      const gate = RES_GATE[r.key];
+      if (gate) b.classList.toggle('hidden', !(w && gate(w)));
       bar.appendChild(b);
       this.resEls[r.key] = b;
     }
@@ -437,6 +448,8 @@ export class Hud {
     for (const r of RESOURCES) {
       const n = me.res[r.key] || 0;
       const b = this.resEls[r.key];
+      const gate = RES_GATE[r.key];
+      if (gate) b.classList.toggle('hidden', !gate(w));
       if (this.last[r.key] !== n) {
         b.querySelector('.num').textContent = String(n);
         if (this.last[r.key] != null && n > this.last[r.key]) {

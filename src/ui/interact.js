@@ -4,7 +4,19 @@
 // saying so across the room beats a button that sends a message.
 
 import { TILE, T, WORLD_W, WORLD_H, tileAt, toTileX, toTileY } from '../core/grid.js';
-import { can, roleName, PROJECT, project, kids, loavesPerDay, basketDays } from '../core/world.js';
+import {
+  can,
+  roleName,
+  PROJECT,
+  project,
+  kids,
+  loavesPerDay,
+  basketDays,
+  larderTotal,
+  FOODS,
+  resName,
+  RESOURCES,
+} from '../core/world.js';
 import { PROJECTS } from '../core/content.js';
 import { canPay } from '../core/actions.js';
 import { tr, trn } from '../core/i18n.js';
@@ -85,30 +97,35 @@ export function openBasket(game) {
   p.body.appendChild(sums);
 
   function draw() {
-    // one picture per loaf, so it can be counted rather than read
-    const pips = el('div', 'cost-pips');
-    const show = Math.min(w.larder.food, 14);
-    for (let i = 0; i < show; i++) pips.appendChild(el('span', 'pip', '🍞'));
-    if (w.larder.food > show) pips.appendChild(el('span', 'pip more', '…'));
+    // one picture per thing, so each kind of food can be counted rather than read
+    sums.innerHTML = '';
+    const total = larderTotal(w);
+    for (const f of FOODS) {
+      const n = w.larder[f.key] || 0;
+      if (n <= 0) continue;
+      const pips = el('div', 'cost-pips');
+      const show = Math.min(n, 14);
+      for (let i = 0; i < show; i++) pips.appendChild(el('span', 'pip', f.icon));
+      if (n > show) pips.appendChild(el('span', 'pip more', '…'));
+      sums.appendChild(pips);
+    }
 
     const eaten = loavesPerDay(w);
     const days = basketDays(w);
     const people = w.villagers.length;
 
     const lines = [];
-    lines.push(trn('basket.inside', w.larder.food, { n: w.larder.food }));
+    lines.push(trn('basket.inside', total, { n: total }));
     if (!people) {
       lines.push(tr('basket.nobody'));
     } else {
-      lines.push(trn('basket.eats', people, { n: people, loaves: Math.max(1, Math.round(eaten)) }));
-      if (w.larder.food <= 0) lines.push(tr('basket.empty'));
+      lines.push(trn('basket.eats', people, { n: people, meals: Math.max(1, Math.round(eaten)) }));
+      if (total <= 0) lines.push(tr('basket.empty'));
       else if (days < 1) lines.push(tr('basket.lastsShort'));
       else lines.push(trn('basket.lasts', Math.round(days), { n: Math.round(days) }));
       lines.push(tr('basket.more'));
     }
 
-    sums.innerHTML = '';
-    if (w.larder.food > 0) sums.appendChild(pips);
     for (const t of lines) {
       const row = el('p', 'basket-line');
       row.innerHTML = t;
@@ -118,17 +135,22 @@ export function openBasket(game) {
   draw();
 
   const row = p.row();
-  const mine = () => w.players[r].res.food;
-  if (mine() > 0) {
-    const put = p.button(tr('w.larderPut', { n: Math.min(3, mine()) }), 'go', () => {
-      game.dispatch({ type: 'larder.give', from: r, n: Math.min(3, mine()) });
-      p.close();
-      openBasket(game); // reopen, so the sum is the new one
-    });
-    row.appendChild(put);
+  let carrying = false;
+  for (const f of FOODS) {
+    const have = w.players[r].res[f.key] || 0;
+    if (have <= 0) continue;
+    carrying = true;
+    const n = Math.min(3, have);
+    row.appendChild(
+      p.button(f.icon + ' ' + tr('w.larderPut', { n, res: resName(f.key) }), 'go', () => {
+        game.dispatch({ type: 'larder.give', from: r, res: f.key, n });
+        p.close();
+        openBasket(game); // reopen, so the sum is the new one
+      }),
+    );
   }
   row.appendChild(
-    p.button(tr(mine() > 0 ? 'w.shareDifferently' : 'w.shareSomething'), 'soft', () => {
+    p.button(tr(carrying ? 'w.shareDifferently' : 'w.shareSomething'), 'soft', () => {
       p.close();
       openGive(game);
     }),
@@ -194,6 +216,19 @@ function theirs(game, verbs) {
  * The two things the village builds for itself. No plan to draw and no test to
  * run: it is planks, stone and somebody deciding to do it.
  */
+/** "4 🪚 + 1 🪨", whichever resources a cost names — never just plank and stone. */
+function costIcon(key) {
+  return RESOURCES.find(r => r.key === key)?.icon || '';
+}
+function costLine(cost, has) {
+  const bits = [];
+  for (const k in cost) {
+    if (!cost[k]) continue;
+    bits.push((has ? has[k] || 0 : cost[k]) + ' ' + costIcon(k));
+  }
+  return bits.join(' + ');
+}
+
 export function buildProject(game, type) {
   const w = game.world,
     r = game.role;
@@ -202,14 +237,7 @@ export function buildProject(game, type) {
   if (!plan || plan.state !== 'plan') return false;
   if (!canPay(w, r, cost)) {
     const me = w.players[r].res;
-    message(
-      tr('w.projectNeeds', {
-        plank: cost.plank,
-        stone: cost.stone,
-        hp: me.plank || 0,
-        hs: me.stone || 0,
-      }),
-    );
+    message(tr('w.projectNeeds', { need: costLine(cost), have: costLine(cost, me) }));
     return false;
   }
   const ok = game.dispatch({ type: 'project.build', role: r, what: type });
@@ -225,14 +253,12 @@ function projectActions(game, type, label) {
   if (!can(w, r, def.cap)) return [];
   const cost = def.cost;
   const me = w.players[r].res;
-  const bits = [];
-  if (cost.plank) bits.push(cost.plank + ' 🪚');
-  if (cost.stone) bits.push(cost.stone + ' 🪨');
+  const afford = Object.keys(cost).every(k => (me[k] || 0) >= cost[k]);
   return [
     {
       label: label,
-      cost: bits.join(' · '),
-      cls: me.plank >= (cost.plank || 0) && me.stone >= (cost.stone || 0) ? '' : 'soft',
+      cost: costLine(cost),
+      cls: afford ? '' : 'soft',
       fn: () => buildProject(game, type),
     },
   ];

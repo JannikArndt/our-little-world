@@ -1,7 +1,7 @@
 // Giving things to the other player. One screen, big buttons, no trade menu.
 
 import { el, openPanel, message } from './overlay.js';
-import { RESOURCES, ROLE, roleName, resName } from '../core/world.js';
+import { RESOURCES, ROLE, roleName, resName, FOODS } from '../core/world.js';
 import { tr } from '../core/i18n.js';
 
 export function openGive(game, focusKey, toRole) {
@@ -86,13 +86,15 @@ export function openGive(game, focusKey, toRole) {
       }),
     );
   }
-  if ((mine.food || 0) > 0) {
+  for (const f of FOODS) {
+    const have = mine[f.key] || 0;
+    if (have <= 0) continue;
     row.appendChild(
-      p.button(tr('give.basket'), 'soft', () => {
-        const n = Math.min(3, mine.food);
-        game.dispatch({ type: 'larder.give', from: game.role, n });
+      p.button(f.icon + ' ' + tr('give.basket'), 'soft', () => {
+        const n = Math.min(3, have);
+        game.dispatch({ type: 'larder.give', from: game.role, res: f.key, n });
         p.close();
-        message(tr('msg.inBasket', { n: n }));
+        message(f.icon + ' ' + tr('msg.inBasket', { n: n }));
       }),
     );
   }

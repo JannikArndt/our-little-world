@@ -23,6 +23,7 @@ import {
   stumps,
   riverClean,
   fieldFenced,
+  larderTotal,
   PROJECT,
   REPLANT_GOAL,
 } from './world.js';
@@ -46,6 +47,7 @@ function between(w, res) {
 const stonesBetween = w => between(w, 'stone');
 const planksBetween = w => between(w, 'plank');
 const woodBetween = w => between(w, 'wood');
+const woolBetween = w => between(w, 'wool');
 
 /** A step you can count: "2/3 🪨" is why it is ticked. */
 function counted(icon, text, whoKey, countIcon, have, need) {
@@ -118,11 +120,11 @@ function hungryCard(w) {
     counted('🌾', tr('guide.step.reap'), B, '🌾', w.players.B.res.wheat || 0, 2),
     counted('🤝', tr('guide.step.giveWheat'), B, '🌾', w.players.A.res.wheat || 0, 2),
     counted('🌀', tr('guide.step.bake'), A, '🍞', w.players.A.res.food || 0, 1),
-    counted('🧺', tr('guide.step.basket'), EITHER, '🍞', w.larder.food, 1),
+    counted('🧺', tr('guide.step.basket'), EITHER, '🍞🐟', larderTotal(w), 1),
   ];
   // a boat is a shortcut to supper, so it is worth saying out loud
   if (boat?.state === 'built') {
-    steps.unshift(step('🎣', tr('guide.step.orFish'), B, (w.players.B.res.food || 0) > 0));
+    steps.unshift(step('🎣', tr('guide.step.orFish'), B, (w.players.B.res.fish || 0) > 0));
   }
   return {
     id: 'hungry',
@@ -303,7 +305,7 @@ export const CONCERNS = [
   // hungry people and an empty basket
   {
     id: 'hungry',
-    when: w => w.villagers.some(v => v.hunger > 70) && w.larder.food <= 0,
+    when: w => w.villagers.some(v => v.hunger > 70) && larderTotal(w) <= 0,
     card: hungryCard,
   },
   // the river in the way
@@ -392,6 +394,7 @@ function boatCard(w) {
     steps: [
       counted('🪚', tr('guide.step.boatPlanks'), A, '🪚', planksBetween(w), PROJECT.boat.plank),
       counted('🪨', tr('guide.step.boatStone'), EITHER, '🪨', stonesBetween(w), PROJECT.boat.stone),
+      counted('🧶', tr('guide.step.boatWool'), EITHER, '🧶', woolBetween(w), PROJECT.boat.wool),
       step('⛵', tr('guide.step.buildBoat'), A, false),
       step('🎣', tr('guide.step.fish'), B, false),
     ],

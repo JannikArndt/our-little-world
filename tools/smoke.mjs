@@ -208,7 +208,7 @@ async function main() {
   if (!basketShown) throw new Error('tapping the basket never opened its panel');
   const basket = (await page.textContent('.panel')).replace(/\s+/g, ' ').trim();
   console.log('the basket says:', basket.slice(0, 200));
-  if (!/loaves in the basket/.test(basket))
+  if (!/meals in the basket/.test(basket))
     throw new Error('the basket does not say how much is inside');
   if (!/people eat about/.test(basket))
     throw new Error('the basket does not say what the village eats in a day');
@@ -883,6 +883,7 @@ async function main() {
     g.other = 'B';
     w.players.A.res.plank = 9;
     w.players.A.res.stone = 9;
+    w.players.A.res.wool = 9;
   });
   const landing = await api(() => {
     const b = window.OLW.world.buildings.find(b => b.type === 'boat');

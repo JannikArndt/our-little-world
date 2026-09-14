@@ -190,8 +190,9 @@ export const de = {
   'res.plank': 'Bretter',
   'res.stone': 'Steine',
   'res.wheat': 'Weizen',
-  'res.food': 'Essen',
+  'res.food': 'Brot',
   'res.wool': 'Wolle',
+  'res.fish': 'Fisch',
 
   /* ---- Fähigkeiten ---- */
   'cap.fell': 'Bäume fällen',
@@ -240,8 +241,8 @@ export const de = {
   'w.stonesHint': 'Noch {n} da. Der Fluss bringt neue.',
   'w.stoneTake': '🪨 Einen aufheben',
   'w.larder': 'Der Dorfkorb',
-  'w.larderHint': '🍞 {n} drin. Hungrige kommen hierher.',
-  'w.larderPut': '🍞 {n} Essen hineinlegen',
+  'w.larderHint': '🍞🐟 {n} drin. Hungrige kommen hierher.',
+  'w.larderPut': '{n} {res} hineinlegen',
   'w.shareDifferently': '🤝 Anders teilen',
   'w.shareSomething': '🤝 Etwas teilen',
   'w.sheepHungry': 'Sie sieht hungrig aus.',
@@ -250,7 +251,7 @@ export const de = {
   'w.sheepOk': 'Sie scheint zufrieden.',
   'w.care': '💚 Um sie kümmern',
   'w.herd': '🐑 Woanders hinbringen',
-  'w.villagerHungry': 'Hungrig. Im Korb sollte Brot sein.',
+  'w.villagerHungry': 'Hungrig. Im Korb sollte Essen sein.',
   'w.villagerHomeless': '{name} hat noch kein Bett. Ein Haus würde das lösen.',
   'w.villagerCarrying': 'Trägt einen Stamm zur Werkstatt.',
   'w.villagerFine': 'Kommt gut durch den Tag.',
@@ -258,10 +259,10 @@ export const de = {
   /* ---- Der Dorfkorb, ausführlich ---- */
   'basket.title': '🧺 Der Dorfkorb',
   'basket.lead': 'Davon essen hier alle. Wer Hunger hat, kommt von allein vorbei.',
-  'basket.inside_one': '<b>1</b> Brot im Korb',
-  'basket.inside_other': '<b>{n}</b> Brote im Korb',
-  'basket.eats_one': '<b>1</b> Person isst ungefähr <b>{loaves}</b> am Tag',
-  'basket.eats_other': '<b>{n}</b> Leute essen ungefähr <b>{loaves}</b> am Tag',
+  'basket.inside_one': '<b>1</b> Mahlzeit im Korb',
+  'basket.inside_other': '<b>{n}</b> Mahlzeiten im Korb',
+  'basket.eats_one': '<b>1</b> Person isst ungefähr <b>{meals}</b> am Tag',
+  'basket.eats_other': '<b>{n}</b> Leute essen ungefähr <b>{meals}</b> am Tag',
   'basket.lasts_one': 'Das reicht ungefähr <b>1</b> Tag',
   'basket.lasts_other': 'Das reicht ungefähr <b>{n}</b> Tage',
   'basket.lastsShort': 'Das reicht nicht ganz einen Tag',
@@ -279,10 +280,10 @@ export const de = {
   'doing.run': 'Rennt herum.',
   'doing.chat': 'Quatscht gerade.',
   'doing.sit': 'Sitzt eine Weile.',
-  'doing.eat': 'Isst ein Brot.',
+  'doing.eat': 'Isst gerade.',
   'doing.squabble': 'Zankt sich — tipp drauf, dann ist Schluss.',
   'w.findPlot': '🏠 Einen Bauplatz suchen',
-  'w.putFood': '🍞 Essen in den Korb legen',
+  'w.putFood': '🍞🐟 Essen in den Korb legen',
   'w.deer': 'Ein Reh',
   'w.deerHint': 'Es schaut dich kurz an und frisst dann weiter.',
   'w.plot': 'Ein Feldstück',
@@ -344,8 +345,7 @@ export const de = {
   'w.buildPlay': '🛝 Einen Spielplatz bauen',
   'w.playground': 'Der Spielplatz',
   'w.playgroundHint': 'Eine Schaukel, eine Rutsche und ein Sandkasten. {names} sind nie weit weg.',
-  'w.projectNeeds':
-    'Das braucht {plank} 🪚 und {stone} 🪨. Du hast {hp} 🪚 und {hs} 🪨 — frag nach dem Rest.',
+  'w.projectNeeds': 'Das braucht {need}. Du hast {have} — frag nach dem Rest.',
   'w.plantHere': '🌱 Einen Setzling pflanzen',
   'w.sapling': 'Ein Setzling',
   'w.saplingHint': 'Klein, aber er weiß, was er tut. Lass ihn in Ruhe.',
@@ -359,7 +359,7 @@ export const de = {
 
   /* ---- Nachrichten ---- */
   'msg.gaveAcross': '🤝 {n} sind zu {role} gegangen.',
-  'msg.inBasket': '🍞 {n} im Korb. Die Hungrigen kommen bestimmt.',
+  'msg.inBasket': '{n} im Korb. Die Hungrigen kommen bestimmt.',
   'msg.plotHere': 'Hier ist ein Bauplatz, bereit für ein Haus.',
   'msg.cannotStand': 'Da kann sie nicht stehen.',
   'msg.houseUp': '🏠 Das Dach ist drauf. Gleich kommt jemand.',
@@ -528,7 +528,7 @@ export const de = {
   'herd.say': 'Tipp eine Stelle in der Welt an — dann läuft sie hin, wenn sie hinkommt.',
 
   /* ---- Hinweise ---- */
-  'notice.hungry': '{name} ist hungrig — der Brotkorb müsste gefüllt werden.',
+  'notice.hungry': '{name} ist hungrig — der Korb müsste gefüllt werden.',
   'notice.homeless': '{name} braucht ein Haus zum Schlafen.',
   'notice.sheepFar': 'Die Schafe kommen nicht über den Fluss. Es gibt keine Brücke.',
   'notice.sheepBroken': 'Über eine kaputte Brücke geht kein Schaf.',
@@ -547,7 +547,7 @@ export const de = {
 
   /* ---- Was die Leute sagen ---- */
   'say.emptyBasket': 'der Korb ist leer…',
-  'say.mmm': 'mmh 🍞',
+  'say.mmm': 'mmh 😋',
   'say.home': 'zuhause!',
   'say.delivered': 'abgeliefert!',
   'say.wishAcross': 'ich wär so gern drüben…',
@@ -603,6 +603,7 @@ export const de = {
     'Im Fluss sind Fische, und der alte Anleger steht ungenutzt da. Mit einem Boot gibt es nicht immer nur Brot.',
   'guide.step.boatPlanks': 'Bretter für den Rumpf sägen',
   'guide.step.boatStone': 'Ein Stein für den Anlegepoller',
+  'guide.step.boatWool': 'Wolle für das Segel',
   'guide.step.buildBoat': 'Den alten Anleger antippen und das Boot bauen',
   'guide.step.fish': 'Rausfahren und etwas fangen',
   'guide.play.title': 'Baut einen Spielplatz für {names}!',

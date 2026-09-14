@@ -121,7 +121,7 @@ export const HOUSE_FEEL = [0, 4, 9, 15, 22];
 export const PROJECTS = {
   boat: {
     type: 'boat',
-    cost: { plank: 4, stone: 1 },
+    cost: { plank: 4, stone: 1, wool: 2 },
     cap: 'bridge', // who knows how to make it
     verb: 'boat', // how to ask the other player for it
     journal: '⛵',
@@ -219,6 +219,18 @@ export const HUNGER_RISE = 0.012; // per tick, while up and about
 export const HUNGRY_AT = 62; // hungry enough to mind an empty basket
 export const EAGER_AT = 45; // hungry enough to go and eat, once there is bread going
 export const LOAF_RELIEF = 70; // how much one loaf takes off
+
+/**
+ * Everything that fills a hungry belly, each its own resource key on a player
+ * and in the basket — gathered, carried and given exactly like wood or wool.
+ * A third kind of food is one more row here; loavesPerDay(), the basket panel
+ * and the give screen all read this list rather than knowing bread and fish
+ * by name.
+ */
+export const FOODS = [
+  { key: 'food', icon: '🍞' }, // bread, baked at the mill
+  { key: 'fish', icon: '🐟' }, // caught from the boat
+];
 
 /* --------------------------------------------------------------------- */
 /* the valley: the one world there is, so far                            */

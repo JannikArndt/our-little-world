@@ -4,9 +4,21 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '2.6';
+export const VERSION = '2.7';
 
 export const CHANGELOG = [
+  {
+    v: '2.7',
+    date: '2026-09-14',
+    en: [
+      'Fish is its own kind of food now, sitting right next to bread. Catch it from the boat and it comes home as fish, not more bread, and it feeds the village exactly the way a loaf does once it is in the basket.',
+      'The basket shows both, side by side — how much bread, how much fish, and how many meals that adds up to.',
+    ],
+    de: [
+      'Fisch ist jetzt eine eigene Art von Essen, direkt neben dem Brot. Was du mit dem Boot fängst, kommt als Fisch nach Hause, nicht als noch mehr Brot, und im Dorfkorb ernährt es alle genauso wie ein Brot.',
+      'Der Korb zeigt jetzt beides nebeneinander — wie viel Brot, wie viel Fisch, und wie viele Mahlzeiten das zusammen ergibt.',
+    ],
+  },
   {
     v: '2.6',
     date: '2026-09-13',

@@ -11,7 +11,13 @@ import {
 } from '../src/core/world.js';
 import { applyAction } from '../src/core/actions.js';
 import { tick } from '../src/core/sim.js';
-import { currentProblem, allProblems, activeProblems, MAX_ACTIVE } from '../src/core/guide.js';
+import {
+  currentProblem,
+  allProblems,
+  activeProblems,
+  MAX_ACTIVE,
+  CONCERNS,
+} from '../src/core/guide.js';
 import { walkable } from '../src/core/grid.js';
 import { findPath } from '../src/core/pathfind.js';
 import { setLang } from '../src/core/i18n.js';
@@ -137,6 +143,7 @@ test('a calm world shows no jobs at all rather than an empty one', () => {
   for (const what of ['boat', 'play', 'well', 'privy']) {
     w.players.A.res.plank = 9;
     w.players.A.res.stone = 9;
+    w.players.A.res.wool = 9;
     applyAction(w, { type: 'project.build', role: 'A', what });
   }
   assert.deepEqual(activeProblems(w), [], 'nothing is wrong, so nothing is listed');
@@ -151,6 +158,7 @@ test('the projects queue up in the order a village would want them', () => {
   for (const what of order) {
     w.players.A.res.plank = 9;
     w.players.A.res.stone = 9;
+    w.players.A.res.wool = 9;
     assert.equal(applyAction(w, { type: 'project.build', role: 'A', what }), true, what);
   }
   // the fence waits until a sheep has actually been at the wheat
@@ -202,6 +210,7 @@ test('the boat costs what it says and then feeds people', () => {
 
   w.players.A.res.plank = PROJECT.boat.plank - 1;
   w.players.A.res.stone = PROJECT.boat.stone;
+  w.players.A.res.wool = PROJECT.boat.wool;
   assert.equal(
     applyAction(w, { type: 'boat.build', role: 'A' }),
     false,
@@ -209,16 +218,33 @@ test('the boat costs what it says and then feeds people', () => {
   );
 
   w.players.A.res.plank = PROJECT.boat.plank;
-  w.players.A.res.stone = PROJECT.boat.stone;
+  w.players.A.res.wool = PROJECT.boat.wool - 1;
+  assert.equal(
+    applyAction(w, { type: 'boat.build', role: 'A' }),
+    false,
+    'nor without wool for the sail',
+  );
+
+  w.players.A.res.wool = PROJECT.boat.wool;
   assert.equal(applyAction(w, { type: 'boat.build', role: 'A' }), true);
   assert.equal(w.players.A.res.plank, 0);
   assert.equal(w.players.A.res.stone, 0);
+  assert.equal(w.players.A.res.wool, 0);
 
-  const food = w.players.B.res.food;
+  const fish = w.players.B.res.fish || 0;
   applyAction(w, { type: 'fish.catch', role: 'B', n: 2 });
-  assert.equal(w.players.B.res.food, food + 2);
+  assert.equal(w.players.B.res.fish, fish + 2, 'a catch is fish, not bread');
   applyAction(w, { type: 'fish.catch', role: 'B', n: 99 });
-  assert.equal(w.players.B.res.food, food + 6, 'never more than a boatful, however it is asked');
+  assert.equal(w.players.B.res.fish, fish + 6, 'never more than a boatful, however it is asked');
+});
+
+test('a basket of fish alone is not an empty basket', () => {
+  const w = settled(44);
+  for (const v of w.villagers) v.hunger = 90;
+  w.larder.food = 0;
+  w.larder.fish = 4;
+  const hungry = CONCERNS.find(c => c.id === 'hungry');
+  assert.equal(hungry.when(w), false, 'fish in the basket counts as food too');
 });
 
 test('the children use the playground once it is there', () => {

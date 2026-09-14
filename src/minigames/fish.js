@@ -26,6 +26,7 @@ export function openFish(game, _boat) {
   let phase = 'ready'; // ready → waiting → bite → (ready | over)
   let timer = 0,
     dip = 0,
+    biteT = 0,
     splash = 0;
   let float = { x: 250, y: 200 };
 
@@ -155,6 +156,40 @@ export function openFish(game, _boat) {
     ctx.fill();
     ctx.restore();
 
+    // whoever took the boat out, sitting on the bench, rod in hand
+    ctx.save();
+    ctx.translate(84, 200 + bob);
+    ctx.strokeStyle = '#6b5540';
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-3, 4);
+    ctx.lineTo(-4, 10);
+    ctx.moveTo(2, 4);
+    ctx.lineTo(3, 10);
+    ctx.stroke();
+    ctx.fillStyle = '#5d9150';
+    rr(ctx, -6, -12, 12, 16, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#5d9150';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(4, -6);
+    ctx.lineTo(10, 6);
+    ctx.stroke();
+    ctx.fillStyle = '#f0d0ac';
+    ctx.beginPath();
+    ctx.arc(10, 6, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, -16, 5.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(70,50,35,.85)';
+    ctx.beginPath();
+    ctx.arc(-1, -17, 5.2, Math.PI * 1.05, Math.PI * 1.95);
+    ctx.fill();
+    ctx.restore();
+
     // the rod and line
     const rodX = 108,
       rodY = 190 + bob;
@@ -221,10 +256,12 @@ export function openFish(game, _boat) {
       if (timer <= 0) {
         phase = 'bite';
         timer = BITE_MS;
+        biteT = 0;
       }
     } else if (phase === 'bite') {
       timer -= dt;
-      dip = 0.5 + 0.5 * Math.sin(t * 0.02);
+      biteT += dt;
+      dip = Math.min(1, biteT / 200); // ducks under fast, then stays under
       if (timer <= 0) missed();
     }
     draw(t);

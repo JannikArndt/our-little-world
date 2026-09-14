@@ -15,6 +15,7 @@ import {
   HOUSE_STUFF,
   HOUSE_WALL,
   HOUSE_ALL,
+  FOODS,
 } from './content.js';
 import { runMigrations } from './migrate.js';
 
@@ -30,12 +31,12 @@ export const RESOURCES = [
   { key: 'plank', icon: '🪚' },
   { key: 'stone', icon: '🪨' },
   { key: 'wheat', icon: '🌾' },
-  { key: 'food', icon: '🍞' },
+  ...FOODS,
   { key: 'wool', icon: '🧶' },
 ];
 
 // what things cost and how fast they grow lives with the rest of the content
-export { PROJECT, PROJECTS, SAPLING_TICKS, REPLANT_GOAL, SCENARIOS } from './content.js';
+export { PROJECT, PROJECTS, SAPLING_TICKS, REPLANT_GOAL, SCENARIOS, FOODS } from './content.js';
 
 /** The roles in play, drawn from the catalogue. */
 export const ROLE = ROLES;
@@ -394,6 +395,14 @@ export function ensureWorld(w) {
     if (v.kid === undefined) v.kid = false;
     if (!v.poorly) v.poorly = 0;
   }
+  // a food nobody had caught yet when this world was saved starts at none
+  for (const f of FOODS) {
+    if (w.larder[f.key] == null) w.larder[f.key] = 0;
+    for (const id in w.players) {
+      const res = w.players[id].res;
+      if (res[f.key] == null) res[f.key] = 0;
+    }
+  }
 
   ensurePeople(w, scen);
   ensurePlans(w, scen);
@@ -646,11 +655,33 @@ export function loavesPerDay(w) {
   return w.villagers.length * perPerson;
 }
 
+/** Everything in the basket, bread and fish and whatever joins them, as one number. */
+export function larderTotal(w) {
+  return FOODS.reduce((n, f) => n + (w.larder[f.key] || 0), 0);
+}
+
 /** Days the basket holds out, or null when there is nobody to eat it. */
 export function basketDays(w) {
   const eaten = loavesPerDay(w);
   if (eaten <= 0) return null;
-  return w.larder.food / eaten;
+  return larderTotal(w) / eaten;
+}
+
+/**
+ * One villager, fed: takes a single serving from the basket, bread first and
+ * whatever else is there after, and says which it was — or null if the
+ * basket was already bare. `finishVillagerTask()` uses this so a fish and a
+ * loaf relieve the same hunger without either of them meaning something
+ * different in the simulation.
+ */
+export function eatFromLarder(w) {
+  for (const f of FOODS) {
+    if ((w.larder[f.key] || 0) > 0) {
+      w.larder[f.key] -= 1;
+      return f.key;
+    }
+  }
+  return null;
 }
 export function poorly(w) {
   return w.villagers.filter(v => v.poorly > 0);

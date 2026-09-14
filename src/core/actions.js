@@ -17,7 +17,7 @@ import {
   newHouseStuff,
   slotFits,
 } from './world.js';
-import { PROJECTS, EAGER_AT, HOUSE_SHELL, HOUSE_STUFF } from './content.js';
+import { PROJECTS, EAGER_AT, HOUSE_SHELL, HOUSE_STUFF, FOODS } from './content.js';
 import { findPath } from './pathfind.js';
 import { rndInt } from './rng.js';
 
@@ -403,7 +403,7 @@ function applyOne(w, a) {
       const n = Math.max(0, Math.min(4, a.n | 0));
       boat.fishedTick = w.tick;
       if (n > 0) {
-        gain(w, a.role, 'food', n);
+        gain(w, a.role, 'fish', n);
         fx(w, 'float', boat.x + boat.w, boat.y - 0.2, '+' + n + ' 🐟');
         journal(w, '🎣', 'j.fished', { n: n });
       }
@@ -595,11 +595,14 @@ function applyOne(w, a) {
     }
     case 'larder.give': {
       const from = w.players[a.from];
-      const n = Math.min(a.n, from.res.food || 0);
+      const key = a.res || 'food';
+      if (!FOODS.some(f => f.key === key)) return false;
+      const n = Math.min(a.n, from.res[key] || 0);
       if (n <= 0) return false;
-      from.res.food -= n;
-      w.larder.food += n;
-      fx(w, 'float', w.larder.x, w.larder.y - 0.6, '+' + n + ' 🍞');
+      from.res[key] -= n;
+      w.larder[key] = (w.larder[key] || 0) + n;
+      const icon = FOODS.find(f => f.key === key).icon;
+      fx(w, 'float', w.larder.x, w.larder.y - 0.6, '+' + n + ' ' + icon);
       journal(w, '🧺', 'j.basket', { n: n });
       w.notices = w.notices.filter(x => x.id !== 'hungry');
       // the hungry notice at once, rather than however long it takes them to

@@ -220,6 +220,18 @@ export const HUNGRY_AT = 62; // hungry enough to mind an empty basket
 export const EAGER_AT = 45; // hungry enough to go and eat, once there is bread going
 export const LOAF_RELIEF = 70; // how much one loaf takes off
 
+/**
+ * Everything that fills a hungry belly, each its own resource key on a player
+ * and in the basket — gathered, carried and given exactly like wood or wool.
+ * A third kind of food is one more row here; loavesPerDay(), the basket panel
+ * and the give screen all read this list rather than knowing bread and fish
+ * by name.
+ */
+export const FOODS = [
+  { key: 'food', icon: '🍞' }, // bread, baked at the mill
+  { key: 'fish', icon: '🐟' }, // caught from the boat
+];
+
 /* --------------------------------------------------------------------- */
 /* the valley: the one world there is, so far                            */
 /* --------------------------------------------------------------------- */

@@ -81,7 +81,7 @@ test('translating falls back rather than blowing up', () => {
   assert.equal(tr('nope.not.a.key'), 'nope.not.a.key');
   assert.equal(
     tr('notice.hungry', { name: 'Bo' }),
-    'Bo ist hungrig — der Brotkorb müsste gefüllt werden.',
+    'Bo ist hungrig — der Korb müsste gefüllt werden.',
   );
   assert.equal(trn('deed.fell', 1), 'einen Baum gefällt');
   assert.equal(trn('deed.fell', 3, { n: 3 }), '3 Bäume gefällt');

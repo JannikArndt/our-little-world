@@ -429,6 +429,37 @@ test('a loaf feeds one villager once, and the basket never goes below zero', () 
   );
 });
 
+test('a fish in the basket feeds people too, not just bread', () => {
+  const w = createWorld(66);
+  w.larder.food = 0;
+  w.larder.fish = 0;
+  w.players.B.res.fish = 2;
+  for (const v of w.villagers) {
+    v.hunger = 90;
+    v.path = [];
+    v.task = null;
+    v.wait = 0;
+  }
+  applyAction(w, { type: 'larder.give', from: 'B', res: 'fish', n: 2 });
+  assert.equal(w.larder.fish, 2, 'fish landed in the basket under its own name');
+  run(w, 900);
+  assert.ok(w.larder.fish < 2, 'and somebody actually ate one');
+  assert.ok(
+    w.villagers.some(v => v.hunger < 40),
+    'a fish relieves hunger exactly like a loaf does',
+  );
+});
+
+test('the basket only ever holds food', () => {
+  const w = createWorld(67);
+  w.players.A.res.wood = 5;
+  assert.equal(
+    applyAction(w, { type: 'larder.give', from: 'A', res: 'wood', n: 2 }),
+    false,
+    'wood does not belong in the basket',
+  );
+});
+
 test('villagers pick up a life of their own', () => {
   const w = createWorld(65);
   applyAction(w, { type: 'block.start', length: 30000 }); // long enough that dusk never gets in the way

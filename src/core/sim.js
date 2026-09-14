@@ -13,6 +13,8 @@ import {
   riverClean,
   fieldFenced,
   SAPLING_TICKS,
+  larderTotal,
+  eatFromLarder,
 } from './world.js';
 import {
   POORLY_TICKS,
@@ -150,8 +152,8 @@ function chooseVillagerTask(w, v) {
     }
   }
   // 1. a full basket is worth walking over for; a bare one only gets a look
-  if (v.hunger > HUNGRY_AT || (w.larder.food > 0 && v.hunger > EAGER_AT)) {
-    if (w.larder.food > 0) {
+  if (v.hunger > HUNGRY_AT || (larderTotal(w) > 0 && v.hunger > EAGER_AT)) {
+    if (larderTotal(w) > 0) {
       if (goTo(w, v, Math.floor(w.larder.x), Math.floor(w.larder.y), 1)) {
         v.task = { kind: 'eat' };
         return;
@@ -343,7 +345,7 @@ function finishVillagerTask(w, v) {
     case 'eat':
       // arrived at the basket — a moment of actually eating before the
       // loaf is gone, so it never happens instantly on arrival
-      if (w.larder.food > 0) {
+      if (larderTotal(w) > 0) {
         setAct(w, v, 'eat', EAT_TICKS);
         v.task = { kind: 'eatDone' };
         v.wait = EAT_TICKS;
@@ -352,10 +354,9 @@ function finishVillagerTask(w, v) {
       }
       break;
     case 'eatDone':
-      // only now does the loaf actually leave the basket, so two people
+      // only now does the serving actually leave the basket, so two people
       // arriving together can never both take the last one
-      if (w.larder.food > 0) {
-        w.larder.food -= 1;
+      if (eatFromLarder(w)) {
         v.hunger = Math.max(0, v.hunger - LOAF_RELIEF);
         v.hearts = w.tick;
         fx(w, 'hearts', v.x, v.y - 0.7);
@@ -781,7 +782,7 @@ export function tick(w) {
   const settling = w.block.active && blockProgress(w) > 0.85;
   if (w.tick % 50 === 0 && !settling) {
     const starving = w.villagers.filter(v => v.hunger > 72);
-    if (starving.length && w.larder.food <= 0)
+    if (starving.length && larderTotal(w) <= 0)
       note(w, 'hungry', '🍞', 'notice.hungry', { name: starving[0].name }, 'ask');
     else if (!starving.length) w.notices = w.notices.filter(n => n.id !== 'hungry');
 

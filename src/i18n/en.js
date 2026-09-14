@@ -189,8 +189,9 @@ export const en = {
   'res.plank': 'planks',
   'res.stone': 'stone',
   'res.wheat': 'wheat',
-  'res.food': 'food',
+  'res.food': 'bread',
   'res.wool': 'wool',
+  'res.fish': 'fish',
 
   /* ---- capabilities ---- */
   'cap.fell': 'felling trees',
@@ -240,7 +241,7 @@ export const en = {
   'w.stoneTake': '🪨 Pick one up',
   'w.larder': 'The village basket',
   'w.larderHint': '🍞 {n} inside. Hungry people come here.',
-  'w.larderPut': '🍞 Put {n} food in',
+  'w.larderPut': 'Put {n} {res} in',
   'w.shareDifferently': '🤝 Share differently',
   'w.shareSomething': '🤝 Share something',
   'w.sheepHungry': 'She looks hungry.',
@@ -249,7 +250,7 @@ export const en = {
   'w.sheepOk': 'She seems content.',
   'w.care': '💚 Look after her',
   'w.herd': '🐑 Take her somewhere',
-  'w.villagerHungry': 'Hungry. There should be bread in the basket.',
+  'w.villagerHungry': 'Hungry. There should be food in the basket.',
   'w.villagerHomeless': '{name} has no bed yet. A house would sort that out.',
   'w.villagerCarrying': 'Carrying a log to the workshop.',
   'w.villagerFine': 'Getting on with the day.',
@@ -257,14 +258,14 @@ export const en = {
   /* ---- the village basket, in full ---- */
   'basket.title': '🧺 The village basket',
   'basket.lead': 'This is what everybody eats from. The hungry come here on their own.',
-  'basket.inside_one': '<b>1</b> loaf in the basket',
-  'basket.inside_other': '<b>{n}</b> loaves in the basket',
-  'basket.eats_one': '<b>1</b> person eats about <b>{loaves}</b> a day',
-  'basket.eats_other': '<b>{n}</b> people eat about <b>{loaves}</b> a day',
+  'basket.inside_one': '<b>1</b> meal in the basket',
+  'basket.inside_other': '<b>{n}</b> meals in the basket',
+  'basket.eats_one': '<b>1</b> person eats about <b>{meals}</b> a day',
+  'basket.eats_other': '<b>{n}</b> people eat about <b>{meals}</b> a day',
   'basket.lasts_one': 'That is about <b>1</b> day of meals',
   'basket.lasts_other': 'That is about <b>{n}</b> days of meals',
   'basket.lastsShort': 'That is not quite a day of meals',
-  'basket.empty': 'The basket is empty. Bread put in here is what everybody lives on.',
+  'basket.empty': 'The basket is empty. Food put in here is what everybody lives on.',
   'basket.nobody': 'There is nobody living here to eat it yet.',
   'basket.more': 'Every new neighbour is another mouth, so the same basket lasts fewer days.',
 
@@ -278,7 +279,7 @@ export const en = {
   'doing.run': 'Running about.',
   'doing.chat': 'Having a natter.',
   'doing.sit': 'Sitting down a while.',
-  'doing.eat': 'Eating a loaf.',
+  'doing.eat': 'Eating.',
   'doing.squabble': 'Having a squabble — tap to break it up.',
   'w.findPlot': '🏠 Find a plot to build on',
   'w.putFood': '🍞 Put food in the basket',
@@ -358,7 +359,7 @@ export const en = {
 
   /* ---- messages ---- */
   'msg.gaveAcross': '🤝 {n} went across to the {role}.',
-  'msg.inBasket': '🍞 {n} in the basket. The hungry ones will come.',
+  'msg.inBasket': '{n} in the basket. The hungry ones will come.',
   'msg.plotHere': 'There is a plot here, ready for a house.',
   'msg.cannotStand': 'She cannot stand there.',
   'msg.houseUp': '🏠 The roof is on. Somebody will be along shortly.',
@@ -527,7 +528,7 @@ export const en = {
   'herd.say': 'Tap a spot in the world and she will walk there — if she can get to it.',
 
   /* ---- notices ---- */
-  'notice.hungry': '{name} is hungry — the bread basket needs filling.',
+  'notice.hungry': '{name} is hungry — the basket needs filling.',
   'notice.homeless': '{name} needs a house to sleep in.',
   'notice.sheepFar': 'The sheep cannot get across the river. There is no bridge.',
   'notice.sheepBroken': 'The sheep will not walk on a broken bridge.',
@@ -546,7 +547,7 @@ export const en = {
 
   /* ---- villager speech ---- */
   'say.emptyBasket': 'the basket is empty…',
-  'say.mmm': 'mmm 🍞',
+  'say.mmm': 'mmm 😋',
   'say.home': 'home!',
   'say.delivered': 'delivered!',
   'say.wishAcross': 'I wish I could get across…',

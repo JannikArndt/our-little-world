@@ -98,6 +98,18 @@ test('what an old world already had is left alone', () => {
   assert.equal(w.buildings.filter(b => b.type === 'boat').length, 1, 'and only one of it');
 });
 
+test('a world saved before fish was its own food starts holding none, not nothing', () => {
+  const now = createWorld(21);
+  const before = asVersion(now, SCHEMA, o => {
+    for (const id in o.players) delete o.players[id].res.fish;
+    delete o.larder.fish;
+  });
+
+  const w = deserialize(before);
+  assert.equal(w.larder.fish, 0, 'an old basket has no fish in it, not a missing field');
+  for (const id in w.players) assert.equal(w.players[id].res.fish, 0);
+});
+
 test('anything an extension put in the world survives a round trip', () => {
   const w = createWorld(13);
   w.ext.weather = { kind: 'rain', until: 400 };

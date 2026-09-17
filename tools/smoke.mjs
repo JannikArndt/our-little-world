@@ -875,8 +875,8 @@ async function main() {
   await page.mouse.click(5, 5);
   await page.waitForTimeout(300);
 
-  // tapping somebody pokes them AND opens their own bubble: what they can do,
-  // what is in their arms, and a way to show them something else
+  // tapping somebody pokes them AND opens their own bubble: what is on their
+  // mind right now, what is in their arms, and a way to show them something
   let poked = false;
   for (let go = 0; go < 20 && !poked; go++) {
     const at = await api(n => {
@@ -907,8 +907,8 @@ async function main() {
   const said = (await page.textContent('.bubble')).replace(/\s+/g, ' ').trim();
   console.log('tapping', pupil, 'says:', said.slice(0, 120));
   if (said.indexOf(pupil) < 0) throw new Error('the bubble does not say who it is about');
-  if (!/Can help with|has not been shown/i.test(said))
-    throw new Error('the bubble does not say what they can do');
+  if (/Can help with|has not been shown/i.test(said))
+    throw new Error('the bubble is still reading off a skill list, not what they want');
   if (!/Teach something/.test(said)) throw new Error('no way to show them something from here');
   await step(page, '25c-villager-bubble', 300);
   await page.click('.bubble button.ghost');
@@ -1093,9 +1093,15 @@ async function main() {
   );
   await page.waitForTimeout(300);
 
-  // the changelog, tucked behind the day now
+  // the changelog, tucked behind the day now — and the world's own menu says
+  // which world this is, since more than one can be open in as many tabs
   await page.click('#dayBadge');
   await page.waitForTimeout(300);
+  const worldTitle = await page.textContent('.menu-title');
+  const worldName = await api(() => window.OLW.worldName);
+  console.log('the world menu says:', worldTitle);
+  if (!worldTitle || worldTitle.toLowerCase().indexOf(worldName.split('-')[0]) < 0)
+    throw new Error('the world menu does not name the world');
   await page.click('.menu-item:has-text("What is new")');
   await step(page, '25l-changelog', 500);
   const log = await page.textContent('.panel');

@@ -17,9 +17,9 @@ import {
   resName,
   RESOURCES,
 } from '../core/world.js';
-import { BAG_KEYS, PILE_KEYS, hasProject, pileTotal } from '../core/world.js';
-import { PROJECTS, FISH_REST, SKILL_ORDER, VILLAGER_SKILLS } from '../core/content.js';
-import { openTeach, skillIcons } from './hud.js';
+import { BAG_KEYS, PILE_KEYS, pileTotal } from '../core/world.js';
+import { PROJECTS, FISH_REST } from '../core/content.js';
+import { openTeach, villagerWant } from './hud.js';
 import { canPay } from '../core/actions.js';
 import { tr, trn } from '../core/i18n.js';
 import { el, message, renderCost, openPanel } from './overlay.js';
@@ -224,25 +224,20 @@ function pileLine(w) {
 /**
  * Somebody you have tapped. The poke has already gone off — that is what a
  * tap on a person has always done, and it still happens on the same tap — and
- * this is the rest of the answer: what they have been shown how to do, what
- * is in their arms, and the two things you can do about it.
+ * this is the rest of the answer: what is on their mind right now, in the
+ * same voice as a guide card, plus what is in their arms and a way to show
+ * them something. Not a list of what they know, and not a reason a button
+ * is missing — see `villagerWant()` in hud.js, which this reads from.
  *
- * A job that needs hands they have not got is still only a sentence (law 4):
- * it names whose job the showing would be, and offers no button.
+ * `prevAct` is `v.act` from the instant before the poke ran: the poke always
+ * overwrites it with the wave they answer with, so whatever they were
+ * actually doing — working a job — has to be caught before that happens.
  */
-function villagerBubble(game, v) {
+function villagerBubble(game, v, prevAct) {
   const w = game.world,
     r = game.role;
   const A = [];
-  const icons = skillIcons(v);
   const holding = BAG_KEYS.filter(k => (v.bag?.[k] || 0) > 0);
-  const lines = [icons ? tr('w.villagerCan', { what: icons }) : tr('w.villagerCanNothing')];
-  if (holding.length)
-    lines.push(
-      tr('w.villagerHolding', {
-        what: holding.map(k => v.bag[k] + ' ' + costIcon(k)).join(' + '),
-      }),
-    );
 
   for (const k of holding) {
     const n = v.bag[k];
@@ -257,16 +252,15 @@ function villagerBubble(game, v) {
     fn: () => openTeach(game, { kind: 'villager', id: v.id }),
   });
 
-  // the jobs they could still learn that are not yours to show
-  const theirJobs = SKILL_ORDER.filter(what => {
-    const def = VILLAGER_SKILLS[what];
-    if (!def.cap || !def.verb) return false;
-    if (v.skills?.some(s => s.what === what)) return false;
-    if (def.needs && !hasProject(w, def.needs)) return false;
-    return !can(w, r, def.cap);
-  }).map(what => VILLAGER_SKILLS[what].verb);
+  const lines = [villagerWant(w, v, prevAct)];
+  if (holding.length)
+    lines.push(
+      tr('w.villagerHolding', {
+        what: holding.map(k => v.bag[k] + ' ' + costIcon(k)).join(' + '),
+      }),
+    );
 
-  return { title: v.name, hint: lines.join(' ') + theirs(game, theirJobs), actions: A };
+  return { title: v.name, hint: lines.join(' '), actions: A };
 }
 
 /**
@@ -714,13 +708,16 @@ export function installInput(game, renderer, canvas) {
       return;
     }
     const h = hit(game.world, p.x, p.y);
-    // a tap on a person gets no bubble at all: just poke them and see what
-    // they do — their name floats up in the world instead of a card here
+    // a tap on a person pokes them and opens their own bubble: their name
+    // floats up in the world, same as ever, and the bubble says what is on
+    // their mind. The poke overwrites their act with the wave they answer
+    // with, so whatever they were actually doing has to be read first.
     if (h.kind === 'villager') {
       closeBubble();
+      const prevAct = h.o.act;
       game.dispatch({ type: 'villager.poke', role: game.role, id: h.o.id });
       const r = canvas.getBoundingClientRect();
-      showBubble(x - r.left, y - r.top, villagerBubble(game, h.o));
+      showBubble(x - r.left, y - r.top, villagerBubble(game, h.o, prevAct));
       return;
     }
     // and the basket has more to say than a bubble holds

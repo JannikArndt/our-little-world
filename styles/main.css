@@ -451,7 +451,17 @@ button {
   margin-left: 6px;
 }
 
-/* the roles: who is playing, and what you can do with them */
+/* the roles: who is playing, and what you can do with them.
+   touch-action: pan-x is load-bearing, not decoration: iOS Safari has to
+   decide whether a touch starting inside a horizontally-scrollable row is a
+   tap or the start of a scroll, and on a phone this row is usually one tap
+   short of fitting both chips — a real gap between two chips that need
+   scrolling to reach and one finger's worth of ambiguity is exactly the shape
+   of bug that swallows the tap instead of ever calling the button's click
+   handler. Pinning the gesture to horizontal panning removes the ambiguity
+   up front, so a tap on a chip is never mistaken for the start of a page
+   scroll. Mice have no such ambiguity, which is why this never showed up on
+   a laptop. */
 .rolebar {
   flex: 1 1 auto;
   min-width: 0;
@@ -459,6 +469,7 @@ button {
   flex-wrap: nowrap;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
 }
 .role-chip {
   flex: none;
@@ -700,6 +711,8 @@ button {
 }
 
 /* resources — the whole bottom row */
+/* the same scrollable row of tappable buttons as .rolebar above, and the
+   same fix for the same reason. */
 .resbar {
   flex: 1 1 auto;
   min-width: 0;
@@ -707,6 +720,7 @@ button {
   flex-wrap: nowrap;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
 }
 .res {
   flex: 1 1 0;

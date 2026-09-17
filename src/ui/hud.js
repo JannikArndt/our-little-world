@@ -16,6 +16,7 @@
 import { el, openPanel, openMenu, message, loop } from './overlay.js';
 import { openGive } from './share.js';
 import { openSeat, openTwoDevices } from './invite.js';
+import { prettyName, worldEmoji } from '../core/names.js';
 import {
   RESOURCES,
   ROLE,
@@ -28,6 +29,7 @@ import {
   knows,
   hasProject,
   otherRoles,
+  resName,
   roleName,
   skillName,
   said,
@@ -113,11 +115,7 @@ export class Hud {
 
   /** What they want, in the words the game has always used for it. */
   wantLine(v) {
-    if (v.poorly > 0) return tr('w.villagerPoorly', { name: v.name });
-    if (v.hunger > 72) return tr('w.villagerHungry');
-    if (!v.homeId) return tr('w.villagerHomeless', { name: v.name });
-    if (v.carrying) return tr('w.villagerCarrying');
-    return tr('w.villagerFine');
+    return villagerWant(this.game.world, v, v.act);
   }
 
   openFolkMenu(anchor) {
@@ -345,7 +343,14 @@ export class Hud {
     items.push({ icon: '🏡', label: tr('ui.backToStart'), fn: () => g.leave() });
 
     openMenu(anchor, {
-      title: (PHASE_ICON[dayPhase(g.world)] || '☀️') + '  ' + tr('menu.world'),
+      title:
+        (PHASE_ICON[dayPhase(g.world)] || '☀️') +
+        '  ' +
+        tr('menu.world') +
+        ' · ' +
+        worldEmoji(g.worldName) +
+        ' ' +
+        prettyName(g.worldName),
       items,
     });
   }
@@ -716,6 +721,28 @@ export function resIcon(key) {
 /** What a villager has been shown, as pictures: 🪓 🌾, and nothing when none. */
 export function skillIcons(v) {
   return (v.skills || []).map(s => VILLAGER_SKILLS[s.what]?.icon || '').join(' ');
+}
+
+/**
+ * What is on somebody's mind right now — the one sentence a tap answers.
+ * Nothing here is a list of what they can do or a reason a button is
+ * missing; it is the same voice as a guide card, about this one person.
+ *
+ * `act` is whichever act is worth reading: for the folk menu it is simply
+ * `v.act`, live; a tap in the world pokes them first, which overwrites
+ * `v.act` with the wave they answer with, so `interact.js` passes in
+ * whatever `v.act` was the moment before the poke instead.
+ */
+export function villagerWant(w, v, act) {
+  if (v.poorly > 0) return tr('w.villagerPoorly', { name: v.name });
+  if (!v.homeId) return tr('w.villagerHomeless', { name: v.name });
+  if (v.hunger > 72) return tr('w.villagerHungry');
+  if (v.said === 'say.emptyBasket') return tr('w.villagerNoticedBasket');
+  if (v.carrying) return tr('w.villagerCarrying', { res: resName(v.carrying.res) });
+  if (act?.kind === 'work') return tr('w.villagerWorking', { skill: skillName(act.job) });
+  if (!w.bridge.built && (v.said === 'say.wishAcross' || v.said === 'say.niceOverThere'))
+    return tr('w.villagerWantsBridge');
+  return tr('w.villagerFine');
 }
 
 /** One line of a panel you choose from. No `fn` means it is there to be read. */

@@ -14,11 +14,13 @@ export const CHANGELOG = [
       'The people who live here can learn to help. Tap somebody, or look behind the other player’s chip, and pick “Teach something” — do a thing twice yourself and you can show them how. Two jobs each, and only the gathering ones: felling and replanting, picking up stones, the field, shearing, and taking the boat out. The sawing, the building and the bridges stay yours.',
       'They bring it home the way anybody would. Wood and wheat go on a pile by the workshop door, for whichever of you wants it; stones and wool stay in their arms until you ask for them. Nobody fills their pockets for ever — arms hold six, the pile holds twenty, and a villager never fells a tree unless the forest can spare it. Every tree one of them cuts is replanted in the same breath.',
       'And nobody is ever put to work: somebody hungry, poorly or still sleeping outside has something more important to be doing, and the village knows it.',
+      'They carry on while you are away, too — gently, and only ever adding. Come back and the welcome-back screen has a line for each of them: “🪓 Ted brought in 4 🪵”. Nothing is eaten, nothing is taken off your side of the table, and there is never a problem waiting that was not waiting when you left.',
     ],
     de: [
       'Die Leute, die hier wohnen, können mithelfen lernen. Tipp jemanden an oder schau hinter das Bild des anderen Spielers und wähl „Etwas zeigen“ — was du selbst zweimal gemacht hast, kannst du weitergeben. Zwei Aufgaben pro Person, und nur die zum Sammeln: fällen und nachpflanzen, Steine sammeln, das Feld, scheren und mit dem Boot rausfahren. Sägen, Bauen und Brücken bleiben bei euch.',
       'Sie bringen alles heim, wie man das eben tut. Holz und Weizen kommen auf einen Stapel an der Werkstatttür, für wen von euch ihn braucht; Steine und Wolle bleiben in ihren Armen, bis ihr sie holt. Und niemand sammelt endlos — in die Arme passen sechs, auf den Stapel zwanzig, und ein Baum wird nur gefällt, wenn der Wald ihn übrig hat. Jeder gefällte Baum wird im selben Atemzug nachgepflanzt.',
       'Arbeiten muss aber niemand: wer hungrig oder krank ist oder noch draußen schläft, hat Wichtigeres zu tun, und das Dorf weiß das.',
+      'Auch wenn ihr weg seid, machen sie weiter — ganz sachte, und immer nur dazu. Beim Zurückkommen steht für jeden eine Zeile da: „🪓 Ted hat 4 🪵 gebracht“. Es wird nichts gegessen, nichts von eurer Seite des Tisches genommen, und es wartet nie ein Problem, das vorher nicht schon da war.',
     ],
   },
   {

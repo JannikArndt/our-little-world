@@ -6,9 +6,17 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createWorld, serialize, deserialize, knows, project } from '../src/core/world.js';
-import { BAG_CAP, PILE_CAP, TREE_FLOOR, MAX_SKILLS, SAPLING_TICKS } from '../src/core/content.js';
+import {
+  AWAY_JOBS_CAP,
+  BAG_CAP,
+  PILE_CAP,
+  TREE_FLOOR,
+  MAX_SKILLS,
+  SAPLING_TICKS,
+} from '../src/core/content.js';
 import { applyAction } from '../src/core/actions.js';
-import { tick } from '../src/core/sim.js';
+import { tick, catchUp } from '../src/core/sim.js';
+import { allProblems } from '../src/core/guide.js';
 
 const run = (w, n) => {
   for (let i = 0; i < n; i++) tick(w);
@@ -316,4 +324,158 @@ test('a villager can be shown the field, and sows it', () => {
     'the field was sown by somebody who lives here',
   );
   assert.equal(project(w, 'boat').state, 'plan', 'and nothing else was quietly built');
+});
+
+/* --------------------------------------------------------------------- */
+/* and the same jobs while nobody is there at all (law 9)                */
+/* --------------------------------------------------------------------- */
+
+const HOUR = 3600000;
+
+/**
+ * A village with the bridge up, a boat on the water, everybody shown two jobs,
+ * and the door closed behind you. `awayAt` is the moment somebody was last
+ * watching, which is the whole of the clock.
+ */
+function leftAlone(seed) {
+  const w = village(seed);
+  w.players.A.res.plank = 30;
+  w.players.A.res.stone = 30;
+  w.players.A.res.wool = 9;
+  applyAction(w, { type: 'bridge.build', role: 'A', planks: 5, stone: 4, quality: 3 });
+  applyAction(w, { type: 'project.build', role: 'A', what: 'boat' });
+  for (const v of w.villagers) {
+    if (!v.homeId) continue;
+    applyAction(w, { type: 'villager.teach', role: 'A', id: v.id, what: 'fell' });
+    applyAction(w, { type: 'villager.teach', role: 'B', id: v.id, what: 'care' });
+  }
+  w.players.A.res.plank = 0;
+  w.players.A.res.stone = 0;
+  w.ext.awayAt = 1000000;
+  return w;
+}
+
+test('a village that worked while you were out took nothing while it did', () => {
+  const w = leftAlone(60);
+  const before = {
+    hunger: w.villagers.map(v => v.hunger),
+    poorly: w.villagers.map(v => v.poorly),
+    larder: JSON.stringify(w.larder),
+    res: JSON.stringify(w.players),
+    tick: w.tick,
+    day: w.day,
+  };
+
+  // well past the cap: a month away is still only three days of village
+  catchUp(w, w.ext.awayAt + 30 * 24 * HOUR);
+
+  assert.deepEqual(
+    w.villagers.map(v => v.hunger),
+    before.hunger,
+    'nobody got hungry for having worked',
+  );
+  assert.deepEqual(
+    w.villagers.map(v => v.poorly),
+    before.poorly,
+    'and nobody fell ill',
+  );
+  assert.ok(JSON.parse(before.larder).fish <= (w.larder.fish || 0), 'the basket only ever went up');
+  for (const id in w.players) {
+    const had = JSON.parse(before.res)[id].res;
+    for (const k in had)
+      assert.ok(
+        (w.players[id].res[k] || 0) >= had[k],
+        'nothing was taken off the ' + id + " player's side of the table (" + k + ')',
+      );
+  }
+  assert.equal(w.tick, before.tick, 'the day did not move');
+  assert.equal(w.day, before.day);
+  assert.equal(
+    w.trees.filter(t => t.state === 'stump').length,
+    0,
+    'every tree that came down was replanted in the same step',
+  );
+  assert.ok(
+    w.trees.filter(t => t.state === 'standing').length >= TREE_FLOOR,
+    'and the forest never went below its floor',
+  );
+  assert.ok(w.pile.wood > 0 || w.villagers.some(v => v.bag.wool > 0), 'somebody did something');
+});
+
+test('nothing is waiting to be put right that was not waiting before', () => {
+  const w = leftAlone(61);
+  const before = allProblems(w).map(p => p.id);
+  catchUp(w, w.ext.awayAt + 3 * 24 * HOUR);
+  const after = allProblems(w).map(p => p.id);
+  for (const id of after)
+    assert.ok(before.includes(id), 'came back to a new problem: ' + id + ' (' + after.join() + ')');
+});
+
+test('somebody hungry, homeless or poorly when you left brought nothing in', () => {
+  const w = leftAlone(62);
+  const [a, b] = w.villagers.filter(v => v.homeId && !v.kid);
+  const ted = w.villagers.find(v => !v.homeId);
+  applyAction(w, { type: 'villager.teach', role: 'B', id: ted.id, what: 'care' });
+  a.hunger = 95;
+  b.poorly = 500;
+  for (const v of [a, b, ted]) v.bag = { stone: 0, wool: 0 };
+
+  catchUp(w, w.ext.awayAt + 3 * 24 * HOUR);
+
+  for (const [v, why] of [
+    [a, 'hungry'],
+    [b, 'poorly'],
+    [ted, 'nowhere to sleep'],
+  ]) {
+    assert.equal(v.bag.wool, 0, why + ': nobody works their way out of trouble');
+    assert.equal(v.workedAt, 0, why + ': and the clock never started');
+  }
+  assert.equal(
+    w.ext.since.A.some(e => /^j\.villager(Work|Sowed)/.test(e.key) && e.vars?.name === a.name),
+    false,
+    'and they are not on the list of what the village got up to',
+  );
+});
+
+test('the welcome-back list says it once per villager, not once per job', () => {
+  const w = leftAlone(63);
+  w.ext.since.A = [];
+  w.ext.since.B = [];
+  catchUp(w, w.ext.awayAt + 3 * 24 * HOUR);
+
+  const mine = w.ext.since.A;
+  assert.ok(mine.length > 0, 'the village had something to say for itself');
+  assert.ok(mine.length <= w.villagers.length, 'one line each at the very most');
+  assert.deepEqual(w.ext.since.A, w.ext.since.B, 'nobody did it, so both of you hear about it');
+  for (const e of mine) {
+    assert.ok(/^j\.villager/.test(e.key), 'the line is a key, read in your own language');
+    assert.equal(e.by, null, 'and it is credited to nobody, because nobody did it');
+  }
+  const names = mine.map(e => e.vars.name);
+  assert.equal(new Set(names).size, names.length, 'and never the same person twice');
+});
+
+test('a month away is still three days, jobs and all', () => {
+  const three = leftAlone(64);
+  const month = leftAlone(64);
+  catchUp(three, three.ext.awayAt + 3 * HOUR);
+  catchUp(month, month.ext.awayAt + 30 * 24 * HOUR);
+  three.ext.awayAt = month.ext.awayAt = 0;
+  assert.equal(
+    serialize(month),
+    serialize(three),
+    'a month arrives as a village, not as a warehouse',
+  );
+});
+
+test('a villager brings back a cap of jobs, however long the village was alone', () => {
+  const w = leftAlone(65);
+  for (const v of w.villagers) v.skills = v.homeId ? [{ what: 'stone', by: 'B' }] : [];
+  for (const b of w.stones) b.count = 99;
+  catchUp(w, w.ext.awayAt + 30 * 24 * HOUR);
+  for (const v of w.villagers)
+    assert.ok(
+      v.bag.stone <= Math.min(AWAY_JOBS_CAP, BAG_CAP),
+      v.name + ' brought back ' + v.bag.stone + ', which is more than anybody should',
+    );
 });

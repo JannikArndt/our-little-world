@@ -163,6 +163,9 @@ export const de = {
   'j.basket': '{n} Essen in den Korb gelegt',
   'j.taught': 'dir etwas Neues beigebracht',
   'j.taughtVillager': '{name} gezeigt, wie man {skill} kann',
+  'j.villagerWork': '{name} hat {what} gebracht',
+  'j.villagerSowed_one': '{name} hat ein Feld mit Weizen gesät',
+  'j.villagerSowed_other': '{name} hat {n} Felder mit Weizen gesät',
   'j.family': 'eine neue Familie ist angekommen',
   'j.deer': 'ein Besucher wurde im Dorf gesichtet',
 

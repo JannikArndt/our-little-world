@@ -162,6 +162,9 @@ export const en = {
   'j.basket': 'put {n} food in the basket',
   'j.taught': 'taught you something new',
   'j.taughtVillager': 'showed {name} how to {skill}',
+  'j.villagerWork': '{name} brought in {what}',
+  'j.villagerSowed_one': '{name} sowed a plot of wheat',
+  'j.villagerSowed_other': '{name} sowed {n} plots of wheat',
   'j.family': 'a new family arrived',
   'j.deer': 'a visitor was spotted in the village',
 

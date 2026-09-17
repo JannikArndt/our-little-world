@@ -33,13 +33,15 @@ import {
   AWAY_TICKS_PER_HOUR,
   AWAY_CAP_TICKS,
   AWAY_MIN_MS,
+  AWAY_JOBS_CAP,
   WORK_EVERY,
   WORK_TICKS,
   TREE_FLOOR,
   FISH_REST,
+  VILLAGER_SKILLS,
 } from './content.js';
 import { rnd, rndInt } from './rng.js';
-import { fx, iconOf, journal, note, setAct, clearAct } from './actions.js';
+import { addSinceAll, fx, iconOf, journal, note, setAct, clearAct } from './actions.js';
 
 const DT = 0.1; // seconds per tick
 const BASE_SPEED = 2.2; // tiles per second on a road
@@ -1089,5 +1091,167 @@ export function catchUp(w, now) {
   // worse off for having been left alone.
   for (const s of w.sheep) s.fluff = Math.min(100, s.fluff + ticks * FLUFF_RISE);
 
+  // and the people who have been shown a job get on with it — after the
+  // growing, so what they gather is what actually grew
+  awayWork(w, ticks);
+
   return ticks;
+}
+
+/**
+ * Law 9, with hands. Somebody who has been shown a job does it while nobody
+ * is there, at the same pace they would with you watching and no faster, and
+ * never more than AWAY_JOBS_CAP jobs however long the village was alone.
+ *
+ * Four rules, and every one of them has a test:
+ *
+ *   1. Nothing is ever taken. Nobody eats, no hunger moves, the larder only
+ *      goes up, and no player's own resources are touched at all.
+ *   2. No mess is left. A felled tree is replanted in the same step, so there
+ *      is never a stump waiting — and `allProblems()` can hold nothing on
+ *      your return that it did not hold when you left.
+ *   3. Only renewables. The tree floor holds; stone, wool, wheat and fish all
+ *      come again on their own.
+ *   4. As you left them. Somebody hungry, homeless or poorly when you closed
+ *      the page brought nothing in, because nobody here works their way out
+ *      of trouble.
+ *
+ * Every choice comes out of the world's own dice, and this runs once, on
+ * whoever is keeping the clock — the other player is handed the snapshot.
+ */
+function awayWork(w, ticks) {
+  const jobs = Math.min(AWAY_JOBS_CAP, Math.floor(ticks / WORK_EVERY));
+  if (jobs <= 0) return;
+  let felled = false;
+
+  for (const v of w.villagers) {
+    if (!v.skills?.length) continue;
+    // exactly the check a villager passes with you watching, read from the
+    // state you left them in
+    if (v.poorly > 0 || !v.homeId || v.hunger >= HUNGRY_AT) continue;
+
+    const got = {}; // what they brought in, to say once on the way back
+    let sown = 0,
+      icon = null;
+    for (let i = 0; i < jobs; i++) {
+      const can = v.skills.filter(s => awayCan(w, v, s.what));
+      if (!can.length) break;
+      const what = can[rndInt(w, can.length)].what;
+      const done = awayJob(w, v, what, got);
+      if (!done) break;
+      if (!icon) icon = VILLAGER_SKILLS[what].icon;
+      if (done === 'sown') sown++;
+      if (what === 'fell') felled = true;
+      v.workedAt = w.tick;
+    }
+
+    // one line each, summarised — never one per job, or the cap swallows
+    // whatever the other player did while you were away (law 10)
+    const brought = Object.keys(got)
+      .map(k => got[k] + ' ' + iconOf(k))
+      .join(' + ');
+    if (brought) addSinceAll(w, icon || '👐', 'j.villagerWork', { name: v.name, what: brought });
+    else if (sown) addSinceAll(w, '🌱', 'j.villagerSowed', { name: v.name, n: sown });
+  }
+
+  // a tree that came down is a sapling now, and the tile it stood on is open
+  if (felled) rebuildBlocked(w);
+}
+
+/** Is there anything at the end of this job, with nobody about to walk there? */
+function awayCan(w, v, what) {
+  switch (what) {
+    case 'fell':
+      return (
+        w.trees.filter(t => t.state === 'standing').length - 1 >= TREE_FLOOR &&
+        pileRoom(w, 'wood') > 0
+      );
+    case 'stone':
+      return bagRoom(v, 'stone') > 0 && w.stones.some(b => b.count > 0);
+    case 'farm':
+      return (
+        (w.plots.some(p => p.state === 'ripe') && pileRoom(w, 'wheat') > 0) ||
+        w.plots.some(p => p.state === 'empty')
+      );
+    case 'care':
+      return bagRoom(v, 'wool') > 0 && w.sheep.some(s => s.fluff > 60);
+    case 'fish': {
+      const boat = project(w, 'boat');
+      return !!(boat?.state === 'built');
+    }
+    default:
+      return false;
+  }
+}
+
+/**
+ * One job, with no walking and nothing to watch: no `fx`, nothing said, no
+ * notice raised. Everything it does only ever adds. Returns what happened, so
+ * the line on the way back can say it.
+ */
+function awayJob(w, v, what, got) {
+  const add = (res, n) => {
+    got[res] = (got[res] || 0) + n;
+  };
+  switch (what) {
+    case 'fell': {
+      const standing = w.trees.filter(t => t.state === 'standing');
+      const t = standing[rndInt(w, standing.length)];
+      t.state = 'sapling';
+      t.plantedTick = w.tick; // planted now, so it takes its full growing
+      t.kind = 1 + (Math.abs(t.x * 7 + t.y * 13) % 3);
+      const n = Math.min(pileRoom(w, 'wood'), 2);
+      w.pile.wood += n;
+      add('wood', n);
+      return 'brought';
+    }
+    case 'stone': {
+      const spots = w.stones.filter(b => b.count > 0);
+      const b = spots[rndInt(w, spots.length)];
+      b.count -= 1;
+      v.bag.stone += 1;
+      add('stone', 1);
+      return 'brought';
+    }
+    case 'farm': {
+      const ripe = w.plots.filter(p => p.state === 'ripe');
+      if (ripe.length && pileRoom(w, 'wheat') > 0) {
+        const p = ripe[rndInt(w, ripe.length)];
+        const n = Math.min(pileRoom(w, 'wheat'), Math.max(1, 3 - p.nibbled));
+        p.state = 'empty';
+        p.growth = 0;
+        p.water = 0;
+        p.nibbled = 0;
+        w.pile.wheat += n;
+        add('wheat', n);
+        return 'brought';
+      }
+      const bare = w.plots.filter(p => p.state === 'empty');
+      const p = bare[rndInt(w, bare.length)];
+      p.state = 'growing';
+      p.growth = 0;
+      p.water = 0;
+      p.nibbled = 0;
+      return 'sown';
+    }
+    case 'care': {
+      const woolly = w.sheep.filter(s => s.fluff > 60);
+      const s = woolly[rndInt(w, woolly.length)];
+      s.fluff = 0;
+      v.bag.wool += 1;
+      add('wool', 1);
+      return 'brought';
+    }
+    case 'fish': {
+      // the boat's own rest is a minute; a village is never left alone for
+      // less than a quarter of an hour before any of this happens at all
+      const boat = project(w, 'boat');
+      boat.fishedTick = w.tick;
+      w.larder.fish = (w.larder.fish || 0) + 1;
+      add('fish', 1);
+      return 'brought';
+    }
+    default:
+      return null;
+  }
 }

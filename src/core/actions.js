@@ -80,14 +80,29 @@ const SINCE_CAP = 12; // the anti-list: nothing grows the more you play
  */
 function addSince(w, icon, key, vars) {
   if (!actingRole) return;
-  if (!w.ext.since || typeof w.ext.since !== 'object') w.ext.since = {};
   for (const role in w.players) {
     if (role === actingRole) continue;
-    if (!Array.isArray(w.ext.since[role])) w.ext.since[role] = [];
-    const list = w.ext.since[role];
-    list.push({ icon, key, vars: vars || null, by: actingRole, tick: w.tick });
-    if (list.length > SINCE_CAP) list.shift();
+    pushSince(w, role, { icon, key, vars: vars || null, by: actingRole, tick: w.tick });
   }
+}
+
+/**
+ * The same list, for something nobody did. The village gets on with things
+ * while both of you are away (law 9), and there is no seat to credit it to —
+ * so it goes on everybody's list rather than nobody's, which is what
+ * `addSince` would do with `actingRole` empty.
+ */
+export function addSinceAll(w, icon, key, vars) {
+  for (const role in w.players)
+    pushSince(w, role, { icon, key, vars: vars || null, by: null, tick: w.tick });
+}
+
+function pushSince(w, role, entry) {
+  if (!w.ext.since || typeof w.ext.since !== 'object') w.ext.since = {};
+  if (!Array.isArray(w.ext.since[role])) w.ext.since[role] = [];
+  const list = w.ext.since[role];
+  list.push(entry);
+  if (list.length > SINCE_CAP) list.shift();
 }
 
 // Whichever role is behind the action being applied right now, so journal()

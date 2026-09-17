@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { drawVillager, drawVillagerSay, drawSheep, drawSheepSay } from '../src/render/art.js';
+import {
+  drawVillager,
+  drawVillagerSay,
+  drawSheep,
+  drawSheepSay,
+  drawWorkshop,
+} from '../src/render/art.js';
 
 /**
  * A canvas that remembers what it was asked to draw and draws nothing. Enough
@@ -66,4 +72,36 @@ test('a sheep says her piece in that same pass', () => {
   const said = recorder();
   drawSheepSay(said.ctx, cloud, 100);
   assert.ok(said.words() > 0, 'nothing shows what Cloud is short of');
+});
+
+// The work has to be visible without laying anything over the world: a tool in
+// the hand, drawn with the body, and the job over the head in the pass after —
+// the same split as everything else somebody has to say.
+test('a villager at work carries the tool for it, and says which job after', () => {
+  const idle = recorder();
+  drawVillager(idle.ctx, ted, 0, 100, true);
+
+  const busy = recorder();
+  const working = Object.assign({}, ted, { said: null, act: { kind: 'work', job: 'fell' } });
+  drawVillager(busy.ctx, working, 0, 100, true);
+  assert.ok(busy.calls.length > idle.calls.length, 'nothing extra was drawn for the axe');
+  assert.equal(busy.words(), 0, 'and the job was not painted where a roof could hide it');
+
+  const said = recorder();
+  drawVillagerSay(said.ctx, working);
+  assert.ok(said.words() > 0, 'nothing over their head says what they are up to');
+});
+
+test('the pile by the workshop door is only there when there is something on it', () => {
+  const shop = { x: 9, y: 16, w: 4, h: 3 };
+  const bare = recorder();
+  drawWorkshop(bare.ctx, shop, 0, 100, { wood: 0, wheat: 0 });
+  const full = recorder();
+  drawWorkshop(full.ctx, shop, 0, 100, { wood: 8, wheat: 3 });
+  assert.ok(full.calls.length > bare.calls.length, 'the logs and the sack are not drawn');
+
+  // and a world from before there was a pile still draws its workshop
+  const old = recorder();
+  drawWorkshop(old.ctx, shop, 0, 100);
+  assert.ok(old.calls.length > 0, 'a workshop with no pile at all should still be a workshop');
 });

@@ -4,7 +4,7 @@
 
 import { TILE } from '../core/grid.js';
 import { tr } from '../core/i18n.js';
-import { FOODS } from '../core/content.js';
+import { FOODS, VILLAGER_SKILLS } from '../core/content.js';
 
 export const C = {
   grass: '#8ec96f',
@@ -261,6 +261,91 @@ function nameTag(ctx, x, y, name) {
   ctx.fillText(name, x, y);
 }
 
+/**
+ * What is in a working hand. Drawn rather than an emoji, like everything else
+ * in the village, and small enough that a villager at work reads as somebody
+ * getting on with a job rather than a tool with legs.
+ */
+function workTool(ctx, job, facing) {
+  const f = facing < 0 ? -1 : 1;
+  ctx.save();
+  ctx.translate(6.2 * f, -3);
+  ctx.scale(f, 1);
+  ctx.lineCap = 'round';
+  switch (job) {
+    case 'fell': // an axe, over the shoulder
+      ctx.strokeStyle = C.woodDark;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-1, 3);
+      ctx.lineTo(2.6, -6);
+      ctx.stroke();
+      ctx.fillStyle = C.stone;
+      ctx.beginPath();
+      ctx.moveTo(1.6, -6.4);
+      ctx.lineTo(5.4, -7.6);
+      ctx.lineTo(5.2, -4);
+      ctx.lineTo(2.4, -4.2);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case 'stone': // one in the hand, off the bank
+      ctx.fillStyle = C.stone;
+      ctx.beginPath();
+      ctx.ellipse(1.6, 0, 2.4, 2, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = C.stoneDark;
+      ctx.beginPath();
+      ctx.ellipse(2.4, 0.8, 1.1, 0.8, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'farm': // a sickle
+      ctx.strokeStyle = C.woodDark;
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(0, 2.4);
+      ctx.lineTo(1.4, -1.4);
+      ctx.stroke();
+      ctx.strokeStyle = '#cfcac1';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(3.4, -2.2, 3, Math.PI * 0.75, Math.PI * 1.85);
+      ctx.stroke();
+      break;
+    case 'care': // shears, open on the pivot
+      ctx.strokeStyle = '#b9b3a8';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(-0.6, 3);
+      ctx.lineTo(3.2, -4.4);
+      ctx.moveTo(2.6, 3);
+      ctx.lineTo(5.6, -1.4);
+      ctx.stroke();
+      ctx.fillStyle = C.woodDark;
+      ctx.beginPath();
+      ctx.arc(2, 0.2, 0.9, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'fish': // a rod, and a line off the end of it
+      ctx.strokeStyle = C.woodDark;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-1, 3);
+      ctx.lineTo(6, -7);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(67,55,42,.45)';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(6, -7);
+      ctx.lineTo(7.6, -1.5);
+      ctx.stroke();
+      break;
+    default:
+      break;
+  }
+  ctx.restore();
+}
+
 export function drawVillager(ctx, v, time, tick, noBubble) {
   const act = v.act ? v.act.kind : null;
   const x = v.x * TILE,
@@ -367,6 +452,8 @@ export function drawVillager(ctx, v, time, tick, noBubble) {
     ctx.lineTo(6.4 - stride * 0.5, -2.2);
     ctx.stroke();
   }
+
+  if (act === 'work') workTool(ctx, v.act.job, facing);
 
   // head
   const headY = sitting ? -9.6 : -12.6;
@@ -531,6 +618,8 @@ export function drawVillagerSay(ctx, v) {
   const x = v.x * TILE,
     y = v.y * TILE;
   if (v.said) speech(ctx, x, y - 22, tr(v.said));
+  else if (act === 'work' && VILLAGER_SKILLS[v.act.job])
+    bubble(ctx, x + 9, y - 18, VILLAGER_SKILLS[v.act.job].icon, 12);
   else if (TAP_ANSWER[act]) nameTag(ctx, x, y - 20, v.name);
   else if (MOOD_GLYPH[v.mood]) bubble(ctx, x + 9, y - 18, MOOD_GLYPH[v.mood], 12);
 }
@@ -1142,7 +1231,64 @@ export function drawSapling(ctx, t, time) {
   ctx.fill();
 }
 
-export function drawWorkshop(ctx, b, time, tick) {
+/**
+ * What the villagers have hauled in, standing by the door where anybody can
+ * see it and either of you can pick it up. It grows with the pile and stops
+ * growing well before the cap does — four logs and a full sack says "there is
+ * something here", and a wall of timber would say nothing more.
+ */
+function drawPile(ctx, x, y, pile) {
+  const wood = Math.min(4, Math.ceil((pile.wood || 0) / 5));
+  const wheat = pile.wheat || 0;
+  if (wood > 0) {
+    shadow(ctx, x, y + 2, 11, 3.5);
+    for (let i = 0; i < wood; i++) {
+      const row = i < 2 ? 0 : 1;
+      const at = i < 2 ? i : i - 2;
+      const lx = x - 5 + at * 10 + row * 5,
+        ly = y - row * 6;
+      ctx.fillStyle = C.wood;
+      rr(ctx, lx - 5, ly - 3.5, 10, 7, 3);
+      ctx.fill();
+      ctx.fillStyle = C.woodLite;
+      ctx.beginPath();
+      ctx.ellipse(lx + 4.4, ly, 1.5, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  if (wheat > 0) {
+    const sx = x + 18;
+    shadow(ctx, sx, y + 2, 7, 2.6);
+    // darker than the wall behind it, or it is not a sack, it is plaster
+    const h = 8 + Math.min(6, wheat);
+    ctx.fillStyle = '#c3a878';
+    ctx.strokeStyle = 'rgba(67,55,42,.3)';
+    ctx.lineWidth = 1;
+    rr(ctx, sx - 6, y - h, 12, h + 1, 4);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.22)';
+    rr(ctx, sx - 6, y - h, 4.5, h + 1, 4);
+    ctx.fill();
+    ctx.strokeStyle = C.wheatDry; // and a few stalks over the top of it
+    ctx.lineWidth = 1.1;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let i = -1; i <= 1; i++) {
+      ctx.moveTo(sx + i * 1.6, y - h + 1);
+      ctx.lineTo(sx + i * 3.2, y - h - 4.5);
+    }
+    ctx.stroke();
+    ctx.fillStyle = C.wheat;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.ellipse(sx + i * 3.2, y - h - 5, 1, 1.9, i * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+export function drawWorkshop(ctx, b, time, tick, pile) {
   const x = b.x * TILE,
     y = b.y * TILE,
     w = b.w * TILE,
@@ -1199,6 +1345,10 @@ export function drawWorkshop(ctx, b, time, tick) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(tr('art.workshop'), x + w / 2, y + h + 6);
+
+  // whatever the villagers have brought in, standing on the ground at the
+  // left-hand end of the wall — clear of the doorway and of the name
+  if (pile) drawPile(ctx, x + 6, y + h - 1, pile);
 }
 
 export function drawLarder(ctx, l, _time) {

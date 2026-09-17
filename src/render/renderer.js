@@ -456,7 +456,7 @@ export class Renderer {
             if (o.state === 'built') art.drawFence(ctx, o, time);
             else art.drawPlan(ctx, o, time, '🚧');
           } else if (o.state === 'site') art.drawSite(ctx, o, time);
-          else if (o.type === 'workshop') art.drawWorkshop(ctx, o, time, w.tick);
+          else if (o.type === 'workshop') art.drawWorkshop(ctx, o, time, w.tick, w.pile);
           else art.drawHouse(ctx, o, time, w.tick);
           break;
         case 'tree': {

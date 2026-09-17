@@ -5,19 +5,7 @@
 
 import { el, openPanel } from './overlay.js';
 import { tr } from '../core/i18n.js';
-import { resName } from '../core/world.js';
-
-/**
- * One entry, in whichever language is being played. Entries are stored as a
- * key plus values, never a finished sentence (law 14's reasoning again), so a
- * `res` value — a resource key like `wool` — is turned into its name before
- * the sentence is built, rather than shown raw.
- */
-function line(entry) {
-  const vars = entry.vars ? Object.assign({}, entry.vars) : null;
-  if (vars?.res) vars.res = resName(vars.res);
-  return tr(entry.key, vars);
-}
+import { said } from '../core/world.js';
 
 /**
  * `since` is `w.ext.since[role]` — capped, oldest first, and never touched by
@@ -27,7 +15,7 @@ function line(entry) {
 export function showWelcomeBack(game, since) {
   const p = openPanel({ title: tr('since.title') });
   for (const entry of since)
-    p.body.appendChild(el('p', 'log-line', entry.icon + ' ' + line(entry)));
+    p.body.appendChild(el('p', 'log-line', entry.icon + ' ' + said(entry)));
   const r = p.row();
   r.appendChild(
     p.button(tr('since.button'), 'go', () => {

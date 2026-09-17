@@ -4,9 +4,23 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '2.7';
+export const VERSION = '2.8';
 
 export const CHANGELOG = [
+  {
+    v: '2.8',
+    date: '2026-09-17',
+    en: [
+      'The people who live here can learn to help. Tap somebody, or look behind the other player’s chip, and pick “Teach something” — do a thing twice yourself and you can show them how. Two jobs each, and only the gathering ones: felling and replanting, picking up stones, the field, shearing, and taking the boat out. The sawing, the building and the bridges stay yours.',
+      'They bring it home the way anybody would. Wood and wheat go on a pile by the workshop door, for whichever of you wants it; stones and wool stay in their arms until you ask for them. Nobody fills their pockets for ever — arms hold six, the pile holds twenty, and a villager never fells a tree unless the forest can spare it. Every tree one of them cuts is replanted in the same breath.',
+      'And nobody is ever put to work: somebody hungry, poorly or still sleeping outside has something more important to be doing, and the village knows it.',
+    ],
+    de: [
+      'Die Leute, die hier wohnen, können mithelfen lernen. Tipp jemanden an oder schau hinter das Bild des anderen Spielers und wähl „Etwas zeigen“ — was du selbst zweimal gemacht hast, kannst du weitergeben. Zwei Aufgaben pro Person, und nur die zum Sammeln: fällen und nachpflanzen, Steine sammeln, das Feld, scheren und mit dem Boot rausfahren. Sägen, Bauen und Brücken bleiben bei euch.',
+      'Sie bringen alles heim, wie man das eben tut. Holz und Weizen kommen auf einen Stapel an der Werkstatttür, für wen von euch ihn braucht; Steine und Wolle bleiben in ihren Armen, bis ihr sie holt. Und niemand sammelt endlos — in die Arme passen sechs, auf den Stapel zwanzig, und ein Baum wird nur gefällt, wenn der Wald ihn übrig hat. Jeder gefällte Baum wird im selben Atemzug nachgepflanzt.',
+      'Arbeiten muss aber niemand: wer hungrig oder krank ist oder noch draußen schläft, hat Wichtigeres zu tun, und das Dorf weiß das.',
+    ],
+  },
   {
     v: '2.7',
     date: '2026-09-14',

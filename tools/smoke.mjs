@@ -822,20 +822,97 @@ async function main() {
   const missionIcon = await page.textContent('#missionChip .m-icon');
   if (!missionIcon || !missionIcon.trim()) throw new Error('the mission button lost its icon');
 
-  // teaching: having done it a few times, you can show the other player how.
-  // This lives behind the OTHER role's chip now (yours is your own tools).
+  // teaching: having done it a few times, you can show somebody how. One door
+  // for all of it now — the other player and every villager behind the same
+  // panel, rather than one menu line per skill.
   await api(() => {
     window.OLW.world.players.A.done.fell = 3;
+    window.OLW.world.players.A.done.stone = 3;
   });
   await page.click('#roleBar button[data-role="B"]');
   await step(page, '25b-role-card', 500);
-  const teach = await page.$('text=Teach them felling trees');
-  if (!teach) throw new Error('no way to teach a capability across');
+  const teach = await page.$('text=Teach something');
+  if (!teach) throw new Error('no way into the teaching panel');
   await teach.click();
+  await page.waitForSelector('.pick-list', { timeout: 5000 });
+  await step(page, '25b2-teach-panel', 400);
+  const forThem = await page.$('.pick-list .menu-item:has-text("felling trees")');
+  if (!forThem) throw new Error('the panel does not offer felling to the other player');
+  await forThem.click();
   await page.waitForTimeout(400);
   const learned = await api(() => !!window.OLW.world.players.B.caps.fell);
   console.log('taught the other player to fell trees:', learned);
   if (!learned) throw new Error('teaching did not stick');
+
+  // and the same panel shows a villager how to gather. Back goes to the list
+  // of everybody it could be, which is the half a role chip skips past.
+  await page.click('#roleBar button[data-role="B"]');
+  await page.click('text=Teach something');
+  await page.waitForSelector('.pick-list', { timeout: 5000 });
+  await page.click('.p-rows button:has-text("Back")');
+  await page.waitForSelector('.pick-list', { timeout: 5000 });
+  const pupil = await api(() => window.OLW.world.villagers.find(v => v.homeId).name);
+  await page.click('.pick-list .menu-item:has-text("' + pupil + '")');
+  await page.waitForSelector('.pick-list', { timeout: 5000 });
+  await step(page, '25b3-teach-villager', 400);
+  const gather = await page.$('.pick-list .menu-item:has-text("gather stones")');
+  if (!gather) throw new Error('the panel does not offer a villager a job to learn');
+  await gather.click();
+  await page.waitForTimeout(400);
+  const shown = await api(
+    n => (window.OLW.world.villagers.find(v => v.name === n).skills || []).map(s => s.what),
+    pupil,
+  );
+  console.log('showed', pupil, 'how to:', shown.join(', '));
+  if (shown.indexOf('stone') < 0) throw new Error('the villager was not shown anything');
+
+  // 👥 says what they can do, in pictures, next to their name
+  await page.click('#folkChip');
+  await page.waitForTimeout(300);
+  const folkNow = await page.textContent('.menu');
+  if (folkNow.indexOf('🪨') < 0) throw new Error('the village list does not show what they can do');
+  await page.keyboard.press('Escape');
+  await page.mouse.click(5, 5);
+  await page.waitForTimeout(300);
+
+  // tapping somebody pokes them AND opens their own bubble: what they can do,
+  // what is in their arms, and a way to show them something else
+  let poked = false;
+  for (let go = 0; go < 20 && !poked; go++) {
+    const at = await api(n => {
+      const g = window.OLW,
+        w = g.world;
+      const v = w.villagers.find(o => o.name === n);
+      if (!v || v.inside) return null;
+      const canvas = document.getElementById('world');
+      g.look(v.x, v.y, 2.6);
+      const r = canvas.getBoundingClientRect();
+      const p = g.renderer.toScreen(v.x * 24, (v.y - 0.3) * 24);
+      const x = r.left + p.x,
+        y = r.top + p.y;
+      if (document.elementFromPoint(x, y) !== canvas) return null;
+      return { x, y };
+    }, pupil);
+    if (!at) {
+      await page.waitForTimeout(300);
+      continue;
+    }
+    await page.mouse.click(at.x, at.y);
+    poked = await page
+      .waitForSelector('.bubble', { timeout: 600 })
+      .then(() => true)
+      .catch(() => false);
+  }
+  if (!poked) throw new Error('tapping somebody never opened their bubble');
+  const said = (await page.textContent('.bubble')).replace(/\s+/g, ' ').trim();
+  console.log('tapping', pupil, 'says:', said.slice(0, 120));
+  if (said.indexOf(pupil) < 0) throw new Error('the bubble does not say who it is about');
+  if (!/Can help with|has not been shown/i.test(said))
+    throw new Error('the bubble does not say what they can do');
+  if (!/Teach something/.test(said)) throw new Error('no way to show them something from here');
+  await step(page, '25c-villager-bubble', 300);
+  await page.click('.bubble button.ghost');
+  await page.waitForTimeout(300);
 
   // messages wait to be read; there is no history sheet any more
   const standing = await page.$$eval('.msg', ns => ns.length);

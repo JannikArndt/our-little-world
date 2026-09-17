@@ -433,16 +433,43 @@ export function drawVillager(ctx, v, time, tick, noBubble) {
   }
   ctx.restore();
 
+  // What is in their arms. Wood was the only thing anybody ever carried, and
+  // now a villager who has been shown the field comes home with a sheaf too —
+  // so it is drawn as whatever it actually is.
   if (v.carrying) {
     ctx.save();
     ctx.translate(x, y - 9);
-    ctx.fillStyle = C.wood;
-    rr(ctx, -9, -3, 18, 6, 3);
-    ctx.fill();
-    ctx.fillStyle = C.woodLite;
-    ctx.beginPath();
-    ctx.ellipse(8, 0, 1.8, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
+    if (v.carrying.res === 'wheat') {
+      ctx.strokeStyle = C.wheatDry;
+      ctx.lineWidth = 1.3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (let i = -2; i <= 2; i++) {
+        ctx.moveTo(i * 1.2, 3);
+        ctx.lineTo(i * 2.5, -5);
+      }
+      ctx.stroke();
+      ctx.fillStyle = C.wheat;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.ellipse(i * 2.5, -5.6, 1.1, 2.1, i * 0.16, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.strokeStyle = C.woodDark; // the string round the middle of it
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(-3.2, 0.4);
+      ctx.lineTo(3.2, 0.4);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = C.wood;
+      rr(ctx, -9, -3, 18, 6, 3);
+      ctx.fill();
+      ctx.fillStyle = C.woodLite;
+      ctx.beginPath();
+      ctx.ellipse(8, 0, 1.8, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 

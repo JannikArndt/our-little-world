@@ -39,6 +39,8 @@ const PROJECT_TYPES = Object.keys(PROJECTS).map(k => PROJECTS[k].type);
 // stranger's word for it, not a deed, and does not belong on a public page.
 const DEED_TYPES = new Set([
   'fell',
+  'stone',
+  'taught',
   'saw',
   'sawPerfect',
   'mill',

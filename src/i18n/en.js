@@ -91,6 +91,7 @@ export const en = {
   'menu.share': 'Give them something',
   'menu.invite': 'Invite the {role}',
   'menu.teach': 'Teach them {what}',
+  'menu.teachSomething': 'Teach something',
   'menu.youCan': 'What you can do',
   'menu.news': 'What has happened',
   'menu.youDid': 'What you have done',
@@ -131,6 +132,10 @@ export const en = {
   'deed.care_other': 'looked after the animals {n} times',
   'deed.plant_one': 'planted a sapling',
   'deed.plant_other': 'planted {n} saplings',
+  'deed.stone_one': 'picked up a stone',
+  'deed.stone_other': 'picked up {n} stones',
+  'deed.taught_one': 'showed somebody how',
+  'deed.taught_other': 'showed somebody how {n} times',
 
   /* ---- the welcome-back screen: what the journal cannot tell you, because a
      new day empties it, but w.ext.since remembers anyway ---- */
@@ -156,6 +161,7 @@ export const en = {
   'j.shared': 'gave you {n} {res}',
   'j.basket': 'put {n} food in the basket',
   'j.taught': 'taught you something new',
+  'j.taughtVillager': 'showed {name} how to {skill}',
   'j.family': 'a new family arrived',
   'j.deer': 'a visitor was spotted in the village',
 
@@ -227,6 +233,28 @@ export const en = {
   'teach.notice': 'Now you both know {what}.',
   'teach.cannot': 'You do not know how to do that yet — ask them to show you.',
 
+  /* ---- what a villager can be shown: gathering, and only gathering ---- */
+  'skill.fell': 'fell trees',
+  'skill.stone': 'gather stones',
+  'skill.farm': 'work the field',
+  'skill.care': 'shear the sheep',
+  'skill.fish': 'take the boat out',
+  'teach.title': '👐 Show them how',
+  'teach.who': 'Who shall we show?',
+  'teach.thePlayers': 'The other player',
+  'teach.theFolk': 'Everybody here',
+  'teach.anything': 'Can learn anything you know',
+  'teach.gathering': 'Can learn to gather',
+  'teach.what': 'What shall {name} learn?',
+  'teach.knowsIt': 'Knows this already',
+  'teach.needMore': 'You have done this {have} of {need} times',
+  'teach.needBoat': 'There is no boat yet',
+  'teach.nothingToShow': 'Nothing to show them yet. Do a thing twice and you can pass it on.',
+  'teach.holdsTwo': '{name} already has two jobs. Which one stops?',
+  'teach.stopThis': 'Stop {skill}',
+  'teach.villagerDone': '👐 {name} can {skill} now.',
+  'teach.villagerNotice': 'Now {name} can {skill} too.',
+
   /* ---- world bubbles ---- */
   'w.tree': 'A tree',
   'w.treeHint': 'Wood comes from here. A clean notch gets more out of it.',
@@ -254,6 +282,14 @@ export const en = {
   'w.villagerHomeless': '{name} has no bed yet. A house would sort that out.',
   'w.villagerCarrying': 'Carrying a log to the workshop.',
   'w.villagerFine': 'Getting on with the day.',
+  'w.villagerCan': 'Can help with: {what}',
+  'w.villagerCanNothing': 'Has not been shown a job yet.',
+  'w.villagerHolding': 'Holding {what}.',
+  'w.takeBag': 'Take the {n} {icon}',
+  'w.teachThem': '👐 Teach something',
+  'w.pile': 'The pile by the door',
+  'w.pileHas': '{what} on the pile, for whoever wants it.',
+  'w.pileTake': '🪵 Take what is here',
 
   /* ---- the village basket, in full ---- */
   'basket.title': '🧺 The village basket',
@@ -281,6 +317,7 @@ export const en = {
   'doing.sit': 'Sitting down a while.',
   'doing.eat': 'Eating.',
   'doing.squabble': 'Having a squabble — tap to break it up.',
+  'doing.work': 'Getting a job done.',
   'w.findPlot': '🏠 Find a plot to build on',
   'w.putFood': '🍞🐟 Put food in the basket',
   'w.deer': 'A deer',
@@ -556,6 +593,12 @@ export const en = {
   'say.restingUp': 'just going to sit down…',
   'say.natter': 'did you hear…?',
   'say.laLa': 'la la la!',
+  'say.timber': 'and one back in!',
+  'say.goodStone': 'a good one!',
+  'say.sown': 'all sown!',
+  'say.wheatIn': 'that is the wheat in!',
+  'say.snipSnip': 'snip snip!',
+  'say.oneForTheBasket': 'one for the basket!',
 
   /* ---- the guide ---- */
   'guide.who.A': 'Builder',

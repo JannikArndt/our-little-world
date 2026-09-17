@@ -233,6 +233,57 @@ export const FOODS = [
 ];
 
 /* --------------------------------------------------------------------- */
+/* what a villager can learn                                             */
+/* --------------------------------------------------------------------- */
+
+/**
+ * Villagers gather; the two of you make. These five are the whole list, and
+ * they are deliberately the five that only ever take what grows back: wood
+ * from a tree that is replanted in the same step, a stone the river brings
+ * more of, wheat, wool and fish. Sawing, milling, bridges, houses, roads and
+ * projects stay in the players' hands — that is what the afternoon is for.
+ *
+ * Each row says who can show it: `cap` is the capability the teacher needs
+ * (null means either of you), `tally` is the count in their `done` that has
+ * to be at least TEACH_TIMES, and `needs` names a project that has to be
+ * standing first. Adding a sixth is a row here, a target in `villagerWork()`,
+ * its effect in `finishVillagerTask()`, a name in every language, and a test.
+ */
+export const VILLAGER_SKILLS = {
+  fell: { icon: '🪓', cap: 'fell', tally: 'fell', verb: 'fell' },
+  stone: { icon: '🪨', cap: null, tally: 'stone', verb: null },
+  farm: { icon: '🌾', cap: 'farm', tally: 'farm', verb: 'farm' },
+  care: { icon: '🧶', cap: 'care', tally: 'care', verb: 'care' },
+  fish: { icon: '🐟', cap: 'farm', tally: 'fish', verb: 'fish', needs: 'boat' },
+};
+
+/** The order they are offered in, which is the order a village learns them. */
+export const SKILL_ORDER = ['fell', 'stone', 'farm', 'care', 'fish'];
+
+// Two jobs each and no more, so six villagers can only ever hold twelve jobs
+// between them — a ceiling, not a ladder. Nothing here grows the more you
+// play (the anti-list); a third job would be the first step towards a village
+// that works harder every week, which is not what this is.
+export const MAX_SKILLS = 2;
+export const TEACH_TIMES = 2; // do a thing twice and you can show somebody how
+
+// How much anybody can hold. A villager's arms take BAG_CAP of a thing and
+// then they stop; the pile by the workshop door takes PILE_CAP and then the
+// hauling stops too. Both are visible where they live — in their arms and on
+// the ground — so a full one is something you can see rather than be told.
+export const BAG_CAP = 6;
+export const PILE_CAP = 20;
+
+// A villager gets about a third as much done as a player would: one job every
+// ninety seconds of play, never two at once, and never the same second on
+// both screens by accident — every choice comes out of the world's own dice.
+export const WORK_EVERY = 900;
+export const WORK_TICKS = 26; // how long the doing of it takes to watch
+export const FISH_REST = 600; // the fish go quiet for a minute after a boat goes out
+export const TREE_FLOOR = 6; // trees a villager always leaves standing
+export const AWAY_JOBS_CAP = 8; // jobs one villager brings back from an absence
+
+/* --------------------------------------------------------------------- */
 /* the valley: the one world there is, so far                            */
 /* --------------------------------------------------------------------- */
 

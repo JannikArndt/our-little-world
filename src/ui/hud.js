@@ -22,11 +22,24 @@ import {
   ROLE_ORDER,
   CAPS,
   byId,
+  can,
+  canTeach,
   capName,
+  knows,
+  hasProject,
+  otherRoles,
   roleName,
+  skillName,
+  said,
+  teachTally,
   dayPhase,
   hasFished,
   hasSheared,
+  BAG_KEYS,
+  VILLAGER_SKILLS,
+  SKILL_ORDER,
+  MAX_SKILLS,
+  TEACH_TIMES,
 } from '../core/world.js';
 import { tr, trn, LANGUAGES, currentLang, setLang } from '../core/i18n.js';
 import { currentProblem, allProblems } from '../core/guide.js';
@@ -116,9 +129,10 @@ export class Hud {
       // what they are doing right now outranks what they generally want:
       // a squabble is the one line here that asks you to do something
       const doing = this.doingLine(v);
+      const icons = skillIcons(v);
       items.push({
         icon: v.kid ? '🧒' : '🧑',
-        label: v.name + (v.kid ? ' · ' + tr('villagers.kid') : ''),
+        label: v.name + (v.kid ? ' · ' + tr('villagers.kid') : '') + (icons ? '  ' + icons : ''),
         note: this.homeLine(v) + ' · ' + (doing || this.wantLine(v)),
         fn: () =>
           g.showMe(
@@ -129,6 +143,18 @@ export class Hud {
             2.2,
           ),
       });
+      // what is in their arms, and a line that takes it off them
+      for (const k of BAG_KEYS) {
+        const n = v.bag?.[k] || 0;
+        if (!n) continue;
+        const icon = resIcon(k);
+        items.push({
+          icon,
+          sub: true,
+          label: tr('w.takeBag', { n, icon }),
+          fn: () => g.dispatch({ type: 'villager.unload', role: g.role, id: v.id, res: k }),
+        });
+      }
     }
 
     if (w.sheep.length) {
@@ -276,7 +302,7 @@ export class Hud {
     for (const pr of allProblems(w)) covered[pr.id] = 1;
     for (const n of w.notices) {
       if (covered[NOTICE_JOB[n.id] || n.id]) continue;
-      news.push({ icon: n.icon, label: tr(n.key, n.vars), fn: () => g.goToNotice(n) });
+      news.push({ icon: n.icon, label: said(n), fn: () => g.goToNotice(n) });
     }
     return { news };
   }
@@ -343,25 +369,18 @@ export class Hud {
     }
     items.push({ icon: '🤝', label: tr('menu.share'), fn: () => openGive(g, null, id) });
 
-    const mine = Object.keys(w.players[g.role].caps);
-    const teachable = mine.filter(
-      c => !w.players[id].caps[c] && (w.players[g.role].done[teachKey(c)] || 0) >= 2,
-    );
     const known = Object.keys(w.players[id].caps).filter(c => !w.players[g.role].caps[c]);
 
-    if (teachable.length) {
-      items.push({ divider: true });
-      for (const c of teachable) {
-        items.push({
-          icon: CAPS[c].icon,
-          label: tr('menu.teach', { what: capName(c) }),
-          fn: () => {
-            g.dispatch({ type: 'teach', from: g.role, to: id, cap: c });
-            message(tr('teach.done', { what: capName(c) }));
-          },
-        });
-      }
-    }
+    // One door rather than one per skill: everything you could show anybody —
+    // them or any of the villagers — is behind it, and a skill you have not
+    // earned yet says how far off it is rather than quietly not being there.
+    items.push({ divider: true });
+    items.push({
+      icon: '👐',
+      label: tr('menu.teachSomething'),
+      fn: () => openTeach(g, { kind: 'role', id }),
+    });
+
     if (known.length) {
       items.push({ divider: true });
       items.push({
@@ -628,6 +647,7 @@ export class Hud {
  * happening.
  */
 const DOING = {
+  work: 'doing.work',
   dance: 'doing.dance',
   run: 'doing.run',
   chat: 'doing.chat',
@@ -655,6 +675,7 @@ const NOTICE_JOB = {
  */
 const DEEDS = [
   { key: 'fell', icon: '🪓', word: 'deed.fell' },
+  { key: 'stone', icon: '🪨', word: 'deed.stone' },
   { key: 'saw', icon: '🪚', word: 'deed.saw' },
   { key: 'bridge', icon: '🌉', word: 'deed.bridge' },
   { key: 'house', icon: '🏠', word: 'deed.house' },
@@ -670,6 +691,7 @@ const DEEDS = [
   { key: 'fish', icon: '🎣', word: 'deed.fish' },
   { key: 'care', icon: '🐑', word: 'deed.care' },
   { key: 'plant', icon: '🌳', word: 'deed.plant' },
+  { key: 'taught', icon: '👐', word: 'deed.taught' },
 ];
 
 /** The tally as sentences, leaving out everything nobody has done yet. */
@@ -680,6 +702,180 @@ export function deedsOf(done) {
     if (n > 0) out.push({ icon: d.icon, text: trn(d.word, n) });
   }
   return out;
+}
+
+/* ------------------------------------------------------------------ */
+/* 👐 showing somebody how                                            */
+/* ------------------------------------------------------------------ */
+
+/** The picture for a resource — the same ones the bottom bar uses. */
+export function resIcon(key) {
+  return (RESOURCES.find(r => r.key === key) || {}).icon || '';
+}
+
+/** What a villager has been shown, as pictures: 🪓 🌾, and nothing when none. */
+export function skillIcons(v) {
+  return (v.skills || []).map(s => VILLAGER_SKILLS[s.what]?.icon || '').join(' ');
+}
+
+/** One line of a panel you choose from. No `fn` means it is there to be read. */
+function pickRow(icon, label, note, fn) {
+  const b = el('button', 'menu-item' + (fn ? '' : ' off'));
+  b.appendChild(el('span', 'mi-ico', icon || ''));
+  const txt = el('span', 'mi-txt');
+  txt.appendChild(el('span', 'mi-label', label));
+  if (note) txt.appendChild(el('span', 'mi-note', note));
+  b.appendChild(txt);
+  if (fn) b.addEventListener('click', fn);
+  else b.disabled = true;
+  return b;
+}
+
+/**
+ * Whose job this would be, when it is not yours. The same sentence a tap on
+ * the thing itself gives you (law 4): their name, and no button.
+ */
+function whoseJob(game, verb) {
+  return tr('w.theirJob', { role: roleName(game.other), what: tr('verb.' + verb) });
+}
+
+/**
+ * The teaching panel. Two doors into one place: the other player's chip, and
+ * a tap on anybody in the village. Pick who, then pick what — and a job you
+ * cannot pass on yet says how far off it is, with a count, rather than not
+ * being there at all.
+ *
+ * The other player can learn anything you know. A villager can learn one of
+ * the five gathering jobs and nothing else: villagers gather, and the making
+ * stays with the two of you.
+ */
+export function openTeach(game, target) {
+  const g = game,
+    w = g.world;
+  if (target?.kind === 'role') return teachRole(g, target.id);
+  if (target?.kind === 'villager') {
+    const v = byId(w.villagers, target.id);
+    if (v) return teachVillager(g, v);
+  }
+
+  const p = openPanel({ title: tr('teach.title'), lead: tr('teach.who') });
+  const list = el('div', 'pick-list');
+  for (const id of otherRoles(w, g.role))
+    list.appendChild(
+      pickRow(ROLE[id].emoji, roleName(id), tr('teach.anything'), () => teachRole(g, id)),
+    );
+  for (const v of w.villagers) {
+    const icons = skillIcons(v);
+    list.appendChild(
+      pickRow(v.kid ? '🧒' : '🧑', v.name, icons || tr('teach.gathering'), () =>
+        teachVillager(g, v),
+      ),
+    );
+  }
+  p.body.appendChild(list);
+  p.row().appendChild(p.button(tr('ui.close'), 'soft', () => p.close()));
+  return p;
+}
+
+/** Everything you know that they do not, and how near the rest of it is. */
+function teachRole(game, id) {
+  const g = game,
+    w = g.world;
+  const p = openPanel({ title: tr('teach.title'), lead: tr('teach.what', { name: roleName(id) }) });
+  const list = el('div', 'pick-list');
+  let any = 0;
+  for (const c of Object.keys(w.players[g.role].caps)) {
+    if (w.players[id].caps[c]) continue;
+    const have = w.players[g.role].done[teachKey(c)] || 0;
+    if (have >= TEACH_TIMES) {
+      any++;
+      list.appendChild(
+        pickRow(CAPS[c].icon, capName(c), null, () => {
+          g.dispatch({ type: 'teach', from: g.role, to: id, cap: c });
+          message(tr('teach.done', { what: capName(c) }));
+          p.close();
+        }),
+      );
+    } else {
+      any++;
+      list.appendChild(
+        pickRow(CAPS[c].icon, capName(c), tr('teach.needMore', { have, need: TEACH_TIMES })),
+      );
+    }
+  }
+  if (!any) list.appendChild(el('p', 'lead', tr('teach.nothingToShow')));
+  p.body.appendChild(list);
+  const r = p.row();
+  r.appendChild(p.button(tr('ui.back'), 'soft', () => openTeach(g)));
+  r.appendChild(p.button(tr('ui.close'), 'soft', () => p.close()));
+  return p;
+}
+
+/** The five gathering jobs, and what stands between them and this villager. */
+function teachVillager(game, v) {
+  const g = game,
+    w = g.world;
+  const p = openPanel({ title: tr('teach.title'), lead: tr('teach.what', { name: v.name }) });
+  const list = el('div', 'pick-list');
+  for (const what of SKILL_ORDER) {
+    const def = VILLAGER_SKILLS[what];
+    const label = skillName(what);
+    if (knows(v, what)) {
+      list.appendChild(pickRow(def.icon, label, tr('teach.knowsIt')));
+    } else if (def.needs && !hasProject(w, def.needs)) {
+      list.appendChild(pickRow(def.icon, label, tr('teach.needBoat')));
+    } else if (def.cap && !can(w, g.role, def.cap)) {
+      list.appendChild(pickRow(def.icon, label, whoseJob(g, def.verb)));
+    } else if (!canTeach(w, g.role, what)) {
+      const have = teachTally(w, g.role, what);
+      list.appendChild(pickRow(def.icon, label, tr('teach.needMore', { have, need: TEACH_TIMES })));
+    } else {
+      list.appendChild(
+        pickRow(def.icon, label, null, () => {
+          if ((v.skills || []).length >= MAX_SKILLS) return teachInstead(g, v, what);
+          taught(g, v, what, null);
+          p.close();
+        }),
+      );
+    }
+  }
+  p.body.appendChild(list);
+  const r = p.row();
+  r.appendChild(p.button(tr('ui.back'), 'soft', () => openTeach(g)));
+  r.appendChild(p.button(tr('ui.close'), 'soft', () => p.close()));
+  return p;
+}
+
+/** Two jobs each and no more, so a third means one of them stops. */
+function teachInstead(game, v, what) {
+  const g = game;
+  const p = openPanel({ title: tr('teach.title'), lead: tr('teach.holdsTwo', { name: v.name }) });
+  const list = el('div', 'pick-list');
+  for (const s of v.skills) {
+    const def = VILLAGER_SKILLS[s.what];
+    list.appendChild(
+      pickRow(def.icon, tr('teach.stopThis', { skill: skillName(s.what) }), null, () => {
+        taught(g, v, what, s.what);
+        p.close();
+      }),
+    );
+  }
+  p.body.appendChild(list);
+  const r = p.row();
+  r.appendChild(p.button(tr('ui.back'), 'soft', () => teachVillager(g, v)));
+  r.appendChild(p.button(tr('ui.close'), 'soft', () => p.close()));
+  return p;
+}
+
+function taught(game, v, what, instead) {
+  const ok = game.dispatch({
+    type: 'villager.teach',
+    role: game.role,
+    id: v.id,
+    what,
+    instead,
+  });
+  if (ok) message(tr('teach.villagerDone', { name: v.name, skill: skillName(what) }));
 }
 
 function teachKey(cap) {

@@ -283,7 +283,8 @@ await scan('share');
 await p.screenshot({ path: out + '68-de-share.png' });
 await p.click('text=Schließen');
 
-// teaching now lives behind the OTHER role's chip, not your own
+// teaching: one door behind the OTHER role's chip, and everybody — the other
+// player and every villager — behind it
 await api(() => {
   window.OLW.world.players.B.done.care = 3;
 });
@@ -291,8 +292,28 @@ await p.click('#roleBar button[data-role="A"]');
 await p.waitForTimeout(300);
 await scan('role menu');
 await p.screenshot({ path: out + '69-de-role.png' });
-await p.click('text=Ihnen Tiere versorgen zeigen');
+await p.click('text=Etwas zeigen');
+await p.waitForSelector('.pick-list', { timeout: 5000 });
+await scan('teach panel');
+if (!/Tiere versorgen/.test(await p.textContent('.panel')))
+  throw new Error('the teaching panel is not German');
+await p.click('.p-rows button:has-text("Zurück")');
+await p.waitForSelector('.pick-list', { timeout: 5000 });
+const schueler = await api(() => window.OLW.world.villagers.find(v => v.homeId).name);
+await p.click('.pick-list .menu-item:has-text("' + schueler + '")');
+await p.waitForSelector('.pick-list', { timeout: 5000 });
+await scan('teach villager');
+await p.screenshot({ path: out + '69b-de-teach.png' });
+const jobs = await p.textContent('.panel');
+if (!/Schafe scheren/.test(jobs)) throw new Error('the villager panel is not German');
+await p.click('.pick-list .menu-item:has-text("Schafe scheren")');
 await p.waitForTimeout(300);
+const gelernt = await api(
+  n => (window.OLW.world.villagers.find(v => v.name === n).skills || []).length,
+  schueler,
+);
+console.log(schueler, 'hat gelernt:', gelernt);
+if (!gelernt) throw new Error('teaching a villager did not stick in German');
 
 // the end of the block: the next day begins on its own, and says nothing
 const dayBefore = await api(() => window.OLW.world.day);

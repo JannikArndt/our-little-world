@@ -5,6 +5,7 @@ import { T, COST, GW, GH, tileAt, walkable, inBounds, rebuildBlocked } from './g
 import { findPath } from './pathfind.js';
 import {
   byId,
+  newId,
   freeBed,
   blockProgress,
   isDusk,
@@ -15,6 +16,8 @@ import {
   SAPLING_TICKS,
   larderTotal,
   eatFromLarder,
+  bagRoom,
+  pileRoom,
 } from './world.js';
 import {
   POORLY_TICKS,
@@ -30,9 +33,13 @@ import {
   AWAY_TICKS_PER_HOUR,
   AWAY_CAP_TICKS,
   AWAY_MIN_MS,
+  WORK_EVERY,
+  WORK_TICKS,
+  TREE_FLOOR,
+  FISH_REST,
 } from './content.js';
 import { rnd, rndInt } from './rng.js';
-import { fx, journal, note, setAct, clearAct } from './actions.js';
+import { fx, iconOf, journal, note, setAct, clearAct } from './actions.js';
 
 const DT = 0.1; // seconds per tick
 const BASE_SPEED = 2.2; // tiles per second on a road
@@ -179,7 +186,11 @@ function chooseVillagerTask(w, v) {
       return;
     }
   }
-  // 4. the children go and play, because there is a playground now
+  // 4. a job they have been shown how to do — never instead of eating, going
+  //    home or carrying a log in, and never more than one every WORK_EVERY
+  if (chooseVillagerWork(w, v)) return;
+
+  // 5. the children go and play, because there is a playground now
   if (v.kid) {
     const pg = project(w, 'play');
     if (pg?.state === 'built' && rnd(w) < 0.4) {
@@ -191,7 +202,7 @@ function chooseVillagerTask(w, v) {
       }
     }
   }
-  // 5. curiosity: try to visit the far bank
+  // 6. curiosity: try to visit the far bank
   if (rnd(w) < 0.16) {
     const spot = CURIOUS[rndInt(w, CURIOUS.length)];
     if (goTo(w, v, spot.x, spot.y, 1)) {
@@ -205,14 +216,192 @@ function chooseVillagerTask(w, v) {
       return;
     }
   }
-  // 6. a life of their own, once the day is actually under way — never
+  // 7. a life of their own, once the day is actually under way — never
   //    instead of anything above, never as likely as any of it
   if (w.block.active && livingItUp(w, v)) return;
 
-  // 7. potter about
+  // 8. potter about
   const t = randomNearbyTile(w, v, 5);
   if (t && goTo(w, v, t.x, t.y)) v.task = { kind: 'wander' };
   else v.wait = 10 + rndInt(w, 20);
+}
+
+/* --------------------------------------------------------------------- */
+/* a villager with a job                                                  */
+/* --------------------------------------------------------------------- */
+
+/**
+ * Villagers gather; the two of you make. Somebody who has been shown how goes
+ * and does it, about once every WORK_EVERY — a third of the pace a player
+ * keeps, so a village of six is a hand, never a factory.
+ *
+ * It only ever happens to somebody who is all right: fed, housed, well, and
+ * with the day actually running. A hungry or homeless villager has something
+ * more pressing to be doing, and that is the whole of the check — nobody is
+ * ever made to work their way out of trouble.
+ */
+function chooseVillagerWork(w, v) {
+  if (!w.block.active || !v.skills?.length || v.carrying) return false;
+  if (v.poorly > 0 || !v.homeId || v.hunger >= HUNGRY_AT) return false;
+  if (w.tick - (v.workedAt ?? -9999) < WORK_EVERY) return false;
+
+  // whichever of their jobs has something real at the end of the walk, and
+  // then the world's own dice rather than a preference, so both screens send
+  // them to the same place
+  const jobs = [];
+  for (const s of v.skills) {
+    const job = workTarget(w, v, s.what);
+    if (job) jobs.push(job);
+  }
+  if (!jobs.length) return false;
+  const job = jobs[rndInt(w, jobs.length)];
+  if (!goTo(w, v, job.x, job.y, 1)) return false;
+  v.task = { kind: 'work', job: job.what, id: job.id };
+  return true;
+}
+
+/** Something worth walking to for this job, or nothing at all. */
+function workTarget(w, v, what) {
+  switch (what) {
+    case 'fell': {
+      // the floor: a villager never takes the forest below TREE_FLOOR trees,
+      // and never touches a sapling somebody planted
+      const standing = w.trees.filter(t => t.state === 'standing');
+      if (standing.length - 1 < TREE_FLOOR || pileRoom(w, 'wood') <= 0) return null;
+      const t = standing[rndInt(w, standing.length)];
+      return { what, id: t.id, x: t.x, y: t.y };
+    }
+    case 'stone': {
+      if (bagRoom(v, 'stone') <= 0) return null;
+      const spots = w.stones.filter(b => b.count > 0);
+      if (!spots.length) return null;
+      const b = spots[rndInt(w, spots.length)];
+      return { what, id: b.id, x: b.x, y: b.y };
+    }
+    case 'farm': {
+      const ripe = w.plots.filter(p => p.state === 'ripe');
+      if (ripe.length && pileRoom(w, 'wheat') > 0) {
+        const p = ripe[rndInt(w, ripe.length)];
+        return { what, id: p.id, x: p.x, y: p.y };
+      }
+      const bare = w.plots.filter(p => p.state === 'empty');
+      if (!bare.length) return null;
+      const p = bare[rndInt(w, bare.length)];
+      return { what, id: p.id, x: p.x, y: p.y };
+    }
+    case 'care': {
+      if (bagRoom(v, 'wool') <= 0) return null;
+      const woolly = w.sheep.filter(s => s.fluff > 60);
+      if (!woolly.length) return null;
+      const s = woolly[rndInt(w, woolly.length)];
+      return { what, id: s.id, x: Math.floor(s.x), y: Math.floor(s.y) };
+    }
+    case 'fish': {
+      const boat = project(w, 'boat');
+      if (!boat || boat.state !== 'built') return null;
+      if (w.tick - (boat.fishedTick ?? -9999) < FISH_REST) return null;
+      return { what, id: boat.id, x: boat.x, y: boat.y };
+    }
+    default:
+      return null;
+  }
+}
+
+/**
+ * The doing of it, once they have walked there. Everything here is a thing
+ * that grows back: the tree is replanted in the same step, the river brings
+ * more stones, wool and wheat and fish all come again on their own. Returns
+ * false when whatever they walked over for has gone — somebody else got there
+ * first — and then it is not a job done and the clock does not start again.
+ */
+function doVillagerJob(w, v, t) {
+  switch (t.job) {
+    case 'fell': {
+      const tree = byId(w.trees, t.id);
+      if (!tree || tree.state !== 'standing') return false;
+      if (w.trees.filter(x => x.state === 'standing').length - 1 < TREE_FLOOR) return false;
+      // felled and replanted in one step, so nobody ever comes back to a stump
+      tree.state = 'sapling';
+      tree.plantedTick = w.tick;
+      tree.kind = 1 + (Math.abs(tree.x * 7 + tree.y * 13) % 3);
+      rebuildBlocked(w);
+      w.logs.push({
+        id: newId('log'),
+        x: tree.x + 0.5,
+        y: tree.y + 0.5,
+        owner: null, // nobody's: it goes on the pile by the workshop door
+        claimed: null,
+        wood: 2,
+      });
+      fx(w, 'thump', tree.x + 0.5, tree.y + 0.5);
+      fx(w, 'float', tree.x + 0.5, tree.y - 0.2, '🌱');
+      say(w, v, 'say.timber', 30);
+      return true;
+    }
+    case 'stone': {
+      const b = byId(w.stones, t.id);
+      if (!b || b.count <= 0 || bagRoom(v, 'stone') <= 0) return false;
+      b.count -= 1;
+      v.bag.stone += 1;
+      fx(w, 'float', v.x, v.y - 0.6, '+1 🪨');
+      say(w, v, 'say.goodStone', 30);
+      return true;
+    }
+    case 'farm': {
+      const p = byId(w.plots, t.id);
+      if (!p) return false;
+      if (p.state === 'ripe') {
+        if (pileRoom(w, 'wheat') <= 0) return false;
+        const n = Math.max(1, 3 - p.nibbled);
+        p.state = 'empty';
+        p.growth = 0;
+        p.water = 0;
+        p.nibbled = 0;
+        v.carrying = { res: 'wheat', n, owner: null };
+        fx(w, 'float', p.x + 1, p.y, '+' + n + ' 🌾');
+        say(w, v, 'say.wheatIn', 30);
+        w.notices = w.notices.filter(x => x.id !== 'wheat_ready');
+        const ws = w.buildings.find(b => b.type === 'workshop');
+        if (ws && goTo(w, v, ws.door.x, ws.door.y, 1)) v.task = { kind: 'deliver' };
+        return true;
+      }
+      if (p.state !== 'empty') return false;
+      p.state = 'growing';
+      p.growth = 0;
+      p.water = 0;
+      p.nibbled = 0;
+      fx(w, 'float', p.x + 1, p.y, '🌱');
+      say(w, v, 'say.sown', 30);
+      return true;
+    }
+    case 'care': {
+      const s = byId(w.sheep, t.id);
+      if (!s || s.fluff <= 60 || bagRoom(v, 'wool') <= 0) return false;
+      if (Math.abs(s.x - v.x) + Math.abs(s.y - v.y) > 3) return false; // she wandered off
+      s.fluff = 0;
+      s.hearts = w.tick;
+      v.bag.wool += 1;
+      fx(w, 'float', s.x, s.y - 0.6, '+1 🧶');
+      fx(w, 'hearts', s.x, s.y - 0.7);
+      say(w, v, 'say.snipSnip', 30);
+      return true;
+    }
+    case 'fish': {
+      const boat = byId(w.buildings, t.id);
+      if (!boat || boat.state !== 'built') return false;
+      if (w.tick - (boat.fishedTick ?? -9999) < FISH_REST) return false;
+      boat.fishedTick = w.tick;
+      // straight into the basket: a villager fishes for the village, not for
+      // a player's own side of the table
+      w.larder.fish = (w.larder.fish || 0) + 1;
+      fx(w, 'float', boat.x + boat.w, boat.y - 0.2, '+1 🐟');
+      say(w, v, 'say.oneForTheBasket', 30);
+      w.notices = w.notices.filter(x => x.id !== 'hungry');
+      return true;
+    }
+    default:
+      return false;
+  }
 }
 
 /** Two villagers, close enough and neither already busy with something. */
@@ -398,7 +587,7 @@ function finishVillagerTask(w, v) {
       const log = byId(w.logs, t.id);
       if (log) {
         w.logs = w.logs.filter(l => l.id !== log.id);
-        v.carrying = { wood: log.wood, owner: log.owner };
+        v.carrying = { res: 'wood', n: log.wood, owner: log.owner ?? null };
         const ws = w.buildings.find(b => b.type === 'workshop');
         if (ws && goTo(w, v, ws.door.x, ws.door.y, 1)) {
           v.task = { kind: 'deliver' };
@@ -409,14 +598,44 @@ function finishVillagerTask(w, v) {
       break;
     }
     case 'deliver': {
-      if (v.carrying) {
-        const p = w.players[v.carrying.owner] || w.players.A;
-        p.res.wood += v.carrying.wood;
-        fx(w, 'float', v.x, v.y - 0.6, '+' + v.carrying.wood + ' 🪵');
+      const c = v.carrying;
+      if (c) {
+        const owner = c.owner ? w.players[c.owner] : null;
+        if (owner) {
+          // somebody felled that tree: it is theirs, and always was
+          owner.res[c.res] = (owner.res[c.res] || 0) + c.n;
+          fx(w, 'float', v.x, v.y - 0.6, '+' + c.n + ' ' + iconOf(c.res));
+        } else {
+          // nobody's: it goes on the pile by the door, for either of you.
+          // A full pile takes what fits — the hauling stops before this, so
+          // getting here at all means the pile filled up on the way over.
+          const n = Math.min(pileRoom(w, c.res), c.n);
+          if (n > 0) {
+            w.pile[c.res] = (w.pile[c.res] || 0) + n;
+            fx(w, 'float', v.x, v.y - 0.6, '+' + n + ' ' + iconOf(c.res));
+          }
+        }
         say(w, v, 'say.delivered', 25);
         v.carrying = null;
       }
       v.wait = 15;
+      break;
+    }
+    case 'work': {
+      // a moment of actually doing it before anything changes, the way eating
+      // takes a moment — and it is what the 👥 list and the world both show
+      const act = setAct(w, v, 'work', WORK_TICKS);
+      act.job = t.job;
+      v.task = { kind: 'workDone', job: t.job, id: t.id };
+      v.wait = WORK_TICKS;
+      break;
+    }
+    case 'workDone': {
+      clearAct(v);
+      const done = doVillagerJob(w, v, t);
+      if (done) v.workedAt = w.tick; // the clock starts when the job is finished
+      if (v.task) return; // reaping sends them straight on to the pile
+      v.wait = done ? 15 : 20;
       break;
     }
     case 'rest':

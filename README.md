@@ -26,7 +26,12 @@ The keeper can
 - care for the animals
 - fish
 
-Skills can also be taught from one player to the other.
+Skills can also be taught from one player to the other — and the five
+gathering ones to the people who live here. A villager holds two jobs, ever:
+felling and replanting, picking up stones, the field, shearing, and taking the
+boat out. Sawing, milling, bridges, houses, roads and projects stay in the
+players' hands. What they gather goes on the pile by the workshop door, or
+stays in their arms until somebody takes it.
 
 ### World
 

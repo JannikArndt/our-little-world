@@ -92,6 +92,7 @@ export const de = {
   'menu.share': 'Etwas abgeben',
   'menu.invite': '{role} einladen',
   'menu.teach': 'Ihnen {what} zeigen',
+  'menu.teachSomething': 'Etwas zeigen',
   'menu.youCan': 'Was du kannst',
   'menu.news': 'Was passiert ist',
   'menu.youDid': 'Was du geschafft hast',
@@ -132,6 +133,10 @@ export const de = {
   'deed.care_other': '{n}-mal die Tiere versorgt',
   'deed.plant_one': 'einen Setzling gepflanzt',
   'deed.plant_other': '{n} Setzlinge gepflanzt',
+  'deed.stone_one': 'einen Stein aufgesammelt',
+  'deed.stone_other': '{n} Steine aufgesammelt',
+  'deed.taught_one': 'jemandem etwas gezeigt',
+  'deed.taught_other': '{n}-mal jemandem etwas gezeigt',
 
   /* ---- der Willkommen-zurück-Bildschirm: was das Tagebuch nicht sagen kann,
      weil ein neuer Tag es leert, w.ext.since aber nicht ---- */
@@ -157,6 +162,7 @@ export const de = {
   'j.shared': 'dir {n} {res} geschenkt',
   'j.basket': '{n} Essen in den Korb gelegt',
   'j.taught': 'dir etwas Neues beigebracht',
+  'j.taughtVillager': '{name} gezeigt, wie man {skill} kann',
   'j.family': 'eine neue Familie ist angekommen',
   'j.deer': 'ein Besucher wurde im Dorf gesichtet',
 
@@ -228,6 +234,29 @@ export const de = {
   'teach.notice': 'Jetzt könnt ihr beide {what}.',
   'teach.cannot': 'Das kannst du noch nicht — lass es dir zeigen.',
 
+  /* ---- was ein Dorfbewohner lernen kann: sammeln, und nur sammeln ---- */
+  'skill.fell': 'Bäume fällen',
+  'skill.stone': 'Steine sammeln',
+  'skill.farm': 'auf dem Feld arbeiten',
+  'skill.care': 'Schafe scheren',
+  'skill.fish': 'mit dem Boot rausfahren',
+  'teach.title': '👐 Zeig, wie es geht',
+  'teach.who': 'Wem sollen wir es zeigen?',
+  'teach.thePlayers': 'Der andere Spieler',
+  'teach.theFolk': 'Alle hier',
+  'teach.anything': 'Kann alles lernen, was du kannst',
+  'teach.gathering': 'Kann sammeln lernen',
+  'teach.what': 'Was soll {name} lernen?',
+  'teach.knowsIt': 'Kann das schon',
+  'teach.needMore': 'Du hast das {have} von {need} Malen gemacht',
+  'teach.needBoat': 'Es gibt noch kein Boot',
+  'teach.nothingToShow':
+    'Noch nichts zu zeigen. Mach eine Sache zweimal, dann kannst du sie weitergeben.',
+  'teach.holdsTwo': '{name} hat schon zwei Aufgaben. Welche hört auf?',
+  'teach.stopThis': 'Nicht mehr {skill}',
+  'teach.villagerDone': '👐 {name} kann jetzt {skill}.',
+  'teach.villagerNotice': 'Jetzt kann {name} auch {skill}.',
+
   /* ---- Blasen in der Welt ---- */
   'w.tree': 'Ein Baum',
   'w.treeHint': 'Hier kommt das Holz her. Eine saubere Kerbe holt mehr heraus.',
@@ -255,6 +284,14 @@ export const de = {
   'w.villagerHomeless': '{name} hat noch kein Bett. Ein Haus würde das lösen.',
   'w.villagerCarrying': 'Trägt einen Stamm zur Werkstatt.',
   'w.villagerFine': 'Kommt gut durch den Tag.',
+  'w.villagerCan': 'Hilft mit: {what}',
+  'w.villagerCanNothing': 'Hat noch keine Aufgabe gelernt.',
+  'w.villagerHolding': 'Hat {what} dabei.',
+  'w.takeBag': 'Die {n} {icon} nehmen',
+  'w.teachThem': '👐 Etwas zeigen',
+  'w.pile': 'Der Stapel an der Tür',
+  'w.pileHas': '{what} auf dem Stapel, für wen ihn braucht.',
+  'w.pileTake': '🪵 Nimm, was hier liegt',
 
   /* ---- Der Dorfkorb, ausführlich ---- */
   'basket.title': '🧺 Der Dorfkorb',
@@ -282,6 +319,7 @@ export const de = {
   'doing.sit': 'Sitzt eine Weile.',
   'doing.eat': 'Isst gerade.',
   'doing.squabble': 'Zankt sich — tipp drauf, dann ist Schluss.',
+  'doing.work': 'Erledigt gerade eine Aufgabe.',
   'w.findPlot': '🏠 Einen Bauplatz suchen',
   'w.putFood': '🍞🐟 Essen in den Korb legen',
   'w.deer': 'Ein Reh',
@@ -557,6 +595,12 @@ export const de = {
   'say.restingUp': 'ich setz mich mal kurz…',
   'say.natter': 'hast du das gehört…?',
   'say.laLa': 'lalala!',
+  'say.timber': 'und einer wieder rein!',
+  'say.goodStone': 'ein guter!',
+  'say.sown': 'alles gesät!',
+  'say.wheatIn': 'der Weizen ist drin!',
+  'say.snipSnip': 'schnipp schnapp!',
+  'say.oneForTheBasket': 'einer für den Korb!',
 
   /* ---- Der Wegweiser ---- */
   'guide.who.A': 'Baumeister',

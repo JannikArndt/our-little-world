@@ -16,6 +16,11 @@ import {
   HOUSE_WALL,
   HOUSE_ALL,
   FOODS,
+  VILLAGER_SKILLS,
+  MAX_SKILLS,
+  TEACH_TIMES,
+  BAG_CAP,
+  PILE_CAP,
 } from './content.js';
 import { runMigrations } from './migrate.js';
 
@@ -37,6 +42,7 @@ export const RESOURCES = [
 
 // what things cost and how fast they grow lives with the rest of the content
 export { PROJECT, PROJECTS, SAPLING_TICKS, REPLANT_GOAL, SCENARIOS, FOODS } from './content.js';
+export { VILLAGER_SKILLS, SKILL_ORDER, MAX_SKILLS, TEACH_TIMES } from './content.js';
 
 /** The roles in play, drawn from the catalogue. */
 export const ROLE = ROLES;
@@ -58,6 +64,47 @@ export const CAPS = {
   farm: { icon: '🌱', owner: 'B' },
 };
 
+/**
+ * What a villager can hold in their arms, and what can be stacked by the
+ * workshop door. Two short lists rather than one: stone and wool stay with
+ * whoever picked them up until a player takes them, while wood and wheat are
+ * hauled to the pile where either of you can.
+ */
+export const BAG_KEYS = ['stone', 'wool'];
+export const PILE_KEYS = ['wood', 'wheat'];
+
+/** How much is in a pair of arms, or on the pile. */
+export function bagTotal(v) {
+  return BAG_KEYS.reduce((n, k) => n + (v?.bag?.[k] || 0), 0);
+}
+export function pileTotal(w) {
+  return PILE_KEYS.reduce((n, k) => n + (w.pile?.[k] || 0), 0);
+}
+export function bagRoom(v, res) {
+  return Math.max(0, BAG_CAP - (v?.bag?.[res] || 0));
+}
+export function pileRoom(w, res) {
+  return Math.max(0, PILE_CAP - (w.pile?.[res] || 0));
+}
+
+/** Does this villager know how to do that? */
+export function knows(v, what) {
+  return !!v.skills?.some(s => s.what === what);
+}
+
+/**
+ * What somebody is carrying, in one shape. It used to be `{ wood, owner }`,
+ * because wood was the only thing anybody ever carried; a villager coming
+ * home with wheat needed it to say which. A world saved mid-delivery keeps
+ * its log and still delivers it.
+ */
+export function carried(c) {
+  if (!c || typeof c !== 'object') return null;
+  if (c.res) return { res: c.res, n: c.n || 0, owner: c.owner ?? null };
+  if (c.wood != null) return { res: 'wood', n: c.wood, owner: c.owner ?? null };
+  return null;
+}
+
 /** Names live in the language tables, not in the world. */
 export function roleName(id) {
   return tr('role.' + id + '.short');
@@ -67,6 +114,28 @@ export function capName(key) {
 }
 export function resName(key) {
   return tr('res.' + key);
+}
+export function skillName(key) {
+  return tr('skill.' + key);
+}
+
+/**
+ * A stored line, read in whichever language is reading it. Notices, the
+ * journal and the welcome-back list keep a key and plain values rather than a
+ * finished sentence (law 14), so a value that names a thing — a resource, a
+ * job somebody has been shown — is turned into a word here, at the last
+ * moment, instead of being written into the world in the acting player's
+ * language.
+ */
+export function said(o) {
+  if (!o?.key) return o?.text || '';
+  let vars = o.vars;
+  if (vars && (vars.res || vars.skill)) {
+    vars = Object.assign({}, vars);
+    if (vars.res) vars.res = resName(vars.res);
+    if (vars.skill) vars.skill = skillName(vars.skill);
+  }
+  return tr(o.key, vars);
 }
 
 let nextId = 1;
@@ -165,6 +234,7 @@ export function createWorld(seed, scenarioId) {
     visitors: [],
     bridge: { built: false, tiles: [], quality: 0, damaged: false },
     larder: { x: scen.larder.x, y: scen.larder.y, food: scen.larder.food },
+    pile: { wood: 0, wheat: 0 },
     players: {},
     regions: {},
     notices: [],
@@ -394,7 +464,19 @@ export function ensureWorld(w) {
   for (const v of w.villagers) {
     if (v.kid === undefined) v.kid = false;
     if (!v.poorly) v.poorly = 0;
+    // what they have been shown how to do, what is in their arms, and when
+    // they last finished a job — all new, all empty in a world saved before
+    // anybody thought to teach anybody anything
+    if (!Array.isArray(v.skills)) v.skills = [];
+    v.skills = v.skills.filter(s => s && VILLAGER_SKILLS[s.what]).slice(0, MAX_SKILLS);
+    if (!v.bag || typeof v.bag !== 'object') v.bag = {};
+    for (const k of BAG_KEYS) if (typeof v.bag[k] !== 'number') v.bag[k] = 0;
+    if (typeof v.workedAt !== 'number') v.workedAt = 0;
+    v.carrying = carried(v.carrying);
   }
+  // the pile by the workshop door, where a villager puts what nobody owns
+  if (!w.pile || typeof w.pile !== 'object') w.pile = {};
+  for (const k of PILE_KEYS) if (typeof w.pile[k] !== 'number') w.pile[k] = 0;
   // a food nobody had caught yet when this world was saved starts at none
   for (const f of FOODS) {
     if (w.larder[f.key] == null) w.larder[f.key] = 0;
@@ -629,6 +711,24 @@ export function otherRole(r) {
 }
 export function can(w, role, cap) {
   return !!w.players[role]?.caps[cap];
+}
+
+/**
+ * Showing a villager how. The same gate as showing the other player: you have
+ * to be able to do the thing, and to have done it twice — a count you can see
+ * rather than a door that is simply shut. `stone` has no capability behind it,
+ * so either of you can pass that one on once you have picked a couple up.
+ */
+export function teachTally(w, role, what) {
+  const def = VILLAGER_SKILLS[what];
+  return def ? w.players[role]?.done[def.tally] || 0 : 0;
+}
+export function canTeach(w, role, what) {
+  const def = VILLAGER_SKILLS[what];
+  if (!def || !w.players[role]) return false;
+  if (def.cap && !can(w, role, def.cap)) return false;
+  if (def.needs && !hasProject(w, def.needs)) return false;
+  return teachTally(w, role, what) >= TEACH_TIMES;
 }
 
 export function freeBed(w) {

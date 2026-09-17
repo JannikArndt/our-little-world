@@ -17,7 +17,9 @@ import {
   resName,
   RESOURCES,
 } from '../core/world.js';
-import { PROJECTS } from '../core/content.js';
+import { BAG_KEYS, PILE_KEYS, hasProject, pileTotal } from '../core/world.js';
+import { PROJECTS, FISH_REST, SKILL_ORDER, VILLAGER_SKILLS } from '../core/content.js';
+import { openTeach, skillIcons } from './hud.js';
 import { canPay } from '../core/actions.js';
 import { tr, trn } from '../core/i18n.js';
 import { el, message, renderCost, openPanel } from './overlay.js';
@@ -212,6 +214,61 @@ function theirs(game, verbs) {
   return ' ' + tr('w.theirJob', { role: roleName(game.other), what: what });
 }
 
+/** "12 🪵 + 3 🌾" — what is standing by the workshop door. */
+function pileLine(w) {
+  return PILE_KEYS.filter(k => (w.pile?.[k] || 0) > 0)
+    .map(k => w.pile[k] + ' ' + costIcon(k))
+    .join(' + ');
+}
+
+/**
+ * Somebody you have tapped. The poke has already gone off — that is what a
+ * tap on a person has always done, and it still happens on the same tap — and
+ * this is the rest of the answer: what they have been shown how to do, what
+ * is in their arms, and the two things you can do about it.
+ *
+ * A job that needs hands they have not got is still only a sentence (law 4):
+ * it names whose job the showing would be, and offers no button.
+ */
+function villagerBubble(game, v) {
+  const w = game.world,
+    r = game.role;
+  const A = [];
+  const icons = skillIcons(v);
+  const holding = BAG_KEYS.filter(k => (v.bag?.[k] || 0) > 0);
+  const lines = [icons ? tr('w.villagerCan', { what: icons }) : tr('w.villagerCanNothing')];
+  if (holding.length)
+    lines.push(
+      tr('w.villagerHolding', {
+        what: holding.map(k => v.bag[k] + ' ' + costIcon(k)).join(' + '),
+      }),
+    );
+
+  for (const k of holding) {
+    const n = v.bag[k];
+    A.push({
+      label: tr('w.takeBag', { n, icon: costIcon(k) }),
+      fn: () => game.dispatch({ type: 'villager.unload', role: r, id: v.id, res: k }),
+    });
+  }
+  A.push({
+    label: tr('w.teachThem'),
+    cls: 'soft',
+    fn: () => openTeach(game, { kind: 'villager', id: v.id }),
+  });
+
+  // the jobs they could still learn that are not yours to show
+  const theirJobs = SKILL_ORDER.filter(what => {
+    const def = VILLAGER_SKILLS[what];
+    if (!def.cap || !def.verb) return false;
+    if (v.skills?.some(s => s.what === what)) return false;
+    if (def.needs && !hasProject(w, def.needs)) return false;
+    return !can(w, r, def.cap);
+  }).map(what => VILLAGER_SKILLS[what].verb);
+
+  return { title: v.name, hint: lines.join(' ') + theirs(game, theirJobs), actions: A };
+}
+
 /**
  * The two things the village builds for itself. No plan to draw and no test to
  * run: it is planks, stone and somebody deciding to do it.
@@ -363,8 +420,8 @@ function actionsFor(game, h) {
       return { title: s.name, hint: wants + theirs(game, missing), actions: A };
     }
 
-    // a tap on a villager never reaches here any more — installInput answers
-    // it directly with villager.poke, before actionsFor is ever called
+    // a tap on a villager never reaches here — installInput pokes them and
+    // opens their own bubble, before actionsFor is ever called
 
     case 'deer':
       return { title: tr('w.deer'), hint: tr('w.deerHint'), actions: [] };
@@ -414,7 +471,7 @@ function actionsFor(game, h) {
       const b = h.o;
       if (b.type === 'boat') {
         if (b.state === 'plan') return projectBubble(game, b);
-        const resting = w.tick - (b.fishedTick || -9999) < 600;
+        const resting = w.tick - (b.fishedTick || -9999) < FISH_REST;
         const canFish = can(w, r, 'farm');
         if (canFish && !resting) A.push({ label: tr('w.goFishing'), fn: () => openFish(game, b) });
         const boatHint = resting ? tr('w.boatResting') : tr('w.boatHint');
@@ -449,6 +506,14 @@ function actionsFor(game, h) {
       }
       if (b.type === 'workshop') {
         const missing = [];
+        // what the villagers have hauled in stands by the door, and belongs to
+        // whoever picks it up — it goes first, because it is free
+        if (pileTotal(w) > 0)
+          A.push({
+            label: tr('w.pileTake'),
+            cost: pileLine(w),
+            fn: () => game.dispatch({ type: 'pile.take', role: r }),
+          });
         if (can(w, r, 'saw')) A.push({ label: tr('w.sawHere'), fn: () => openSawmill(game) });
         else missing.push('saw');
         if (can(w, r, 'mill'))
@@ -456,7 +521,10 @@ function actionsFor(game, h) {
         else missing.push('mill');
         return {
           title: tr('w.workshop'),
-          hint: tr('w.workshopHint') + theirs(game, missing),
+          hint:
+            tr('w.workshopHint') +
+            (pileTotal(w) > 0 ? ' ' + tr('w.pileHas', { what: pileLine(w) }) : '') +
+            theirs(game, missing),
           actions: A,
         };
       }
@@ -651,6 +719,8 @@ export function installInput(game, renderer, canvas) {
     if (h.kind === 'villager') {
       closeBubble();
       game.dispatch({ type: 'villager.poke', role: game.role, id: h.o.id });
+      const r = canvas.getBoundingClientRect();
+      showBubble(x - r.left, y - r.top, villagerBubble(game, h.o));
       return;
     }
     // and the basket has more to say than a bubble holds

@@ -16,8 +16,21 @@ import {
   houseFit,
   newHouseStuff,
   slotFits,
+  canTeach,
+  knows,
+  BAG_KEYS,
+  PILE_KEYS,
+  RESOURCES,
 } from './world.js';
-import { PROJECTS, EAGER_AT, HOUSE_SHELL, HOUSE_STUFF, FOODS } from './content.js';
+import {
+  PROJECTS,
+  EAGER_AT,
+  HOUSE_SHELL,
+  HOUSE_STUFF,
+  FOODS,
+  VILLAGER_SKILLS,
+  MAX_SKILLS,
+} from './content.js';
 import { findPath } from './pathfind.js';
 import { rndInt } from './rng.js';
 
@@ -127,6 +140,10 @@ export function canPay(w, role, cost) {
 }
 function gain(w, role, key, n) {
   w.players[role].res[key] = (w.players[role].res[key] || 0) + n;
+}
+/** The picture for a resource, for the little number that floats up. */
+export function iconOf(key) {
+  return (RESOURCES.find(r => r.key === key) || {}).icon || '';
 }
 /**
  * A running count of what somebody has actually done. It teaches — two of a
@@ -571,6 +588,9 @@ function applyOne(w, a) {
       b.count -= 1;
       gain(w, a.role, 'stone', 1);
       fx(w, 'float', b.x + 0.5, b.y, '+1 🪨');
+      // picking stones up is the one thing either of you can show a villager,
+      // so it needs a count of its own to be shown twice from
+      tally(w, a.role, 'stone');
       return true;
     }
     case 'log.collect': {
@@ -635,6 +655,83 @@ function applyOne(w, a) {
         'calm',
       );
       return true;
+    }
+
+    /* ---------------- showing a villager how ---------------- */
+    /**
+     * Two jobs each, ever. A villager already holding two has to give one up
+     * to take a new one, and `instead` has to name one they really hold — so
+     * the same teaching applied twice does nothing the second time: by then
+     * they already know it.
+     */
+    case 'villager.teach': {
+      const v = byId(w.villagers, a.id);
+      const def = VILLAGER_SKILLS[a.what];
+      if (!v || !def || !w.players[a.role]) return false;
+      if (!Array.isArray(v.skills)) v.skills = [];
+      if (knows(v, a.what)) return false;
+      if (!canTeach(w, a.role, a.what)) return false;
+      if (v.skills.length >= MAX_SKILLS) {
+        const i = v.skills.findIndex(s => s.what === a.instead);
+        if (!a.instead || i < 0) return false;
+        v.skills.splice(i, 1);
+      }
+      v.skills.push({ what: a.what, by: a.role });
+      v.hearts = w.tick;
+      fx(w, 'float', v.x, v.y - 0.8, def.icon);
+      tally(w, a.role, 'taught');
+      journal(w, '👐', 'j.taughtVillager', { name: v.name, skill: a.what });
+      note(
+        w,
+        'taught_' + v.id + '_' + a.what,
+        def.icon,
+        'teach.villagerNotice',
+        { name: v.name, skill: a.what },
+        'calm',
+      );
+      return true;
+    }
+
+    /**
+     * Taking what somebody has been carrying about all afternoon. An empty
+     * pair of arms is a no, which is what makes it safe to apply twice — the
+     * second time there is nothing left in them.
+     */
+    case 'villager.unload': {
+      const v = byId(w.villagers, a.id);
+      if (!v || !v.bag || !w.players[a.role]) return false;
+      const keys = a.res ? [a.res] : BAG_KEYS;
+      let took = 0;
+      for (const k of keys) {
+        if (!BAG_KEYS.includes(k)) continue;
+        const n = v.bag[k] || 0;
+        if (n <= 0) continue;
+        v.bag[k] = 0;
+        gain(w, a.role, k, n);
+        fx(w, 'float', v.x, v.y - 0.6, '+' + n + ' ' + iconOf(k));
+        took += n;
+      }
+      if (!took) return false;
+      v.hearts = w.tick;
+      return true;
+    }
+
+    /** The same again, for the pile by the workshop door. One button, the lot. */
+    case 'pile.take': {
+      if (!w.pile || !w.players[a.role]) return false;
+      const ws = w.buildings.find(b => b.type === 'workshop');
+      const keys = a.res ? [a.res] : PILE_KEYS;
+      let took = 0;
+      for (const k of keys) {
+        if (!PILE_KEYS.includes(k)) continue;
+        const n = w.pile[k] || 0;
+        if (n <= 0) continue;
+        w.pile[k] = 0;
+        gain(w, a.role, k, n);
+        if (ws) fx(w, 'float', ws.x + 2, ws.y - 0.2, '+' + n + ' ' + iconOf(k));
+        took += n;
+      }
+      return took > 0;
     }
 
     /* ---------------- presence & housekeeping ---------------- */

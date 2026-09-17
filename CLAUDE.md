@@ -47,6 +47,18 @@ one" is not permission — say which law it crosses and wait.
   drawn by a human, in both languages, before it shipped.
 - Nothing that gets longer the more you play. Nothing that decays while away.
 
+**Why villager skills are not on this list.** A villager who has been shown a
+job gathers while you watch and while you are away, which sounds exactly like
+the thing the last line forbids — so the ceiling is the whole point of it.
+There are six villagers and each holds **two** jobs, ever (`MAX_SKILLS`), and
+what they can hold is capped where you can see it: six of a thing in their
+arms (`BAG_CAP`), twenty on the pile by the workshop door (`PILE_CAP`), eight
+jobs brought back from any absence however long (`AWAY_JOBS_CAP`). Twelve jobs
+between them is as much as this village will ever do, and it is as much on the
+first afternoon as on the hundredth. Raising any of those numbers, or adding a
+third job, is the step that would put this on the list — so it needs the
+owner, not a session that has just found a reason.
+
 ## 📏 The laws
 
 **1. One mission at a time.** The guide shows exactly one thing. No hurry, no
@@ -97,8 +109,14 @@ their own half, and being blocked on the other is a feature — it is what the
 call is for. Do not invest in making a lone player self-sufficient.
 
 **9. Only kind things happen while nobody is there.** Saplings grow, wheat
-ripens, wool comes in. Never hunger, never decay, never a problem that arrived
-on its own. Coming back is a small gift.
+ripens, wool comes in, and a villager who has been shown a job gets on with it
+— fells and replants in the same step, gathers a stone, sows a row, shears a
+sheep, brings a fish home. That is a kind thing and belongs here: it only ever
+*adds*. Never hunger, never decay, never a problem that arrived on its own,
+nothing taken from the larder or from a player, no stump left standing where
+a tree was. A villager who was hungry, homeless or poorly when you left
+brought nothing in, because nobody in this village works their way out of
+trouble. Coming back is a small gift.
 
 **10. Coming back explains itself.** The welcome-back screen lists what the
 *other player* did since you were last here — new buildings, gifts received
@@ -708,6 +726,44 @@ is no per-project action.
 
 Split the cost across roles on purpose (law 7). A project one role can pay for
 alone is a missed conversation.
+
+### A villager skill
+
+Villagers gather; the two of you make. The five in `VILLAGER_SKILLS`
+(`src/core/content.js`) are the whole list, and a sixth is a deliberate
+decision rather than a tidy-up — see the ceiling note in the anti-list section.
+
+A new one is one row in `VILLAGER_SKILLS` — its icon, the `cap` a teacher
+needs (null means either of you), the `tally` in their `done` that has to
+reach `TEACH_TIMES`, the `verb.*` key for whose job it is when it is not
+yours, and a `needs` when something has to be standing first — plus its place
+in `SKILL_ORDER`. Then:
+
+- **something to walk to**, in `workTarget()` in `sim.js`, which returns
+  nothing at all when there is no real target: a full bag, a full pile, a
+  forest at its floor.
+- **what it does**, in `doVillagerJob()` in `sim.js`, returning false when
+  whatever they walked over for has gone. Every effect is `fx()`, a `say.*`
+  line, and one thing added — never one taken.
+- **where the yield goes.** Wood and wheat are hauled to `w.pile` (nobody's,
+  `PILE_CAP`); stone and wool go into `v.bag` (theirs until a player asks,
+  `BAG_CAP`); food goes straight into `w.larder`. Nothing a villager gathers
+  ever lands on a player's own side of the table.
+- **it has to be renewable.** A tree is replanted in the same step, the river
+  brings more stones, wheat and wool and fish come again on their own. A job
+  that takes something that does not come back breaks law 9 the first night
+  somebody leaves the village alone.
+- **strings in every language**: `skill.<key>` as an infinitive phrase ("fell
+  trees"), so `j.taughtVillager` and `teach.villagerNotice` read as sentences
+  in both.
+- **a test in `tests/skills.test.mjs`**, and a line in `catchUp`'s away test
+  if the job can happen while nobody is watching.
+
+The `stone` skill is the odd one: it has no capability behind it, so
+`stone.take` carries `tally(w, a.role, 'stone')` purely to be the gate for
+teaching it. A deed of its own needs its rows in `DEEDS` (`hud.js` and
+`stats.html`) and in `DEED_TYPES` (`server/stats.mjs`) — see the three-lists
+note before assuming anything else needs changing.
 
 ### Something to put in a house
 

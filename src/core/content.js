@@ -311,6 +311,10 @@ export const SCENARIOS = {
       { key: 'house_b', x: 10, y: 12, w: 3, h: 2, name: "Mira's house", beds: 2 },
     ],
     sites: [{ key: 'site_village', x: 4, y: 18, w: 3, h: 2, name: 'an empty plot' }],
+    // Where a family that hears about this place marks out a plot of their own.
+    // Not in `sites`, because it is not there until the world puts it there —
+    // the `newfamily` happening does, and only once houses are going up.
+    newFamily: { key: 'site_east', x: 26, y: 6, w: 3, h: 2, name: 'a marked-out plot' },
     works: [{ key: 'workshop', type: 'workshop', x: 9, y: 16, w: 4, h: 3, name: 'the workshop' }],
     roads: [
       [5, 14, 8, 15],
@@ -411,6 +415,11 @@ export const SCENARIOS = {
 };
 
 export const DEFAULT_SCENARIO = 'valley';
+
+/** The plot the `newfamily` happening marks out. Read it, never the string. */
+export function newFamilySite(w) {
+  return scenarioOf(w).newFamily || null;
+}
 
 export function scenarioOf(w) {
   return SCENARIOS[w?.scenario || DEFAULT_SCENARIO] || SCENARIOS[DEFAULT_SCENARIO];

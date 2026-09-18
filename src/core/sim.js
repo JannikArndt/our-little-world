@@ -18,6 +18,7 @@ import {
   eatFromLarder,
   bagRoom,
   pileRoom,
+  newFamilyPlot,
 } from './world.js';
 import {
   POORLY_TICKS,
@@ -1038,8 +1039,7 @@ export function tick(w) {
     if (!w.plots.some(p => p.state === 'ripe'))
       w.notices = w.notices.filter(n => n.id !== 'wheat_ready');
     if (!noBed.length) w.notices = w.notices.filter(n => n.id !== 'homeless');
-    if (!w.buildings.some(b => b.id === 'site_east' && b.state === 'site'))
-      w.notices = w.notices.filter(n => n.id !== 'newfamily');
+    if (newFamilyPlot(w)?.state !== 'site') w.notices = w.notices.filter(n => n.id !== 'newfamily');
     if (!w.sheep.some(s => tileAt(w, Math.floor(s.x), Math.floor(s.y)) === T.FIELD))
       w.notices = w.notices.filter(n => n.id !== 'sheep_in_field');
   }

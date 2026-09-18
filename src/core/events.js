@@ -3,7 +3,7 @@
 // they stop entirely near the end of a play block so the world can settle.
 
 import { rnd } from './rng.js';
-import { blockProgress } from './world.js';
+import { blockProgress, newFamilyPlot } from './world.js';
 
 const QUIET_AFTER = 0.72; // no new problems in the last quarter of a block
 const WARMUP = 0.1;
@@ -24,7 +24,7 @@ export function maybeEvent(w) {
     options.push({ event: 'storm', weight: 3 });
 
   // word gets around that there are houses being built here
-  if (w.journal.some(j => j.icon === '🏠') && !w.buildings.some(b => b.id === 'site_east'))
+  if (w.journal.some(j => j.icon === '🏠') && !newFamilyPlot(w))
     options.push({ event: 'newfamily', weight: 4 });
 
   // something wanders out of the forest

@@ -14,7 +14,7 @@ import {
   isPanelOpen,
   isMenuOpen,
 } from './ui/overlay.js';
-import { otherRole, byId } from './core/world.js';
+import { otherRole, byId, newFamilyPlot } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
 import { deviceId, rememberWorld } from './core/persist.js';
@@ -490,8 +490,8 @@ async function startGame(choice) {
           w.bridge.site.row + 1,
         ],
         newfamily: () => {
-          const b = byId(w.buildings, 'site_east');
-          return b ? [b.x + 1.5, b.y + 1] : null;
+          const b = newFamilyPlot(w);
+          return b ? [b.x + b.w / 2, b.y + b.h / 2] : null;
         },
         critter: () => (w.visitors?.[0] ? [w.visitors[0].x, w.visitors[0].y] : null),
       }[n.id];

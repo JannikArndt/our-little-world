@@ -21,6 +21,7 @@ import {
   TEACH_TIMES,
   BAG_CAP,
   PILE_CAP,
+  newFamilySite,
 } from './content.js';
 import { runMigrations } from './migrate.js';
 
@@ -875,6 +876,15 @@ export function kids(w) {
 /** The house plot people are waiting on — never one of the project plans. */
 export function openSite(w) {
   return w.buildings.find(b => b.state === 'site') || null;
+}
+
+/**
+ * The plot a new family marked out, if one ever turned up. Where it goes is the
+ * scenario's business (`newFamily`), so nothing outside content.js knows its id.
+ */
+export function newFamilyPlot(w) {
+  const site = newFamilySite(w);
+  return site ? byId(w.buildings, site.key) : null;
 }
 
 /** A project: 'plan' while it is only an idea, 'built' once it is there. */

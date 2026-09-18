@@ -23,6 +23,7 @@ import {
   HOUSE_ALL,
   HOUSE_SLOTS,
 } from '../core/content.js';
+import { homeless } from '../core/world.js';
 import { canPay } from '../core/actions.js';
 import { tracer, wordStrokes, shapeStrokes, traceHeader } from './trace.js';
 
@@ -102,7 +103,10 @@ export function openRaise(game, site) {
     if (!game.dispatch({ type: 'house.build', role: r, siteId: site.id })) return;
     stop();
     p.close();
-    message(tr('msg.houseUp'));
+    // named on the spot, from the world as it stands right now — never sent,
+    // just read: whoever has no bed yet is who the player will see walk in.
+    const waiting = homeless(w);
+    message(waiting.length ? tr('msg.houseUp', { name: waiting[0].name }) : tr('msg.houseUpEmpty'));
     game.look(site.x + site.w / 2, site.y + site.h / 2);
     const built = game.world.buildings.filter(b => b.id === site.id)[0];
     if (built) openHouse(game, built); // straight inside, to furnish it

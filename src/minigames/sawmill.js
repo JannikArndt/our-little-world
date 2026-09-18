@@ -2,7 +2,7 @@
 //   sawmill: wood -> planks   (cut the log into equal pieces)
 //   mill:    wheat -> bread   (turn the stone, then bake)
 
-import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overlay.js';
+import { el, openPanel, makeCanvas, onPointer, loop } from '../ui/overlay.js';
 import { C, rr, glyph } from '../render/art.js';
 import { tr, trn } from '../core/i18n.js';
 import { makeRng } from '../core/rng.js';
@@ -352,7 +352,6 @@ export function openSawmill(game) {
     if (now > level) {
       level = now;
       showLevel();
-      message(tr('saw.levelUp'));
     }
 
     buttons();

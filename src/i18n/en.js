@@ -400,11 +400,13 @@ export const en = {
   'msg.inBasket': '{n} in the basket. The hungry ones will come.',
   'msg.plotHere': 'There is a plot here, ready for a house.',
   'msg.cannotStand': 'She cannot stand there.',
-  'msg.houseUp': '🏠 The roof is on. Somebody will be along shortly.',
-  'msg.bridgeStrong': '🌉 It holds. Solid as anything.',
-  'msg.bridgeCreaky': '🌉 It holds — with a bit of a creak.',
+  'msg.houseUp': '🏠 The roof is on. {name} is moving in.',
+  'msg.houseUpEmpty': '🏠 The roof is on. The house is ready and waiting.',
+  'msg.bridgeStrong': '🌉 The bridge is finished. The far bank is yours now.',
+  'msg.bridgeCreaky':
+    '🌉 The bridge is finished, but a gust of wind could still knock a plank loose.',
   'msg.mended': '🌉 Mended. People are crossing again.',
-  'msg.boatUp': '⛵ She floats. Somebody should take her out.',
+  'msg.boatUp': '⛵ The boat is ready. Tap her to go fishing.',
   'msg.playUp': '🛝 The swing is up. The children heard it happen.',
   'msg.planted': '🌱 Planted. It will be a tree again before long.',
   'msg.wellUp': '🪣 Clean water, as deep as the rope is long.',
@@ -458,7 +460,6 @@ export const en = {
   'saw.none': 'None of them the right length — all kindling. Count the marks next time.',
   'saw.level1': 'Level 1 — the dashed planks above show you the size.',
   'saw.level2': 'Level 2 — no planks to copy. Use the ruler.',
-  'saw.levelUp': '📏 You can measure it yourself now.',
 
   /* ---- mill ---- */
   'mill.title': '🌀 The mill',

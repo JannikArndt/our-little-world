@@ -4,9 +4,27 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '2.8';
+export const VERSION = '2.9';
 
 export const CHANGELOG = [
+  {
+    v: '2.9',
+    date: '2026-09-18',
+    en: [
+      'You can see what everybody is up to at a glance now. Tap somebody, or open the 👥 list, and whatever they are carrying is there as pictures you can count — four stones, two lots of wool — rather than a sentence about it.',
+      'The list says what each person actually wants, too, and only when there is something to say: a bed of their own, something to eat, a way across the river. Somebody tucked up indoors just gets a 💤.',
+      'The fish you catch have a way home. When the trip out in the boat is over there is a button right there to tip the whole catch into the village basket, instead of carrying it about until you remember where it goes.',
+      'The well and the outhouse were practically on top of each other. The well has moved down into the middle of the village, and the outhouse is off west at the edge of the wood, a good long way from the river — which was rather the point of it.',
+      'And on a computer, the Escape key puts away whatever is open: a speech bubble, a menu, a mini-game. On a tablet or a phone nothing has changed.',
+    ],
+    de: [
+      'Man sieht jetzt auf einen Blick, was bei wem los ist. Tipp jemanden an oder öffne die 👥-Liste: Was jemand trägt, steht als Bilder da, die man zählen kann — vier Steine, zwei Knäuel Wolle — statt als Satz.',
+      'Die Liste sagt auch, was jemand gerade braucht, und nur dann, wenn es etwas zu sagen gibt: ein eigenes Bett, etwas zu essen, einen Weg über den Fluss. Wer drinnen im Bett liegt, bekommt einfach ein 💤.',
+      'Die gefangenen Fische finden nach Hause. Wenn die Fahrt mit dem Boot vorbei ist, gibt es gleich dort einen Knopf, mit dem der ganze Fang in den Dorfkorb wandert — man muss ihn nicht erst durch die Gegend tragen.',
+      'Der Brunnen und das Häuschen standen fast aufeinander. Der Brunnen ist nach unten in die Dorfmitte gerückt, und das Häuschen steht jetzt westlich am Waldrand, schön weit weg vom Fluss — darum ging es ja gerade.',
+      'Und am Computer schließt die Escape-Taste, was gerade offen ist: eine Sprechblase, ein Menü, ein Minispiel. Auf Tablet und Handy bleibt alles, wie es war.',
+    ],
+  },
   {
     v: '2.8',
     date: '2026-09-17',

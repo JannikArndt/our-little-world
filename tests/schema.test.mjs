@@ -162,6 +162,41 @@ test('a scenario is a recipe the world remembers', () => {
   assert.equal(createWorld(19, 'atlantis').scenario, DEFAULT_SCENARIO);
 });
 
+test('an unbuilt plan follows the scenario when it moves', () => {
+  // The well and the outhouse both moved, once, for standing too close
+  // together — this is a village saved back when the well was still where
+  // an older scenario left it.
+  const w = createWorld(37);
+  const well = w.buildings.find(b => b.id === 'plan_well');
+  well.x = 7;
+  well.y = 12;
+  well.door = { x: well.x, y: well.y };
+
+  const back = deserialize(serialize(w));
+  const moved = back.buildings.find(b => b.id === 'plan_well');
+  const spec = SCENARIOS.valley.plans.find(p => p.id === 'plan_well');
+  assert.deepEqual([moved.x, moved.y], spec.anchor.tile, 'it stands where the scenario says now');
+  assert.deepEqual(moved.door, { x: moved.x, y: moved.y }, 'the door followed it there');
+});
+
+test('a well somebody already dug never moves under them', () => {
+  const w = createWorld(41);
+  const well = w.buildings.find(b => b.id === 'plan_well');
+  well.x = 7;
+  well.y = 12;
+  well.door = { x: well.x, y: well.y };
+  well.state = 'built'; // somebody dug it right here
+
+  const back = deserialize(serialize(w));
+  const stillThere = back.buildings.find(b => b.id === 'plan_well');
+  assert.equal(stillThere.x, 7);
+  assert.equal(
+    stillThere.y,
+    12,
+    'something already built never moves, whatever the scenario says now',
+  );
+});
+
 test('a part of the map can be somewhere the world has not got to yet', () => {
   const w = createWorld(23);
   // the valley is all here, so nothing is out of bounds

@@ -533,10 +533,38 @@ function makeVillagerPlain(spec) {
   };
 }
 
-/** Every project the scenario knows about has its place marked out. */
+/**
+ * Every project the scenario knows about has its place marked out.
+ *
+ * A plan the scenario has since moved — the well and the outhouse both did,
+ * once, for being too close together — follows it here, on every load, so a
+ * village saved before the move is not stuck with the old spot forever. Only
+ * while it is still `state === 'plan'`: something standing there is
+ * something somebody built, and law 12 says that never moves. A plan holds
+ * nothing but where it is and its name, so nothing is lost by moving it —
+ * this is additive content, not a change to what an existing field means,
+ * and needs no schema bump (see "Never reset somebody's world" in CLAUDE.md).
+ */
 function ensurePlans(w, scen) {
   for (const spec of scen.plans) {
-    if (w.buildings.some(b => b.id === spec.id)) continue;
+    const existing = w.buildings.find(b => b.id === spec.id);
+    if (existing) {
+      if (existing.state === 'plan') {
+        const at = resolveAnchor(w, spec.anchor);
+        if (at && (existing.x !== at.x || existing.y !== at.y)) {
+          existing.x = at.x;
+          existing.y = at.y;
+          // the door is derived from x/y/w/h (see addBuilding) and has to
+          // move with it, or the old tile stays the way in
+          existing.door = {
+            x: existing.x + ((existing.w / 2) | 0),
+            y: existing.y + existing.h - 1,
+          };
+        }
+        existing.name = spec.name; // kept true of wherever it ends up standing
+      }
+      continue;
+    }
     const at = resolveAnchor(w, spec.anchor);
     if (!at) continue;
     addBuilding(w, {

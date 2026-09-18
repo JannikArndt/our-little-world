@@ -366,7 +366,7 @@ export const en = {
   'w.buildWell': '🪣 Dig a well',
   'w.well': 'The well',
   'w.wellHint': 'Cold, clean water, and a trough the sheep have found.',
-  'w.privyPlan': 'The bottom of the garden',
+  'w.privyPlan': 'The edge of the wood',
   'w.privyPlanHint': 'Out of the way, downwind, and a good way from the river.',
   'w.buildPrivy': '🚪 Build the little house',
   'w.privy': 'The little house',
@@ -659,7 +659,7 @@ export const en = {
   'guide.step.buildPlay': 'Tap the green by the water and build it',
   'guide.poorly.title': 'Get {name} some clean water!',
   'guide.poorly.why':
-    '{name} drank from the river and has a poorly tummy. A well would give the village water worth drinking — and a little house at the bottom of the garden would keep the river clean in the first place.',
+    '{name} drank from the river and has a poorly tummy. A well would give the village water worth drinking — and a little house at the edge of the wood would keep the river clean in the first place.',
   'guide.step.wellStones': 'Pick up stones for the wall',
   'guide.step.wellPlank': 'One plank for the roof and the bucket',
   'guide.step.buildWell': 'Tap the middle of the village and dig',
@@ -672,7 +672,7 @@ export const en = {
     'There is nowhere proper to go, so it all ends up in the river — which is where the water, the sheep and the fish come from.',
   'guide.step.privyPlanks': 'Saw the planks for the walls and the door',
   'guide.step.privyStone': 'One stone to stand it on',
-  'guide.step.buildPrivy': 'Tap the bottom of the garden and build it',
+  'guide.step.buildPrivy': 'Tap the edge of the wood and build it',
   'guide.fence.title': 'Fence the wheat field!',
   'guide.fence.why':
     'A sheep has found the wheat and thinks it is wonderful. A fence keeps them in the meadow, where the grass is theirs.',

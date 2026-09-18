@@ -368,7 +368,7 @@ export const de = {
   'w.buildWell': '🪣 Einen Brunnen graben',
   'w.well': 'Der Brunnen',
   'w.wellHint': 'Kaltes, sauberes Wasser — und ein Trog, den die Schafe schon entdeckt haben.',
-  'w.privyPlan': 'Hinten im Garten',
+  'w.privyPlan': 'Am Waldrand',
   'w.privyPlanHint': 'Aus dem Weg, gegen den Wind und ein gutes Stück vom Fluss entfernt.',
   'w.buildPrivy': '🚽 Ein Plumpsklo bauen',
   'w.privy': 'Das Plumpsklo',
@@ -660,7 +660,7 @@ export const de = {
   'guide.step.buildPlay': 'Die Wiese am Wasser antippen und bauen',
   'guide.poorly.title': 'Besorgt {name} sauberes Wasser!',
   'guide.poorly.why':
-    '{name} hat aus dem Fluss getrunken und jetzt Bauchweh. Ein Brunnen gäbe dem Dorf Wasser, das man trinken kann — und ein Häuschen hinten im Garten würde den Fluss von vornherein sauber halten.',
+    '{name} hat aus dem Fluss getrunken und jetzt Bauchweh. Ein Brunnen gäbe dem Dorf Wasser, das man trinken kann — und ein Häuschen am Waldrand würde den Fluss von vornherein sauber halten.',
   'guide.step.wellStones': 'Steine für die Mauer sammeln',
   'guide.step.wellPlank': 'Ein Brett für Dach und Eimer',
   'guide.step.buildWell': 'Die Dorfmitte antippen und graben',
@@ -673,7 +673,7 @@ export const de = {
     'Es gibt kein richtiges Örtchen, also landet alles im Fluss — und genau von da kommen das Wasser, die Schafe und die Fische.',
   'guide.step.privyPlanks': 'Die Bretter für Wände und Tür sägen',
   'guide.step.privyStone': 'Ein Stein als Fundament',
-  'guide.step.buildPrivy': 'Hinten im Garten antippen und bauen',
+  'guide.step.buildPrivy': 'Den Waldrand antippen und bauen',
   'guide.fence.title': 'Zäunt das Weizenfeld ein!',
   'guide.fence.why':
     'Ein Schaf hat den Weizen gefunden und findet ihn großartig. Ein Zaun lässt sie auf der Wiese, wo das Gras ihnen gehört.',

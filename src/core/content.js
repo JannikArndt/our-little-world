@@ -384,15 +384,15 @@ export const SCENARIOS = {
         w: 1,
         h: 1,
         name: 'the middle of the village',
-        anchor: { tile: [7, 12] },
+        anchor: { tile: [7, 16] },
       },
       {
         id: 'plan_privy',
         type: 'privy',
         w: 1,
         h: 1,
-        name: 'the bottom of the garden',
-        anchor: { tile: [6, 10] },
+        name: 'the edge of the wood',
+        anchor: { tile: [2, 10] },
       },
       // the whole field: the fence goes round it, and people walk through it
       {

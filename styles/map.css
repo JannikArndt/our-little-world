@@ -1,0 +1,412 @@
+/* The map at /map. The game's own paper and ink, same as /stats.
+   One colour per kind of thing, all of them checked on this paper. */
+:root {
+  --paper: #f6efe2;
+  --card: #fffaf0;
+  --paper-deep: #ece0cb;
+  --ink: #43372a;
+  --ink-soft: #7a6a56;
+  --ink-faint: #9c8d78;
+  --line: #d9c9ae;
+  --hair: #e6dac3;
+  --track: #e7ddc8;
+  --radius: 14px;
+  --shadow: 0 2px 0 rgba(67, 55, 42, 0.1), 0 6px 14px rgba(67, 55, 42, 0.07);
+
+  /* the kinds. The two roles keep their own colours from the game itself. */
+  --k-role: #c8783c;
+  --k-cap: #8a6d3b;
+  --k-action: #43372a;
+  --k-game: #9a5b8e;
+  --k-res: #7a6a56;
+  --k-store: #6d7f8c;
+  --k-project: #3f7a8f;
+  --k-skill: #5d9150;
+  --k-stuff: #a8763f;
+  --k-gives: #9c8d78;
+  --k-concern: #b2543c;
+  --k-event: #6b6fa8;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font:
+    16px/1.45 system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---- the top bar ------------------------------------------------- */
+header {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  z-index: 3;
+}
+h1 {
+  font-size: 18px;
+  margin: 0 0 2px;
+  font-weight: 650;
+}
+h1 small {
+  font-weight: 400;
+  color: var(--ink-faint);
+  font-size: 13px;
+  margin-left: 8px;
+}
+.blurb {
+  margin: 4px 0 8px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  max-width: 78ch;
+}
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+button.tab,
+button.plain {
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  min-height: 32px;
+}
+button.tab[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--card);
+}
+button.tab:focus-visible,
+button.plain:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--k-project);
+  outline-offset: 2px;
+}
+input.find {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 10px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  min-width: 11ch;
+  flex: 1 1 14ch;
+  max-width: 26ch;
+}
+.count {
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+
+/* ---- the picture ------------------------------------------------- */
+main {
+  flex: 1 1 auto;
+  position: relative;
+  min-height: 0;
+  display: flex;
+}
+#sheet {
+  flex: 1 1 auto;
+  min-width: 0;
+  touch-action: none;
+  cursor: grab;
+  background:
+    radial-gradient(circle at 1px 1px, var(--hair) 1px, transparent 0) 0 0 / 22px 22px,
+    var(--paper);
+}
+#sheet.dragging {
+  cursor: grabbing;
+}
+
+.edge {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.2;
+}
+.edge.lit {
+  stroke: var(--k-project);
+  stroke-width: 2.2;
+}
+.edge.dim {
+  opacity: 0.18;
+}
+
+.node {
+  cursor: pointer;
+}
+.node rect {
+  fill: var(--card);
+  stroke: var(--line);
+  stroke-width: 1.4;
+  rx: 9;
+}
+.node text {
+  font-size: 13px;
+  fill: var(--ink);
+  dominant-baseline: middle;
+}
+.node text.ic {
+  font-size: 14px;
+}
+.node text.sub {
+  font-size: 10.5px;
+  fill: var(--ink-faint);
+}
+.node:hover rect,
+.node:focus rect {
+  stroke-width: 2.4;
+}
+.node:focus {
+  outline: none;
+}
+.node.on rect {
+  stroke-width: 2.8;
+}
+.node.dim {
+  opacity: 0.22;
+}
+.node.hit rect {
+  fill: #fff6d9;
+}
+
+/* a stripe of the kind's colour down the left of every box */
+.node rect.tag {
+  stroke: none;
+  rx: 0;
+}
+
+.colhead {
+  font-size: 11px;
+  fill: var(--ink-faint);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.rank {
+  font-size: 11px;
+  fill: var(--ink-faint);
+}
+
+/* ---- the panel --------------------------------------------------- */
+#panel {
+  flex: 0 0 340px;
+  max-width: 340px;
+  border-left: 1px solid var(--line);
+  background: var(--card);
+  overflow-y: auto;
+  padding: 14px 16px 24px;
+  -webkit-overflow-scrolling: touch;
+}
+#panel[hidden] {
+  display: none;
+}
+#panel h2 {
+  font-size: 17px;
+  margin: 0 0 2px;
+  word-break: break-word;
+}
+#panel .kindline {
+  color: var(--ink-faint);
+  font-size: 12px;
+  margin: 0 0 10px;
+}
+#panel .what {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0 0 12px;
+}
+#panel h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  margin: 16px 0 6px;
+  border-top: 1px solid var(--hair);
+  padding-top: 10px;
+}
+#panel dl {
+  margin: 0;
+  font-size: 13px;
+}
+#panel dt {
+  color: var(--ink-faint);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 7px;
+}
+#panel dd {
+  margin: 1px 0 0;
+}
+#panel code,
+.where {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  background: var(--paper-deep);
+  padding: 1px 5px;
+  border-radius: 5px;
+  word-break: break-all;
+}
+#panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+#panel li {
+  margin: 3px 0;
+}
+#panel .go {
+  font: inherit;
+  font-size: 13px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--k-project);
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: left;
+}
+#panel .rel {
+  color: var(--ink-faint);
+  font-size: 11.5px;
+}
+#panel table.says {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12.5px;
+}
+#panel table.says th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ink-faint);
+  font-size: 11px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--hair);
+  padding: 3px 4px;
+}
+#panel table.says td {
+  padding: 4px;
+  border-bottom: 1px solid var(--hair);
+  vertical-align: top;
+}
+#panel table.says td.k {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--ink-soft);
+  word-break: break-all;
+}
+#panel .missing {
+  color: #b2543c;
+}
+.close {
+  float: right;
+  font: inherit;
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  padding: 0 2px;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+/* ---- the legend and the footer ----------------------------------- */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  margin: 8px 0 0;
+}
+.legend span {
+  white-space: nowrap;
+}
+.legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: baseline;
+}
+footer {
+  flex: 0 0 auto;
+  padding: 6px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--card);
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+footer a {
+  color: var(--ink-soft);
+}
+#live {
+  color: var(--ink-faint);
+}
+
+/* ---- a phone ----------------------------------------------------- */
+@media (max-width: 720px) {
+  main {
+    flex-direction: column;
+  }
+  #panel {
+    flex: 0 0 auto;
+    max-width: none;
+    max-height: 58%;
+    border-left: none;
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -6px 14px rgba(67, 55, 42, 0.08);
+  }
+  .blurb {
+    display: none;
+  }
+  .legend {
+    display: none;
+  }
+  h1 small {
+    display: none;
+  }
+  /* one line, always: a footer that grows is a footer that eats the panel */
+  footer {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+  }
+  #panel {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+}

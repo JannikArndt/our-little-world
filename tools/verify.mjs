@@ -116,6 +116,8 @@ if (!quick)
     () => run('node', ['tools/stats.mjs'], { BASE: base }),
     'stats',
   ]);
+if (!quick)
+  steps.push(['the map at /map', () => run('node', ['tools/map.mjs'], { BASE: base }), 'map']);
 
 // `only=smoke` keeps the step whose name or script matches, and nothing else.
 const chosen = only ? steps.filter(st => st[2] && st[2].includes(only)) : steps;

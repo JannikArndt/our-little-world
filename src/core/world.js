@@ -14,6 +14,7 @@ import {
   LOAF_RELIEF,
   HOUSE_STUFF,
   HOUSE_WALL,
+  HOUSE_START,
   HOUSE_ALL,
   FOODS,
   VILLAGER_SKILLS,
@@ -652,7 +653,7 @@ export function placeStuff(kinds) {
 
 /** What a house has the day it goes up: light to see by and a bed to sleep in. */
 export function newHouseStuff() {
-  return placeStuff(['window', 'bed']);
+  return placeStuff(HOUSE_START);
 }
 
 /**

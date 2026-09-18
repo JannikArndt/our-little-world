@@ -20,6 +20,7 @@ WORKDIR /app
 COPY package.json ./
 COPY index.html ./
 COPY stats.html ./
+COPY map.html ./
 COPY server/ ./server/
 COPY src/ ./src/
 COPY styles/ ./styles/

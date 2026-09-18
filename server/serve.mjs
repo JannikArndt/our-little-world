@@ -53,7 +53,7 @@ const TYPES = {
 // What a browser may fetch by name. Not server/ (the code that runs it), not
 // package.json, and not DATA_DIR — which defaults to living right under here
 // too — so a world's save file is never one guessed URL away.
-const PUBLIC_FILES = ['/index.html', '/stats.html', '/site.webmanifest'];
+const PUBLIC_FILES = ['/index.html', '/stats.html', '/map.html', '/site.webmanifest'];
 const PUBLIC_DIRS = ['src', 'styles', 'icons'];
 
 // worked out once, at boot: what this server is actually serving
@@ -99,6 +99,9 @@ const server = createServer(async (req, res) => {
     // the one address here meant to be typed into a browser: the page reads
     // /api/stats, which is the same numbers without the pictures
     if (p === '/stats') p = '/stats.html';
+    // the map of the game, worked out in the browser from src/ — a tool for
+    // whoever is changing this, not part of the game
+    if (p === '/map') p = '/map.html';
     const clean = normalize(p).replace(/^(\.\.[/\\])+/, '');
     const top = clean.split('/')[1] || '';
     if (!PUBLIC_FILES.includes(clean) && !PUBLIC_DIRS.includes(top)) {

@@ -9,6 +9,11 @@ import { en } from '../i18n/en.js';
 import { de } from '../i18n/de.js';
 
 const TABLES = { en, de };
+
+// The tables themselves, by language id. The game only ever wants one of them
+// at a time and should use tr(); /map shows two side by side, which is the one
+// reason this is exported at all.
+export const STRINGS = TABLES;
 export const LANGUAGES = [
   { id: 'en', name: 'English', flag: '🇬🇧' },
   { id: 'de', name: 'Deutsch', flag: '🇩🇪' },

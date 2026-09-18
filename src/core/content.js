@@ -88,6 +88,12 @@ export const HOUSE_STUFF = {
   flowers: { icon: '🌷', where: 'floor', cost: { wheat: 1 }, comfort: 1 },
 };
 
+/**
+ * What a house comes with the moment it goes up: somewhere to sleep and a bit of
+ * daylight. A home, barely — everything better is bought a piece at a time.
+ */
+export const HOUSE_START = ['window', 'bed'];
+
 /** The order they stand on the shelf: a bed first, because that is why a house. */
 export const HOUSE_SHELF = [
   'bed',

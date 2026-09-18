@@ -5,8 +5,15 @@ import { LocalTransport, WsTransport, SoloTransport } from './net/transport.js';
 import { Directory, apiBase } from './net/directory.js';
 import { Renderer } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
-import { installInput, renderModeBar, closeBubble } from './ui/interact.js';
-import { message, closePanel, closeMenu, clearMessages, isPanelOpen } from './ui/overlay.js';
+import { installInput, renderModeBar, closeBubble, isBubbleOpen } from './ui/interact.js';
+import {
+  message,
+  closePanel,
+  closeMenu,
+  clearMessages,
+  isPanelOpen,
+  isMenuOpen,
+} from './ui/overlay.js';
 import { otherRole, byId } from './core/world.js';
 import { tr, detectLang, setLang, currentLang, LANGUAGES } from './core/i18n.js';
 import { TILE } from './core/grid.js';
@@ -53,6 +60,27 @@ window.addEventListener('mousedown', () => {
 });
 window.addEventListener('mouseup', () => {
   pointerDown = false;
+});
+
+/* ------------------------------------------------------------------ */
+/* Escape closes whatever is open                                     */
+/* ------------------------------------------------------------------ */
+// A desktop nicety only — nothing here changes what a finger does. One thing
+// closes per press, the innermost first: a bubble, then a menu, then a
+// running mode (laying a road, walking a sheep), then a panel or mini-game.
+// Never more than one, and never anything when there is nothing open — this
+// is a way to put things away, not a way to reset or reload anything.
+function isTypingInto(target) {
+  const tag = target?.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || !!target?.isContentEditable;
+}
+window.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (isTypingInto(e.target)) return; // half a typed world name is not ours to lose
+  if (isBubbleOpen()) closeBubble();
+  else if (isMenuOpen()) closeMenu();
+  else if (liveGame?.mode) liveGame.setMode(null);
+  else if (isPanelOpen()) closePanel();
 });
 
 /* ------------------------------------------------------------------ */

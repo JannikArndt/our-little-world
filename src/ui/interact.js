@@ -43,6 +43,10 @@ export function closeBubble() {
   bubble = null;
 }
 
+export function isBubbleOpen() {
+  return !!bubble;
+}
+
 function showBubble(sx, sy, opts) {
   closeBubble();
   const layer = document.getElementById('bubbleLayer');

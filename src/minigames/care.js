@@ -15,7 +15,9 @@ const ITEMS = [
 const WRONG = { hay: 'care.wrongHay', water: 'care.wrongWater', shear: 'care.wrongShear' };
 
 export function openCare(game, sheep) {
-  const p = openPanel({ title: '🐑 ' + sheep.name, lead: tr('care.lead') });
+  // Closing this from outside — Escape, the day turning — has to stop the
+  // loop the same way the done button does, so it goes here instead.
+  const p = openPanel({ title: '🐑 ' + sheep.name, lead: tr('care.lead'), onClose: () => stop() });
 
   const cv = makeCanvas(420, 300);
   p.body.appendChild(cv.canvas);
@@ -100,12 +102,7 @@ export function openCare(game, sheep) {
   refreshHint();
 
   const row = p.row();
-  row.appendChild(
-    p.button(tr('ui.done'), 'soft', () => {
-      stop();
-      p.close();
-    }),
-  );
+  row.appendChild(p.button(tr('ui.done'), 'soft', () => p.close()));
 
   function draw(t) {
     const ctx = cv.ctx;

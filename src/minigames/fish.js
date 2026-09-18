@@ -14,7 +14,17 @@ const W = 420,
 const BITE_MS = 950; // how long a fish stays interested
 
 export function openFish(game, _boat) {
-  const p = openPanel({ title: tr('fish.title'), lead: tr('fish.lead') });
+  // Closing this from outside — Escape, the day turning — has to stop the
+  // loop and let go of the test-only handle exactly as rowing back does, so
+  // it goes here rather than only in that button's own click handler.
+  const p = openPanel({
+    title: tr('fish.title'),
+    lead: tr('fish.lead'),
+    onClose: () => {
+      stop();
+      game._fish = null;
+    },
+  });
 
   const cv = makeCanvas(W, H);
   p.body.appendChild(cv.canvas);
@@ -135,9 +145,7 @@ export function openFish(game, _boat) {
   row.appendChild(
     p.button(tr('fish.rowBack'), 'soft', () => {
       if (phase !== 'over') finish();
-      stop();
-      game._fish = null;
-      p.close();
+      p.close(); // the loop and the handle go together, in onClose above
     }),
   );
 

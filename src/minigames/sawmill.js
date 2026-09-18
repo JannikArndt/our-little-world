@@ -33,17 +33,21 @@ const STACK_L = 48,
 /* ------------------------------------------------------------------ */
 
 export function openSawmill(game) {
-  const p = openPanel({ title: tr('saw.title'), lead: tr('saw.lead') });
-
   const wood = () => game.world.players[game.role].res.wood;
   const planks = () => game.world.players[game.role].res.plank;
 
   if (wood() < 1) {
+    // no bench work opens here, so there is no loop to stop on the way out
+    const p = openPanel({ title: tr('saw.title'), lead: tr('saw.lead') });
     p.body.appendChild(el('p', 'lead', tr('saw.noWood')));
     const r = p.row();
     r.appendChild(p.button(tr('ui.alright'), 'soft', () => p.close()));
     return;
   }
+
+  // Closing this from outside — Escape, the day turning — has to stop the
+  // loop the same way its own done/not-now button does, so it goes here.
+  const p = openPanel({ title: tr('saw.title'), lead: tr('saw.lead'), onClose: () => stop() });
 
   const cv = makeCanvas(W, H);
 
@@ -137,10 +141,7 @@ export function openSawmill(game) {
       nextBtn = p.button(tr('saw.nextLog'), 'go', () => newOrder());
       row.appendChild(nextBtn);
     }
-    const done = p.button(result ? tr('ui.done') : tr('ui.notNow'), 'soft', () => {
-      stop();
-      p.close();
-    });
+    const done = p.button(result ? tr('ui.done') : tr('ui.notNow'), 'soft', () => p.close());
     done.style.flex = '0 0 auto';
     row.appendChild(done);
   }
@@ -365,14 +366,19 @@ export function openSawmill(game) {
 export function openMill(game) {
   const w = game.world;
   const wheat = w.players[game.role].res.wheat;
-  const p = openPanel({ title: tr('mill.title'), lead: tr('mill.lead') });
 
   if (wheat < 2) {
+    // no turning opens here, so there is no loop to stop on the way out
+    const p = openPanel({ title: tr('mill.title'), lead: tr('mill.lead') });
     p.body.appendChild(el('p', 'lead', tr(wheat === 1 ? 'mill.oneWheat' : 'mill.noWheat')));
     const r = p.row();
     r.appendChild(p.button(tr('ui.alright'), 'soft', () => p.close()));
     return;
   }
+
+  // Closing this from outside — Escape, the day turning — has to stop the
+  // loop the same way its own "later" button does, so it goes here.
+  const p = openPanel({ title: tr('mill.title'), lead: tr('mill.lead'), onClose: () => stop() });
 
   const cv = makeCanvas(400, 240);
   p.body.appendChild(cv.canvas);
@@ -421,10 +427,7 @@ export function openMill(game) {
   });
   bakeBtn.disabled = true;
   row.appendChild(bakeBtn);
-  const back = p.button(tr('ui.later'), 'soft', () => {
-    stop();
-    p.close();
-  });
+  const back = p.button(tr('ui.later'), 'soft', () => p.close());
   back.style.flex = '0 0 auto';
   row.appendChild(back);
   p.readout(tr('mill.turn'));
@@ -562,12 +565,7 @@ export function openMill(game) {
         game.dispatch({ type: 'mill.run', role: game.role, wheat: 2, food: 3 });
         p.readout(tr('mill.baked'));
         row.innerHTML = '';
-        row.appendChild(
-          p.button(tr('mill.take'), 'go', () => {
-            stop();
-            p.close();
-          }),
-        );
+        row.appendChild(p.button(tr('mill.take'), 'go', () => p.close()));
       }
     }
     draw(t);

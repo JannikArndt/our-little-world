@@ -94,7 +94,19 @@ export function openChop(game, tree) {
   const hand = Math.min(3, Math.floor(fells / 2));
   const core = 10 + hand * 4;
 
-  const p = openPanel({ title: tr('chop.title'), lead: tr('chop.lead') });
+  // Closing this from outside — Escape, the day turning — has to stop the
+  // loop and let go of the test-only handle exactly as leaving the tree does.
+  // A tree already cut clean through still counts: the wood belongs to
+  // whoever swung the axe, whether or not they stayed to watch it fall.
+  const p = openPanel({
+    title: tr('chop.title'),
+    lead: tr('chop.lead'),
+    onClose: () => {
+      stop();
+      game._chop = null;
+      if (done) fell();
+    },
+  });
   const cv = makeCanvas(W, H);
   cv.canvas.className = 'tall'; // a tree is taller than the panel is wide
   p.body.appendChild(cv.canvas);
@@ -162,9 +174,7 @@ export function openChop(game, tree) {
   const row = p.row();
   row.appendChild(
     p.button(tr('chop.leave'), 'soft', () => {
-      stop();
-      game._chop = null;
-      p.close();
+      p.close(); // the loop and the handle go together, in onClose above
     }),
   );
 
@@ -375,17 +385,6 @@ export function openChop(game, tree) {
   }
 
   const stop = loop((t, dt) => {
-    // The day can end in the middle of a swing, and the day's card wipes the
-    // overlay out from under us. Nothing else is going to tell us, so notice
-    // the canvas has gone and stop drawing into it. A tree that was already
-    // cut through still counts — the toppling is only something to watch, and
-    // the wood belongs to whoever swung the axe.
-    if (!document.body.contains(cv.canvas)) {
-      stop();
-      game._chop = null;
-      if (done) fell();
-      return;
-    }
     cv.fit();
     if (shake > 0) shake = Math.max(0, shake - dt / 300);
     if (swing > 0) swing = Math.max(0, swing - dt / 230);
@@ -427,9 +426,6 @@ export function openChop(game, tree) {
   }
 
   function finish() {
-    stop();
-    game._chop = null;
-    fell();
-    p.close();
+    p.close(); // the loop, the handle and the dispatch all go together, in onClose above
   }
 }

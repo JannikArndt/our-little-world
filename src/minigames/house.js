@@ -84,7 +84,13 @@ function slotAt(i) {
 export function openRaise(game, site) {
   const w = game.world,
     r = game.role;
-  const p = openPanel({ title: tr('house.raiseTitle'), lead: tr('house.raiseLead') });
+  // Closing this from outside — Escape, the day turning — has to stop the
+  // little picture's loop the same way either of its own buttons does.
+  const p = openPanel({
+    title: tr('house.raiseTitle'),
+    lead: tr('house.raiseLead'),
+    onClose: () => stop(),
+  });
 
   const cv = makeCanvas(CW, 190);
   p.body.appendChild(cv.canvas);
@@ -101,8 +107,7 @@ export function openRaise(game, site) {
       return;
     }
     if (!game.dispatch({ type: 'house.build', role: r, siteId: site.id })) return;
-    stop();
-    p.close();
+    p.close(); // the loop stops in onClose above
     // named on the spot, from the world as it stands right now — never sent,
     // just read: whoever has no bed yet is who the player will see walk in.
     const waiting = homeless(w);
@@ -114,10 +119,7 @@ export function openRaise(game, site) {
   go.disabled = !canPay(w, r, HOUSE_SHELL);
   if (go.disabled) p.readout(tr('house.notEnough'));
   row.appendChild(go);
-  const back = p.button(tr('ui.later'), 'soft', () => {
-    stop();
-    p.close();
-  });
+  const back = p.button(tr('ui.later'), 'soft', () => p.close());
   back.style.flex = '0 0 auto';
   row.appendChild(back);
 
@@ -166,7 +168,17 @@ export function openRaise(game, site) {
 /* ------------------------------------------------------------------ */
 
 export function openHouse(game, house) {
-  const p = openPanel({ title: '🏠 ' + (house.name || tr('w.house')) });
+  // Closing this from outside — Escape, the day turning — has to stop the
+  // room's loop and let go of the traced word, the same way its own close
+  // button does, rather than leave `game.tracing` pointing at a dead pen.
+  const p = openPanel({
+    title: '🏠 ' + (house.name || tr('w.house')),
+    onClose: () => {
+      stop();
+      making = null;
+      showTrace();
+    },
+  });
 
   const cv = makeCanvas(CW, CH);
   p.body.appendChild(cv.canvas);
@@ -402,14 +414,7 @@ export function openHouse(game, house) {
   });
   never.style.flex = '0 0 auto';
   row.appendChild(never);
-  row.appendChild(
-    p.button(tr('ui.close'), 'soft', () => {
-      stop();
-      making = null;
-      showTrace();
-      p.close();
-    }),
-  );
+  row.appendChild(p.button(tr('ui.close'), 'soft', () => p.close()));
   paint();
 
   /* ---------------- drawing the room ---------------- */

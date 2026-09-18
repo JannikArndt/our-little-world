@@ -175,6 +175,22 @@ async function main() {
   console.log('tapping a name rings them in the world:', ringed);
   if (!ringed) throw new Error('tapping a villager in the list does not show them');
 
+  // Escape closes a menu — a desktop nicety, but a wrong one leaves the
+  // dropdown sitting open over the world for good.
+  await page.click('#folkChip');
+  await page.waitForTimeout(300);
+  const menuWasOpen = await page.evaluate(
+    () => !document.getElementById('menuLayer').classList.contains('hidden'),
+  );
+  if (!menuWasOpen) throw new Error('the villagers menu did not open, so Escape proves nothing');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  const menuClosedByEscape = await page.evaluate(() =>
+    document.getElementById('menuLayer').classList.contains('hidden'),
+  );
+  console.log('Escape closed the villagers menu:', menuClosedByEscape);
+  if (!menuClosedByEscape) throw new Error('Escape did not close the open menu');
+
   // 🧺 — the basket, said as a sum rather than a number
   await page.evaluate(() => {
     window.OLW.world.larder.food = 7;
@@ -1043,7 +1059,21 @@ async function main() {
   if (fishAfter.mine >= fishBefore.mine) throw new Error('the fish never left the angler');
   await step(page, '25j-fish-basket', 400);
 
-  await page.click('text=Row back');
+  // Escape closes a mini-game exactly the way its own button does: the loop
+  // stops and the test-only handle lets go, not just the box going away.
+  // (The catch is already banked — every cast is spent by now — so this
+  // only tests the teardown itself, the same as tapping "Row back" would.)
+  await page.keyboard.press('Escape');
+  await page
+    .waitForFunction(() => window.OLW._fish === null, null, { timeout: 2000 })
+    .catch(() => {
+      throw new Error('Escape left the fishing game holding its handle');
+    });
+  const fishOverlayGone = await page.evaluate(() =>
+    document.getElementById('overlay').classList.contains('hidden'),
+  );
+  console.log('Escape closed the fishing game:', fishOverlayGone);
+  if (!fishOverlayGone) throw new Error('Escape did not close the fishing game');
   await page.waitForTimeout(300);
 
   // the playground, the well, the little house and the fence: every project

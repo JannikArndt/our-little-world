@@ -12,9 +12,12 @@ export function openBridge(game) {
   const w = game.world;
   const site = w.bridge.site;
   const N = site.span; // water columns to cross
+  // Closing this from outside — Escape, the day turning — has to stop the
+  // loop the same way either of its own buttons does, so it goes here.
   const p = openPanel({
     title: tr(w.bridge.built ? 'bridge.titleOld' : 'bridge.titleNew'),
     lead: tr('bridge.lead'),
+    onClose: () => stop(),
   });
 
   const cv = makeCanvas(480, 206);
@@ -94,17 +97,13 @@ export function openBridge(game) {
       stone: c.stone,
       quality: v === 'strong' ? 3 : 2,
     });
-    stop();
-    p.close();
+    p.close(); // the loop stops in onClose above
     message(tr(v === 'strong' ? 'msg.bridgeStrong' : 'msg.bridgeCreaky'));
     game.look(site.x0 + site.span / 2, site.row + 1);
   });
   row.appendChild(testBtn);
   row.appendChild(buildBtn);
-  const back = p.button(tr('ui.later'), 'soft', () => {
-    stop();
-    p.close();
-  });
+  const back = p.button(tr('ui.later'), 'soft', () => p.close());
   back.style.flex = '0 0 auto';
   row.appendChild(back);
 

@@ -12,6 +12,16 @@ export function el(tag, cls, text) {
 
 const overlay = () => document.getElementById('overlay');
 
+// Whatever panel is open right now, so a second `openPanel()` and
+// `closePanel()` both reach its own `close()` — the same api its own buttons
+// call — rather than only wiping the DOM out from under it. A mini-game keeps
+// an animation loop and sometimes a test-only handle (`game._fish`,
+// `game._chop`) alive for as long as its panel is; without this, anything
+// that closes a panel from outside (Escape, the next day starting, another
+// panel opening) left that loop running against a canvas nobody could see
+// any more, for the rest of the session.
+let livePanel = null;
+
 /**
  * A panel in three parts: a scrolling middle for whatever you are reading or
  * playing, and a foot that never moves. Buttons, the cost and the readout live
@@ -19,6 +29,9 @@ const overlay = () => document.getElementById('overlay');
  * of the screen can never hide the thing you are meant to press.
  */
 export function openPanel(opts) {
+  // Whatever was already open tears itself down properly first — the same as
+  // if its own back button had been pressed — rather than being overwritten.
+  if (livePanel) livePanel.close();
   const ov = overlay();
   ov.innerHTML = '';
   ov.classList.remove('hidden');
@@ -52,6 +65,7 @@ export function openPanel(opts) {
     close() {
       if (closed) return;
       closed = true;
+      if (livePanel === api) livePanel = null;
       ov.classList.add('hidden');
       ov.innerHTML = '';
       if (opts.onClose) opts.onClose();
@@ -84,6 +98,7 @@ export function openPanel(opts) {
       return api._cost;
     },
   };
+  livePanel = api;
   return api;
 }
 
@@ -146,7 +161,18 @@ export function isPanelOpen() {
   return !overlay().classList.contains('hidden');
 }
 
+/**
+ * Close whatever panel is open, the same way its own back button would —
+ * running its `onClose` so a mini-game stops its loop and lets go of any
+ * handle it published, instead of only hiding the box it was drawing into.
+ */
 export function closePanel() {
+  if (livePanel) {
+    livePanel.close();
+    return;
+  }
+  // nothing tracked (should not happen once every panel goes through
+  // openPanel above) — fall back to plainly hiding whatever is there
   const ov = overlay();
   ov.classList.add('hidden');
   ov.innerHTML = '';
@@ -269,6 +295,10 @@ let menuClose = null;
 
 export function closeMenu() {
   if (menuClose) menuClose();
+}
+
+export function isMenuOpen() {
+  return !!menuClose;
 }
 
 /**

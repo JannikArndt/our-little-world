@@ -1004,25 +1004,45 @@ async function main() {
   await tapFor(landing, null, 'Go fishing');
   await page.click('text=Go fishing');
   await step(page, '25h-fishing', 600);
-  // three casts: tap the water, then tap again the moment the float goes under
+  // land every cast on purpose: a fish only comes in on a second tap while the
+  // float is under, and window.OLW._fish (test-only, like window.OLW._chop)
+  // says the moment that is, rather than a test guessing at the timer.
   const fcv = await (await page.$('.panel canvas')).boundingBox();
   const water = { x: fcv.x + fcv.width * 0.62, y: fcv.y + fcv.height * 0.7 };
-  for (let cast = 0; cast < 3; cast++) {
-    await page.mouse.click(water.x, water.y);
-    const bit = await page
-      .waitForFunction(
-        () => {
-          const p = document.querySelector('.readout');
-          return p && !/…$/.test(p.textContent.trim());
-        },
-        null,
-        { timeout: 6000 },
-      )
-      .catch(() => null);
-    if (!bit) break;
-    await page.waitForTimeout(200);
+  const totalCasts = await api(() => window.OLW._fish.casts);
+  for (let cast = 0; cast < totalCasts; cast++) {
+    await page.mouse.click(water.x, water.y); // cast the line
+    await page.waitForFunction(() => window.OLW._fish && window.OLW._fish.phase === 'bite', null, {
+      timeout: 4500,
+    });
+    await page.mouse.click(water.x, water.y); // and land it, the moment it goes under
+    await page.waitForFunction(() => window.OLW._fish && window.OLW._fish.phase !== 'bite', null, {
+      timeout: 2000,
+    });
   }
+  const caught = await api(() => window.OLW._fish.caught);
+  console.log('fish caught:', caught);
+  if (!caught) throw new Error('no fish were landed');
   await step(page, '25i-fished', 500);
+
+  // the catch lands in the angler's own hands, not the basket — the new
+  // button offers that trip right here instead of sending them off to find it
+  const fishBefore = await api(() => ({
+    mine: window.OLW.world.players.B.res.fish || 0,
+    basket: window.OLW.world.larder.fish || 0,
+  }));
+  await page.click('text=Into the village basket');
+  await page.waitForTimeout(300);
+  const fishAfter = await api(() => ({
+    mine: window.OLW.world.players.B.res.fish || 0,
+    basket: window.OLW.world.larder.fish || 0,
+  }));
+  console.log('fish before/after the basket button:', fishBefore, fishAfter);
+  if (fishAfter.basket <= fishBefore.basket)
+    throw new Error('the fish never reached the village basket');
+  if (fishAfter.mine >= fishBefore.mine) throw new Error('the fish never left the angler');
+  await step(page, '25j-fish-basket', 400);
+
   await page.click('text=Row back');
   await page.waitForTimeout(300);
 

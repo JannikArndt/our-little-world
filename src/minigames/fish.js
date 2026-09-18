@@ -30,6 +30,14 @@ export function openFish(game, _boat) {
     splash = 0;
   let float = { x: 250, y: 200 };
 
+  // so a test can wait for the bite instead of guessing at the timer; it
+  // goes away the moment the boat comes in, which is also how a test knows
+  // to stop
+  const publish = () => {
+    game._fish = { phase: phase, casts: casts, caught: caught };
+  };
+  publish();
+
   p.readout(
     (clean ? tr('fish.clean') + ' ' : '') +
       tr('fish.cast') +
@@ -59,15 +67,18 @@ export function openFish(game, _boat) {
     timer = 900 + Math.random() * 2400;
     splash = 1;
     p.readout(tr('fish.waiting'));
+    publish();
   }
 
   function spend() {
     casts--;
     if (casts <= 0) {
       phase = 'over';
+      publish();
       finish();
     } else {
       phase = 'ready';
+      publish();
     }
   }
 
@@ -95,13 +106,37 @@ export function openFish(game, _boat) {
   function finish() {
     game.dispatch({ type: 'fish.catch', role: game.role, n: caught });
     p.readout(caught ? trn('fish.done', caught, { n: caught }) : tr('fish.none'));
+    offerBasket();
   }
 
   const row = p.row();
+
+  /**
+   * The catch lands in the angler's own hands (fish.catch), not the village
+   * basket — so offer the same trip a normal Give does, right here, instead
+   * of sending them off to find it. One tap, one dispatch, then it is gone:
+   * a second tap must never send the fish twice.
+   */
+  function offerBasket() {
+    const have = game.world.players[game.role].res.fish || 0;
+    const n = Math.min(caught, have);
+    if (n <= 0) return;
+    let given = false;
+    const btn = p.button('🐟 ' + tr('give.basket'), 'soft', () => {
+      if (given) return;
+      given = true;
+      game.dispatch({ type: 'larder.give', from: game.role, res: 'fish', n });
+      btn.disabled = true;
+      p.readout('🐟 ' + tr('msg.inBasket', { n }));
+    });
+    row.insertBefore(btn, row.firstChild);
+  }
+
   row.appendChild(
     p.button(tr('fish.rowBack'), 'soft', () => {
       if (phase !== 'over') finish();
       stop();
+      game._fish = null;
       p.close();
     }),
   );
@@ -257,6 +292,7 @@ export function openFish(game, _boat) {
         phase = 'bite';
         timer = BITE_MS;
         biteT = 0;
+        publish();
       }
     } else if (phase === 'bite') {
       timer -= dt;

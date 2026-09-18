@@ -13,6 +13,9 @@ import { ACTIONS, GROUPS, EVENTS } from '../src/core/actions/index.js';
 import { CAPS, RESOURCES } from '../src/core/world.js';
 import { PROJECTS, VILLAGER_SKILLS } from '../src/core/content.js';
 import { en } from '../src/i18n/en.js';
+import { CONCERNS, allProblems, currentProblem } from '../src/core/guide.js';
+import { createWorld } from '../src/core/world.js';
+import { applyAction } from '../src/core/actions.js';
 
 const rows = Object.values(ACTIONS);
 const real = Object.entries(ACTIONS).filter(([, r]) => !r.aliasOf);
@@ -123,4 +126,66 @@ test('there are no more actions than there are, and no fewer', () => {
   // thing that makes adding an action a deliberate act rather than a drift.
   assert.equal(rows.length, 35, 'the list of actions changed — was that meant?');
   assert.equal(Object.keys(EVENTS).length, 4, 'the world happenings changed — was that meant?');
+});
+
+/**
+ * Between them these three worlds have everything wrong that can be wrong, so
+ * every card the guide can draw gets drawn. Two worlds rather than one because
+ * a broken bridge and no bridge at all cannot both be true.
+ */
+function everyCard() {
+  const cards = [];
+  const bad = createWorld(42);
+  bad.players.A.res.plank = 9;
+  bad.players.A.res.stone = 9;
+  applyAction(bad, { type: 'bridge.build', role: 'A', planks: 5, stone: 4, quality: 1 });
+  bad.bridge.damaged = true;
+  bad.villagers[0].hunger = 90;
+  bad.larder.food = 0;
+  bad.larder.fish = 0;
+  bad.villagers[1].poorly = 100;
+  bad.plots[0].state = 'ripe';
+  bad.plots[0].nibbled = 1;
+  bad.sheep[0].mood = 'sad';
+  bad.sheep[0].x = 28;
+  bad.sheep[0].y = 18;
+  for (const t of bad.trees.slice(0, 4)) t.state = 'stump';
+  cards.push(...allProblems(bad));
+
+  // a world with the river still in the way
+  cards.push(...allProblems(createWorld(42)));
+
+  // and one where nothing is wrong at all, which is the floor and not a finish
+  const calm = createWorld(3);
+  cards.push(currentProblem(calm), calmOf(calm));
+  return cards;
+}
+
+/** The calm card, reached the way the guide reaches it when the queue is empty. */
+function calmOf(w) {
+  return CONCERNS.find(c => c.id === 'calm').card(w);
+}
+
+test('every step the guide asks for names an action that exists', () => {
+  // A card's step used to identify itself only by the sentence it shows, so
+  // "which action is this asking for" was guesswork — and guesswork that got it
+  // wrong twice, because "give the wheat over" is `give` and "fill the basket"
+  // is `larder.give`. Now it says, and this is what keeps it saying something true.
+  const cards = everyCard();
+  const ids = new Set(cards.map(c => c.id));
+  assert.equal(ids.size, 14, 'not every card got drawn: ' + [...ids].sort().join(', '));
+  let steps = 0;
+  for (const c of cards)
+    for (const s of c.steps) {
+      steps++;
+      assert.ok('does' in s, 'a step of ' + c.id + ' does not say what it asks for');
+      assert.ok('role' in s, 'a step of ' + c.id + ' does not say whose job it is');
+      assert.ok(['A', 'B', 'either'].includes(s.role), c.id + ' has a step for nobody');
+      if (!s.does) continue;
+      const [type, what] = s.does.split(':');
+      assert.ok(ACTIONS[type], c.id + ' asks for an action that does not exist: ' + type);
+      if (what)
+        assert.ok(PROJECTS[what], c.id + ' asks for a project that does not exist: ' + what);
+    }
+  assert.ok(steps > 30, 'only ' + steps + ' steps were checked — did the cards change shape?');
 });

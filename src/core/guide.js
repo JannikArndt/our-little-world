@@ -28,6 +28,9 @@ import {
   REPLANT_GOAL,
 } from './world.js';
 import { tr } from './i18n.js';
+// the same middle of the crossing the bridge itself sparkles at, rather than
+// the same sum written out twice
+import { bridgeMid } from './actions/crossing.js';
 
 const A = 'A',
   B = 'B',
@@ -49,20 +52,42 @@ const planksBetween = w => between(w, 'plank');
 const woodBetween = w => between(w, 'wood');
 const woolBetween = w => between(w, 'wool');
 
-/** A step you can count: "2/3 🪨" is why it is ticked. */
-function counted(icon, text, whoKey, countIcon, have, need) {
+/**
+ * A step you can count: "2/3 🪨" is why it is ticked.
+ *
+ * `does` names the action the step is asking for — 'saw.run', or
+ * 'project.build:well' where the project is the point of it. null is for a step
+ * that is only waiting, like a sapling becoming a tree. It is written down
+ * rather than guessed from the wording, because the wording is a translated
+ * sentence and the two do not line up: "give the wheat over" is `give`, and
+ * "fill the basket" is `larder.give`.
+ *
+ * `role` is the same answer as `who` without the translation, so anything
+ * reading a card can tell whose job a step is without reversing a sentence.
+ */
+function counted(icon, text, whoKey, does, countIcon, have, need) {
   return {
     icon,
     text,
     who: who(whoKey),
+    role: whoKey,
+    does: does || null,
     done: have >= need,
     count: { icon: countIcon, have: Math.max(0, Math.min(have, need)), need },
   };
 }
 
 /** A step that is either done or not — no number would help. */
-function step(icon, text, whoKey, done) {
-  return { icon, text, who: who(whoKey), done: !!done, count: null };
+function step(icon, text, whoKey, does, done) {
+  return {
+    icon,
+    text,
+    who: who(whoKey),
+    role: whoKey,
+    does: does || null,
+    done: !!done,
+    count: null,
+  };
 }
 
 const villagerPoint = v => [v.x, v.y];
@@ -72,10 +97,6 @@ const buildingPoint = b => [b.x + b.w / 2, b.y + b.h / 2];
 /* the cards                                                          */
 /* ------------------------------------------------------------------ */
 
-function bridgeMid(w) {
-  return [(w.bridge.site.x0 + w.bridge.site.x1) / 2 + 0.5, w.bridge.site.row + 1];
-}
-
 function brokenBridgeCard(w) {
   return {
     id: 'bridge_broken',
@@ -84,8 +105,8 @@ function brokenBridgeCard(w) {
     why: tr('guide.bridgeBroken.why'),
     points: [bridgeMid(w)],
     steps: [
-      counted('🪚', tr('guide.step.havePlank'), A, '🪚', planksBetween(w), 1),
-      step('🔧', tr('guide.step.mend'), A, false),
+      counted('🪚', tr('guide.step.havePlank'), A, 'saw.run', '🪚', planksBetween(w), 1),
+      step('🔧', tr('guide.step.mend'), A, 'bridge.repair', false),
     ],
   };
 }
@@ -101,10 +122,18 @@ function homelessCard(w) {
     subject: { kind: 'villager', id: person.id },
     points: site ? [villagerPoint(person), buildingPoint(site)] : [villagerPoint(person)],
     steps: [
-      counted('🪓', tr('guide.step.fell'), A, '🪵', woodBetween(w) + planksBetween(w), 5),
-      counted('🪚', tr('guide.step.saw'), A, '🪚', planksBetween(w), 5),
-      counted('🪨', tr('guide.step.stones'), EITHER, '🪨', stonesBetween(w), 3),
-      step('🏠', tr('guide.step.buildHouse'), A, !site),
+      counted(
+        '🪓',
+        tr('guide.step.fell'),
+        A,
+        'tree.fell',
+        '🪵',
+        woodBetween(w) + planksBetween(w),
+        5,
+      ),
+      counted('🪚', tr('guide.step.saw'), A, 'saw.run', '🪚', planksBetween(w), 5),
+      counted('🪨', tr('guide.step.stones'), EITHER, 'stone.take', '🪨', stonesBetween(w), 3),
+      step('🏠', tr('guide.step.buildHouse'), A, 'house.build', !site),
     ],
   };
 }
@@ -115,16 +144,18 @@ function hungryCard(w) {
   const ripe = w.plots.filter(p => p.state === 'ripe').length;
   const boat = project(w, 'boat');
   const steps = [
-    counted('🌱', tr('guide.step.sow'), B, '🌱', sown, 1),
-    step('💧', tr('guide.step.water'), B, ripe > 0),
-    counted('🌾', tr('guide.step.reap'), B, '🌾', w.players.B.res.wheat || 0, 2),
-    counted('🤝', tr('guide.step.giveWheat'), B, '🌾', w.players.A.res.wheat || 0, 2),
-    counted('🌀', tr('guide.step.bake'), A, '🍞', w.players.A.res.food || 0, 1),
-    counted('🧺', tr('guide.step.basket'), EITHER, '🍞🐟', larderTotal(w), 1),
+    counted('🌱', tr('guide.step.sow'), B, 'plot.plant', '🌱', sown, 1),
+    step('💧', tr('guide.step.water'), B, 'plot.water', ripe > 0),
+    counted('🌾', tr('guide.step.reap'), B, 'plot.harvest', '🌾', w.players.B.res.wheat || 0, 2),
+    counted('🤝', tr('guide.step.giveWheat'), B, 'give', '🌾', w.players.A.res.wheat || 0, 2),
+    counted('🌀', tr('guide.step.bake'), A, 'mill.run', '🍞', w.players.A.res.food || 0, 1),
+    counted('🧺', tr('guide.step.basket'), EITHER, 'larder.give', '🍞🐟', larderTotal(w), 1),
   ];
   // a boat is a shortcut to supper, so it is worth saying out loud
   if (boat?.state === 'built') {
-    steps.unshift(step('🎣', tr('guide.step.orFish'), B, (w.players.B.res.fish || 0) > 0));
+    steps.unshift(
+      step('🎣', tr('guide.step.orFish'), B, 'fish.catch', (w.players.B.res.fish || 0) > 0),
+    );
   }
   return {
     id: 'hungry',
@@ -145,10 +176,18 @@ function noBridgeCard(w) {
     why: tr('guide.noBridge.why'),
     points: [bridgeMid(w)],
     steps: [
-      counted('🪓', tr('guide.step.fell'), A, '🪵', woodBetween(w) + planksBetween(w), 5),
-      counted('🪚', tr('guide.step.saw'), A, '🪚', planksBetween(w), 5),
-      counted('🪨', tr('guide.step.piers'), EITHER, '🪨', stonesBetween(w), 4),
-      step('🌉', tr('guide.step.buildBridge'), A, false),
+      counted(
+        '🪓',
+        tr('guide.step.fell'),
+        A,
+        'tree.fell',
+        '🪵',
+        woodBetween(w) + planksBetween(w),
+        5,
+      ),
+      counted('🪚', tr('guide.step.saw'), A, 'saw.run', '🪚', planksBetween(w), 5),
+      counted('🪨', tr('guide.step.piers'), EITHER, 'stone.take', '🪨', stonesBetween(w), 4),
+      step('🌉', tr('guide.step.buildBridge'), A, 'bridge.build', false),
     ],
   };
 }
@@ -162,9 +201,17 @@ function wheatCard(w) {
     why: tr('guide.wheat.why'),
     points: [[plot.x + 1, plot.y + 1]],
     steps: [
-      counted('🌾', tr('guide.step.reapNow'), B, '🌾', w.players.B.res.wheat || 0, 2),
-      counted('🤝', tr('guide.step.giveWheat'), B, '🌾', w.players.A.res.wheat || 0, 2),
-      counted('🌀', tr('guide.step.bake'), A, '🍞', w.players.A.res.food || 0, 1),
+      counted(
+        '🌾',
+        tr('guide.step.reapNow'),
+        B,
+        'plot.harvest',
+        '🌾',
+        w.players.B.res.wheat || 0,
+        2,
+      ),
+      counted('🤝', tr('guide.step.giveWheat'), B, 'give', '🌾', w.players.A.res.wheat || 0, 2),
+      counted('🌀', tr('guide.step.bake'), A, 'mill.run', '🍞', w.players.A.res.food || 0, 1),
     ],
   };
 }
@@ -178,7 +225,7 @@ function sheepCard(w) {
     why: tr('guide.sheep.why', { name: needy.name }),
     subject: { kind: 'sheep', id: needy.id },
     points: [[needy.x, needy.y]],
-    steps: [step('🐑', tr('guide.step.lookAfter', { name: needy.name }), B, false)],
+    steps: [step('🐑', tr('guide.step.lookAfter', { name: needy.name }), B, 'sheep.care', false)],
   };
 }
 
@@ -199,13 +246,22 @@ function poorlyCard(w) {
         '🪨',
         tr('guide.step.wellStones'),
         EITHER,
+        'stone.take',
         '🪨',
         stonesBetween(w),
         PROJECT.well.stone,
       ),
-      counted('🪚', tr('guide.step.wellPlank'), A, '🪚', planksBetween(w), PROJECT.well.plank),
-      step('🪣', tr('guide.step.buildWell'), B, built),
-      step('🚪', tr('guide.step.orPrivy'), A, riverClean(w)),
+      counted(
+        '🪚',
+        tr('guide.step.wellPlank'),
+        A,
+        'saw.run',
+        '🪚',
+        planksBetween(w),
+        PROJECT.well.plank,
+      ),
+      step('🪣', tr('guide.step.buildWell'), B, 'project.build:well', built),
+      step('🚪', tr('guide.step.orPrivy'), A, 'project.build:privy', riverClean(w)),
     ],
   };
 }
@@ -223,12 +279,21 @@ function wellCard(w) {
         '🪨',
         tr('guide.step.wellStones'),
         EITHER,
+        'stone.take',
         '🪨',
         stonesBetween(w),
         PROJECT.well.stone,
       ),
-      counted('🪚', tr('guide.step.wellPlank'), A, '🪚', planksBetween(w), PROJECT.well.plank),
-      step('🪣', tr('guide.step.buildWell'), B, false),
+      counted(
+        '🪚',
+        tr('guide.step.wellPlank'),
+        A,
+        'saw.run',
+        '🪚',
+        planksBetween(w),
+        PROJECT.well.plank,
+      ),
+      step('🪣', tr('guide.step.buildWell'), B, 'project.build:well', false),
     ],
   };
 }
@@ -242,16 +307,25 @@ function privyCard(w) {
     why: tr('guide.privy.why'),
     points: [buildingPoint(privy)],
     steps: [
-      counted('🪚', tr('guide.step.privyPlanks'), A, '🪚', planksBetween(w), PROJECT.privy.plank),
+      counted(
+        '🪚',
+        tr('guide.step.privyPlanks'),
+        A,
+        'saw.run',
+        '🪚',
+        planksBetween(w),
+        PROJECT.privy.plank,
+      ),
       counted(
         '🪨',
         tr('guide.step.privyStone'),
         EITHER,
+        'stone.take',
         '🪨',
         stonesBetween(w),
         PROJECT.privy.stone,
       ),
-      step('🚪', tr('guide.step.buildPrivy'), A, false),
+      step('🚪', tr('guide.step.buildPrivy'), A, 'project.build:privy', false),
     ],
   };
 }
@@ -267,8 +341,16 @@ function fenceCard(w) {
     subject: sheepIn ? { kind: 'sheep', id: sheepIn.id } : null,
     points: fence ? [buildingPoint(fence)] : [],
     steps: [
-      counted('🪚', tr('guide.step.fencePlanks'), A, '🪚', planksBetween(w), PROJECT.fence.plank),
-      step('🚧', tr('guide.step.buildFence'), A, false),
+      counted(
+        '🪚',
+        tr('guide.step.fencePlanks'),
+        A,
+        'saw.run',
+        '🪚',
+        planksBetween(w),
+        PROJECT.fence.plank,
+      ),
+      step('🚧', tr('guide.step.buildFence'), A, 'project.build:fence', false),
     ],
   };
 }
@@ -281,9 +363,9 @@ function calmCard(_w) {
     why: tr('guide.calm.why'),
     points: [],
     steps: [
-      step('🌱', tr('guide.step.sowMore'), B, false),
-      step('🪓', tr('guide.step.stackPlanks'), A, false),
-      step('🛤️', tr('guide.step.road'), B, false),
+      step('🌱', tr('guide.step.sowMore'), B, 'plot.plant', false),
+      step('🪓', tr('guide.step.stackPlanks'), A, 'saw.run', false),
+      step('🛤️', tr('guide.step.road'), B, 'road.build', false),
     ],
   };
 }
@@ -392,11 +474,35 @@ function boatCard(w) {
     why: tr('guide.boat.why'),
     points: [buildingPoint(plan)],
     steps: [
-      counted('🪚', tr('guide.step.boatPlanks'), A, '🪚', planksBetween(w), PROJECT.boat.plank),
-      counted('🪨', tr('guide.step.boatStone'), EITHER, '🪨', stonesBetween(w), PROJECT.boat.stone),
-      counted('🧶', tr('guide.step.boatWool'), EITHER, '🧶', woolBetween(w), PROJECT.boat.wool),
-      step('⛵', tr('guide.step.buildBoat'), A, false),
-      step('🎣', tr('guide.step.fish'), B, false),
+      counted(
+        '🪚',
+        tr('guide.step.boatPlanks'),
+        A,
+        'saw.run',
+        '🪚',
+        planksBetween(w),
+        PROJECT.boat.plank,
+      ),
+      counted(
+        '🪨',
+        tr('guide.step.boatStone'),
+        EITHER,
+        'stone.take',
+        '🪨',
+        stonesBetween(w),
+        PROJECT.boat.stone,
+      ),
+      counted(
+        '🧶',
+        tr('guide.step.boatWool'),
+        EITHER,
+        'sheep.care',
+        '🧶',
+        woolBetween(w),
+        PROJECT.boat.wool,
+      ),
+      step('⛵', tr('guide.step.buildBoat'), A, 'project.build:boat', false),
+      step('🎣', tr('guide.step.fish'), B, 'fish.catch', false),
     ],
   };
 }
@@ -413,9 +519,25 @@ function playCard(w) {
     subject: little.length ? { kind: 'villager', id: little[0].id } : null,
     points: little.length ? [buildingPoint(plan), villagerPoint(little[0])] : [buildingPoint(plan)],
     steps: [
-      counted('🪚', tr('guide.step.playPlanks'), A, '🪚', planksBetween(w), PROJECT.play.plank),
-      counted('🪨', tr('guide.step.playStone'), EITHER, '🪨', stonesBetween(w), PROJECT.play.stone),
-      step('🛝', tr('guide.step.buildPlay'), A, false),
+      counted(
+        '🪚',
+        tr('guide.step.playPlanks'),
+        A,
+        'saw.run',
+        '🪚',
+        planksBetween(w),
+        PROJECT.play.plank,
+      ),
+      counted(
+        '🪨',
+        tr('guide.step.playStone'),
+        EITHER,
+        'stone.take',
+        '🪨',
+        stonesBetween(w),
+        PROJECT.play.stone,
+      ),
+      step('🛝', tr('guide.step.buildPlay'), A, 'project.build:play', false),
     ],
   };
 }
@@ -432,8 +554,8 @@ function replantCard(w) {
     why: tr('guide.replant.why'),
     points: cut.length ? [[cut[0].x + 0.5, cut[0].y + 0.5]] : [],
     steps: [
-      counted('🌱', tr('guide.step.plantTree'), B, '🌱', planted, need),
-      step('🌳', tr('guide.step.waitTree'), EITHER, grown),
+      counted('🌱', tr('guide.step.plantTree'), B, 'tree.plant', '🌱', planted, need),
+      step('🌳', tr('guide.step.waitTree'), EITHER, null, grown),
     ],
   };
 }

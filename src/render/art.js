@@ -527,26 +527,26 @@ export function drawVillager(ctx, v, time, tick, noBubble) {
     ctx.save();
     ctx.translate(x, y - 9);
     if (v.carrying.res === 'wheat') {
-      ctx.strokeStyle = C.wheatDry;
-      ctx.lineWidth = 1.3;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      for (let i = -2; i <= 2; i++) {
-        ctx.moveTo(i * 1.2, 3);
-        ctx.lineTo(i * 2.5, -5);
-      }
-      ctx.stroke();
-      ctx.fillStyle = C.wheat;
-      for (let i = -2; i <= 2; i++) {
+      // A sheaf tucked under one arm, on the side they are facing — the same
+      // chest-height band the log below sits in, low enough to clear the chin
+      // rather than fanned up past it, which is what made this read as straw
+      // growing out of their head.
+      ctx.translate(facing * 6.4, 2);
+      ctx.rotate(facing * 0.2);
+      ctx.fillStyle = C.wheatDry;
+      rr(ctx, -5, -1.8, 10, 3.6, 2);
+      ctx.fill();
+      ctx.fillStyle = C.wheat; // the grain heads, gathered at the one end
+      for (let i = 0; i < 3; i++) {
         ctx.beginPath();
-        ctx.ellipse(i * 2.5, -5.6, 1.1, 2.1, i * 0.16, 0, Math.PI * 2);
+        ctx.ellipse(3.8 - i * 1.1, -0.3, 0.8, 1.5, 0, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.strokeStyle = C.woodDark; // the string round the middle of it
-      ctx.lineWidth = 0.9;
+      ctx.lineWidth = 0.8;
       ctx.beginPath();
-      ctx.moveTo(-3.2, 0.4);
-      ctx.lineTo(3.2, 0.4);
+      ctx.moveTo(-0.4, -2.1);
+      ctx.lineTo(-0.4, 2.1);
       ctx.stroke();
     } else {
       ctx.fillStyle = C.wood;

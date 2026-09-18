@@ -288,7 +288,7 @@ export const en = {
   'w.villagerWorking': 'Busy: {skill}.',
   'w.villagerWantsBridge': 'Wishes there was a way across the river. A bridge would do it!',
   'w.villagerFine': 'Getting on with the day.',
-  'w.villagerHolding': 'Holding {what}.',
+  'w.villagerAsleep': 'Asleep.',
   'w.takeBag': 'Take the {n} {icon}',
   'w.teachThem': '👐 Teach something',
   'w.pile': 'The pile by the door',
@@ -311,8 +311,6 @@ export const en = {
 
   /* ---- everybody in the village ---- */
   'menu.villagers': 'Everybody here',
-  'villagers.livesIn': 'Lives in {house}',
-  'villagers.nowhere': 'Nowhere to sleep yet',
   'villagers.kid': 'one of the children',
   'menu.sheepHere': 'The sheep',
   'doing.dance': 'Dancing.',

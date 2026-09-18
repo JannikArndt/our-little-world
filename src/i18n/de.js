@@ -290,7 +290,7 @@ export const de = {
   'w.villagerWorking': 'Beschäftigt: {skill}.',
   'w.villagerWantsBridge': 'Wünscht sich einen Weg über den Fluss. Eine Brücke würde helfen!',
   'w.villagerFine': 'Kommt gut durch den Tag.',
-  'w.villagerHolding': 'Hat {what} dabei.',
+  'w.villagerAsleep': 'Schläft.',
   'w.takeBag': 'Die {n} {icon} nehmen',
   'w.teachThem': '👐 Etwas zeigen',
   'w.pile': 'Der Stapel an der Tür',
@@ -313,8 +313,6 @@ export const de = {
 
   /* ---- Alle im Dorf ---- */
   'menu.villagers': 'Bewohner',
-  'villagers.livesIn': 'Wohnt in {house}',
-  'villagers.nowhere': 'Hat noch keinen Schlafplatz',
   'villagers.kid': 'eins von den Kindern',
   'menu.sheepHere': 'Die Schafe',
   'doing.dance': 'Tanzt gerade.',

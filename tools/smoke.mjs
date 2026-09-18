@@ -155,15 +155,18 @@ async function main() {
   await page.click('text=Right, got it');
   await step(page, '03-world', 1200);
 
-  // 👥 — everybody who lives here, by name, with whose house they are in
+  // 👥 — everybody who lives here, by name, never with the filler line the
+  // row used to carry when there was nothing in particular to say
   await page.click('#folkChip');
   await page.waitForTimeout(300);
   const folk = await page.textContent('.menu');
   const someone = await page.evaluate(() => window.OLW.world.villagers[0]);
   console.log('the village list starts:', folk.replace(/\s+/g, ' ').trim().slice(0, 160));
   if (folk.indexOf(someone.name) < 0) throw new Error('the villagers menu does not name anybody');
-  if (!/Lives in|Nowhere to sleep/.test(folk))
-    throw new Error('the villagers menu does not say where they live');
+  if (/Lives in|Nowhere to sleep|Getting on with the day/.test(folk))
+    throw new Error(
+      'the villagers menu is back to saying where they live, or saying nothing as if it were something',
+    );
   if (folk.indexOf('Cloud') < 0) throw new Error('the sheep are not in the village list');
   // tapping a row takes the world to them, and rings them while you look
   await page.click('.menu .menu-item:not(.off) >> nth=0');
@@ -866,11 +869,21 @@ async function main() {
   console.log('showed', pupil, 'how to:', shown.join(', '));
   if (shown.indexOf('stone') < 0) throw new Error('the villager was not shown anything');
 
-  // 👥 says what they can do, in pictures, next to their name
+  // put something in their arms directly, rather than wait on the sim, so the
+  // chips that show it can be checked on their own moment
+  await api(n => {
+    window.OLW.world.villagers.find(v => v.name === n).bag.stone = 4;
+  }, pupil);
+
+  // 👥 says what they can do, in pictures, next to their name — and what they
+  // are holding, as the same counted chip the bottom bar uses
   await page.click('#folkChip');
   await page.waitForTimeout(300);
   const folkNow = await page.textContent('.menu');
   if (folkNow.indexOf('🪨') < 0) throw new Error('the village list does not show what they can do');
+  const folkHolds = await page.$$eval('.menu .menu-item .hold', ns => ns.map(n => n.textContent));
+  if (!folkHolds.some(t => t.indexOf('🪨') >= 0 && t.indexOf('4') >= 0))
+    throw new Error('the village list does not show what somebody is holding, as a chip');
   await page.keyboard.press('Escape');
   await page.mouse.click(5, 5);
   await page.waitForTimeout(300);
@@ -910,6 +923,9 @@ async function main() {
   if (/Can help with|has not been shown/i.test(said))
     throw new Error('the bubble is still reading off a skill list, not what they want');
   if (!/Teach something/.test(said)) throw new Error('no way to show them something from here');
+  const bubbleHolds = await page.$$eval('.bubble .hold', ns => ns.map(n => n.textContent));
+  if (!bubbleHolds.some(t => t.indexOf('🪨') >= 0 && t.indexOf('4') >= 0))
+    throw new Error('the bubble does not show what is in their arms, as a chip');
   await step(page, '25c-villager-bubble', 300);
   await page.click('.bubble button.ghost');
   await page.waitForTimeout(300);

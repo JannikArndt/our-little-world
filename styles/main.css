@@ -684,6 +684,32 @@ button {
   font-size: 16px;
 }
 
+/* what somebody actually has on them — a smaller sibling of .res (the bottom
+   bar), shared by a villager's bubble and their row in "Everybody here", so
+   it has to sit inside a bubble line and a menu row without wrapping badly on
+   a phone rather than stand on its own. */
+.holds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0;
+}
+.hold {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border: 2px solid var(--line);
+  border-radius: 9px;
+  background: #fffdf8;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+.hold .h-ico {
+  font-size: 13px;
+}
+
 /* stage */
 #stage {
   flex: 1 1 auto;

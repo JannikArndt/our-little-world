@@ -105,33 +105,24 @@ export class Hud {
     return DOING[act] ? tr(DOING[act]) : null;
   }
 
-  /** Where they sleep, or that they have nowhere yet. */
-  homeLine(v) {
-    const w = this.game.world;
-    if (!v.homeId) return tr('villagers.nowhere');
-    const b = byId(w.buildings, v.homeId);
-    return tr('villagers.livesIn', { house: b?.name || tr('w.house') });
-  }
-
-  /** What they want, in the words the game has always used for it. */
-  wantLine(v) {
-    return villagerWant(this.game.world, v, v.act);
-  }
-
   openFolkMenu(anchor) {
     const g = this.game,
       w = g.world;
     const items = [];
 
     for (const v of w.villagers) {
-      // what they are doing right now outranks what they generally want:
-      // a squabble is the one line here that asks you to do something
-      const doing = this.doingLine(v);
       const icons = skillIcons(v);
+      // in this order of interest: asleep beats everything, then whatever is
+      // worth wanting, then just what they are visibly doing — and when none
+      // of that is true the row says nothing at all, rather than the old
+      // "Getting on with the day" that filled the space with nothing said
+      const want = villagerWant(w, v, v.act);
+      const note = v.inside ? '💤 ' + want : want || this.doingLine(v);
       items.push({
         icon: v.kid ? '🧒' : '🧑',
         label: v.name + (v.kid ? ' · ' + tr('villagers.kid') : '') + (icons ? '  ' + icons : ''),
-        note: this.homeLine(v) + ' · ' + (doing || this.wantLine(v)),
+        holds: holdsOf(v),
+        note,
         fn: () =>
           g.showMe(
             {
@@ -724,9 +715,28 @@ export function skillIcons(v) {
 }
 
 /**
- * What is on somebody's mind right now — the one sentence a tap answers.
- * Nothing here is a list of what they can do or a reason a button is
- * missing; it is the same voice as a guide card, about this one person.
+ * What is actually on somebody right now, as the same counted chips the
+ * bottom bar uses — only the things they have, never a zero and never
+ * something they could hold but do not. `v.bag` is theirs until a player
+ * takes it off them; `v.carrying` is a single load on its way to the
+ * workshop or, since the bedtime fix, wherever it got dropped instead.
+ */
+export function holdsOf(v) {
+  const out = [];
+  for (const k of BAG_KEYS) {
+    const n = v.bag?.[k] || 0;
+    if (n > 0) out.push({ icon: resIcon(k), n });
+  }
+  if (v.carrying) out.push({ icon: resIcon(v.carrying.res), n: v.carrying.n });
+  return out;
+}
+
+/**
+ * What is on somebody's mind right now — the one sentence a tap answers, or
+ * `null` when there is nothing worth saying. The folk menu leaves the row
+ * blank on `null` rather than reserve space for "Getting on with the day";
+ * the tap bubble falls back to `w.villagerFine` itself, because a tapped
+ * person should still say something back.
  *
  * `act` is whichever act is worth reading: for the folk menu it is simply
  * `v.act`, live; a tap in the world pokes them first, which overwrites
@@ -734,6 +744,7 @@ export function skillIcons(v) {
  * whatever `v.act` was the moment before the poke instead.
  */
 export function villagerWant(w, v, act) {
+  if (v.inside) return tr('w.villagerAsleep');
   if (v.poorly > 0) return tr('w.villagerPoorly', { name: v.name });
   if (!v.homeId) return tr('w.villagerHomeless', { name: v.name });
   if (v.hunger > 72) return tr('w.villagerHungry');
@@ -742,7 +753,7 @@ export function villagerWant(w, v, act) {
   if (act?.kind === 'work') return tr('w.villagerWorking', { skill: skillName(act.job) });
   if (!w.bridge.built && (v.said === 'say.wishAcross' || v.said === 'say.niceOverThere'))
     return tr('w.villagerWantsBridge');
-  return tr('w.villagerFine');
+  return null;
 }
 
 /** One line of a panel you choose from. No `fn` means it is there to be read. */

@@ -124,6 +124,24 @@ export function renderCost(host, items) {
   return host;
 }
 
+/**
+ * The small counted chips for what somebody actually has on them — the same
+ * idea as the bottom resource bar (`.res`), just sized to sit inside a bubble
+ * line or a menu row rather than take a bar of its own. `holds`:
+ * [{ icon, n }], and nothing is drawn when there is nothing to hold.
+ */
+export function renderHolds(host, holds) {
+  if (!holds?.length) return;
+  const row = el('div', 'holds');
+  for (const h of holds) {
+    const chip = el('span', 'hold');
+    chip.appendChild(el('span', 'h-ico', h.icon));
+    chip.appendChild(el('span', 'h-n', String(h.n)));
+    row.appendChild(chip);
+  }
+  host.appendChild(row);
+}
+
 export function isPanelOpen() {
   return !overlay().classList.contains('hidden');
 }
@@ -254,9 +272,11 @@ export function closeMenu() {
 }
 
 /**
- * openMenu(anchor, { title, items: [{ icon, label, note, disabled, sub, fn }] })
+ * openMenu(anchor, { title, items: [{ icon, label, note, holds, disabled, sub, fn }] })
  * Opens under the chip that was tapped and closes on the next tap outside.
- * A `sub` item is one line of a list under the item above it.
+ * A `sub` item is one line of a list under the item above it. `holds` is the
+ * same counted-chip row a bubble shows — see `renderHolds` — and is left out
+ * entirely when there is nothing to hold.
  */
 export function openMenu(anchor, opts) {
   closeMenu();
@@ -279,6 +299,7 @@ export function openMenu(anchor, opts) {
     b.appendChild(el('span', 'mi-ico', it.icon || ''));
     const txt = el('span', 'mi-txt');
     txt.appendChild(el('span', 'mi-label', it.label));
+    renderHolds(txt, it.holds);
     if (it.note) txt.appendChild(el('span', 'mi-note', it.note));
     b.appendChild(txt);
     if (it.disabled) b.disabled = true;

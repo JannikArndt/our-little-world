@@ -19,10 +19,10 @@ import {
 } from '../core/world.js';
 import { BAG_KEYS, PILE_KEYS, pileTotal } from '../core/world.js';
 import { PROJECTS, FISH_REST } from '../core/content.js';
-import { openTeach, villagerWant } from './hud.js';
+import { openTeach, villagerWant, holdsOf } from './hud.js';
 import { canPay } from '../core/actions.js';
 import { tr, trn } from '../core/i18n.js';
-import { el, message, renderCost, openPanel } from './overlay.js';
+import { el, message, renderCost, renderHolds, openPanel } from './overlay.js';
 import { openChop } from '../minigames/chop.js';
 import { openSawmill, openMill } from '../minigames/sawmill.js';
 import { openBridge, openRepair } from '../minigames/bridge.js';
@@ -49,6 +49,7 @@ function showBubble(sx, sy, opts) {
   const b = el('div', 'bubble');
   if (opts.title) b.appendChild(el('h4', '', opts.title));
   if (opts.hint) b.appendChild(el('p', 'hint', opts.hint));
+  renderHolds(b, opts.holds);
   for (const a of opts.actions || []) {
     const btn = el('button', a.cls || '');
     btn.appendChild(el('span', 'b-label', a.label));
@@ -252,15 +253,11 @@ function villagerBubble(game, v, prevAct) {
     fn: () => openTeach(game, { kind: 'villager', id: v.id }),
   });
 
-  const lines = [villagerWant(w, v, prevAct)];
-  if (holding.length)
-    lines.push(
-      tr('w.villagerHolding', {
-        what: holding.map(k => v.bag[k] + ' ' + costIcon(k)).join(' + '),
-      }),
-    );
+  // the sentence is the at-a-glance want; a tapped person still says
+  // something even when there is nothing in particular on their mind
+  const hint = villagerWant(w, v, prevAct) || tr('w.villagerFine');
 
-  return { title: v.name, hint: lines.join(' '), actions: A };
+  return { title: v.name, hint, holds: holdsOf(v), actions: A };
 }
 
 /**

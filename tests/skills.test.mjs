@@ -5,7 +5,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createWorld, serialize, deserialize, knows, project } from '../src/core/world.js';
+import {
+  createWorld,
+  serialize,
+  deserialize,
+  knows,
+  project,
+  BLOCK_TICKS,
+} from '../src/core/world.js';
 import {
   AWAY_JOBS_CAP,
   BAG_CAP,
@@ -324,6 +331,42 @@ test('a villager can be shown the field, and sows it', () => {
     'the field was sown by somebody who lives here',
   );
   assert.equal(project(w, 'boat').state, 'plan', 'and nothing else was quietly built');
+});
+
+/* --------------------------------------------------------------------- */
+/* bedtime never takes back what is in somebody's arms (law 9)           */
+/* --------------------------------------------------------------------- */
+
+test('a sheaf in somebody’s arms at dusk lands on the pile, not nowhere', () => {
+  const w = createWorld(55);
+  applyAction(w, { type: 'block.start' }); // a normal-length day, so dusk actually arrives
+  const v = w.villagers.find(x => x.homeId);
+  assert.ok(v, 'somebody already has a bed to test this with');
+  v.carrying = { res: 'wheat', n: 3, owner: null };
+  v.task = null;
+  v.path = [];
+  v.wait = 0;
+  const before = w.pile.wheat || 0;
+
+  w.tick = w.block.startTick + Math.floor(BLOCK_TICKS * 0.86); // the evening, dusk's own moment
+  run(w, BLOCK_TICKS); // walk home, go in, and past the end of the day
+
+  assert.equal(v.inside, true, 'they made it home for the night');
+  assert.equal(v.carrying, null, 'nothing is still floating in their arms');
+  assert.equal(w.pile.wheat, before + 3, 'the wheat is on the pile, not simply gone');
+});
+
+test('a load orphaned mid-carry still finds its way to the workshop', () => {
+  const w = village(56);
+  const v = housed(w)[0];
+  v.carrying = { res: 'wood', n: 2, owner: null };
+  v.task = null;
+  v.path = [];
+  v.wait = 0;
+  const before = w.pile.wood || 0;
+  run(w, 4000);
+  assert.equal(v.carrying, null, 'it did not just ride along on them for ever');
+  assert.equal(w.pile.wood, before + 2, 'and it was delivered rather than dropped');
 });
 
 /* --------------------------------------------------------------------- */

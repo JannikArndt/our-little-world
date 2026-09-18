@@ -188,6 +188,19 @@ function chooseVillagerTask(w, v) {
       return;
     }
   }
+  // 3b. still holding something with no errand left to carry it on — nothing
+  //     today leaves a villager in this state, but a load that somehow got
+  //     orphaned should not be carted round for ever; walk it to the
+  //     workshop like any other delivery rather than trust it to sort itself
+  //     out.
+  if (v.carrying) {
+    const ws = w.buildings.find(b => b.type === 'workshop');
+    if (ws && goTo(w, v, ws.door.x, ws.door.y, 1)) {
+      v.task = { kind: 'deliver' };
+      return;
+    }
+  }
+
   // 4. a job they have been shown how to do — never instead of eating, going
   //    home or carrying a log in, and never more than one every WORK_EVERY
   if (chooseVillagerWork(w, v)) return;
@@ -528,6 +541,36 @@ function nearestBank(w, v) {
   return best;
 }
 
+/**
+ * Whatever a villager is carrying, off their hands and into the world: a
+ * player's own tally if somebody's name is on it, the shared pile by the
+ * workshop door if not. This used to live only inside the 'deliver' task, but
+ * bedtime needs the same drop — nothing carried is ever simply lost (law 9),
+ * so the float lands wherever they happen to be standing, which is fine and
+ * honest.
+ */
+function deliverLoad(w, v) {
+  const c = v.carrying;
+  if (!c) return;
+  const owner = c.owner ? w.players[c.owner] : null;
+  if (owner) {
+    // somebody felled that tree: it is theirs, and always was
+    owner.res[c.res] = (owner.res[c.res] || 0) + c.n;
+    fx(w, 'float', v.x, v.y - 0.6, '+' + c.n + ' ' + iconOf(c.res));
+  } else {
+    // nobody's: it goes on the pile by the door, for either of you.
+    // A full pile takes what fits — the hauling stops before this, so
+    // getting here at all means the pile filled up on the way over.
+    const n = Math.min(pileRoom(w, c.res), c.n);
+    if (n > 0) {
+      w.pile[c.res] = (w.pile[c.res] || 0) + n;
+      fx(w, 'float', v.x, v.y - 0.6, '+' + n + ' ' + iconOf(c.res));
+    }
+  }
+  say(w, v, 'say.delivered', 25);
+  v.carrying = null;
+}
+
 function finishVillagerTask(w, v) {
   const t = v.task;
   v.task = null;
@@ -599,30 +642,10 @@ function finishVillagerTask(w, v) {
       v.wait = 10;
       break;
     }
-    case 'deliver': {
-      const c = v.carrying;
-      if (c) {
-        const owner = c.owner ? w.players[c.owner] : null;
-        if (owner) {
-          // somebody felled that tree: it is theirs, and always was
-          owner.res[c.res] = (owner.res[c.res] || 0) + c.n;
-          fx(w, 'float', v.x, v.y - 0.6, '+' + c.n + ' ' + iconOf(c.res));
-        } else {
-          // nobody's: it goes on the pile by the door, for either of you.
-          // A full pile takes what fits — the hauling stops before this, so
-          // getting here at all means the pile filled up on the way over.
-          const n = Math.min(pileRoom(w, c.res), c.n);
-          if (n > 0) {
-            w.pile[c.res] = (w.pile[c.res] || 0) + n;
-            fx(w, 'float', v.x, v.y - 0.6, '+' + n + ' ' + iconOf(c.res));
-          }
-        }
-        say(w, v, 'say.delivered', 25);
-        v.carrying = null;
-      }
+    case 'deliver':
+      deliverLoad(w, v);
       v.wait = 15;
       break;
-    }
     case 'work': {
       // a moment of actually doing it before anything changes, the way eating
       // takes a moment — and it is what the 👥 list and the world both show
@@ -674,10 +697,10 @@ function goToBed(w, v) {
   if (!b) return false;
   if (v.path?.length) return false;
   if (Math.abs(v.x - (b.door.x + 0.5)) < 1.2 && Math.abs(v.y - (b.door.y + 0.5)) < 1.2) {
+    deliverLoad(w, v); // whatever they were still holding, before they go in
     v.inside = true;
     v.path = [];
     v.task = null;
-    v.carrying = null;
     v.said = null;
     return true;
   }

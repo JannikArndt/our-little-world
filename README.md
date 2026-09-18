@@ -81,13 +81,17 @@ starts fast on a phone and stays quiet on the battery.
 ```
 index.html
 stats.html       the page at /stats: how much this gets played
+map.html         the page at /map: the game as boxes and arrows, for whoever
+                 is changing it — built from the code, never out of date
 styles/main.css
 src/
   core/          the world, and nothing that draws
     grid.js      terrain, movement costs
     pathfind.js  A* — why a road is worth building
     world.js     world state, laid out and serialisable
-    actions.js   the only way the world ever changes
+    actions/     the only way the world ever changes — one file per group,
+                 each action a row saying who may, what it costs, what it
+                 gives back, and why doing it twice is safe
     sim.js       villagers, sheep, crops, weather in the sky
     events.js    problems, but only when they make sense
     guide.js     the one mission: what to do next, who, and how far along
@@ -107,6 +111,8 @@ src/
   render/        art.js (sprites) and renderer.js (frames)
   ui/            start.js (the front door), hud.js, interact.js (world taps),
                  overlay.js (panels), share.js, invite.js, whatsnew.js
+  map/           what /map draws: graph.js (the game as nodes and edges, read
+                 from the tables), view.js, page.js
   minigames/     chop, sawmill, bridge, house, care, fish, trace (writing and
                  drawing), and modes.js (which of the two you last chose)
 server/
@@ -116,8 +122,9 @@ server/
   api.mjs        the JSON endpoints the start screen talks to
   stats.mjs      how much this gets played, in numbers that are nobody's
   buildid.mjs    a hash of everything that ships, for /version
-tests/           simulation, schema, guide, i18n, relay, session, worlds, stats
-tools/           verify.mjs and what it runs: smoke, german, lobby, stats;
+tests/           simulation, schema, guide, i18n, relay, session, worlds, stats,
+                 actions, map
+tools/           verify.mjs and what it runs: smoke, german, lobby, stats, map;
                  deployed.mjs, icons.mjs, and look.mjs for a quick screenshot
 ```
 
@@ -125,7 +132,8 @@ Two rules keep it honest:
 
 1. **Every change to the world is an action.** `applyAction(world, action)` is
    the only mutation. Actions are small JSON objects, so they broadcast, replay
-   and test cleanly.
+   and test cleanly. Each one is a row in `src/core/actions/` that also says who
+   may do it, what it costs and what it gives back — which is what `/map` reads.
 2. **The simulation is deterministic.** Fixed 100 ms ticks and a seeded PRNG
    carried inside the world. The same seed and the same actions give the same
    world, which is what makes two browsers agree and makes the tests mean

@@ -255,12 +255,18 @@ export const FOODS = [
  * standing first. Adding a sixth is a row here, a target in `villagerWork()`,
  * its effect in `finishVillagerTask()`, a name in every language, and a test.
  */
+/**
+ * `brings` is the one thing each job puts into the village, and it decides where
+ * it goes: wood and wheat are hauled to the pile (PILE_KEYS), stone and wool
+ * stay in their arms (BAG_KEYS), a fish goes straight into the larder. Never
+ * onto a player's own side of the table — that is law 9.
+ */
 export const VILLAGER_SKILLS = {
-  fell: { icon: '🪓', cap: 'fell', tally: 'fell', verb: 'fell' },
-  stone: { icon: '🪨', cap: null, tally: 'stone', verb: null },
-  farm: { icon: '🌾', cap: 'farm', tally: 'farm', verb: 'farm' },
-  care: { icon: '🧶', cap: 'care', tally: 'care', verb: 'care' },
-  fish: { icon: '🐟', cap: 'farm', tally: 'fish', verb: 'fish', needs: 'boat' },
+  fell: { icon: '🪓', cap: 'fell', tally: 'fell', verb: 'fell', brings: 'wood' },
+  stone: { icon: '🪨', cap: null, tally: 'stone', verb: null, brings: 'stone' },
+  farm: { icon: '🌾', cap: 'farm', tally: 'farm', verb: 'farm', brings: 'wheat' },
+  care: { icon: '🧶', cap: 'care', tally: 'care', verb: 'care', brings: 'wool' },
+  fish: { icon: '🐟', cap: 'farm', tally: 'fish', verb: 'fish', needs: 'boat', brings: 'fish' },
 };
 
 /** The order they are offered in, which is the order a village learns them. */

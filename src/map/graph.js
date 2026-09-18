@@ -394,12 +394,14 @@ export function buildGraph() {
         ['who can show it', s.cap === null ? 'either of you' : 'whoever holds ' + s.cap],
         ['shown after', TEACH_TIMES + '× ' + s.tally],
         ['needs standing first', s.needs || 'nothing'],
-        ['what it brings in goes to', lands.join(', ') || 'nowhere a player owns'],
+        ['brings in', s.brings || 'nothing'],
+        ['which goes to', lands.join(', ') || 'nowhere a player owns'],
         ['renewable', 'yes — it has to be, or a night away would empty the valley'],
       ],
     });
     if (s.cap) link('cap:' + s.cap, 'skill:' + key, 'can show');
     if (s.needs) link('project:' + s.needs, 'skill:' + key, 'needed by');
+    if (s.brings) link('skill:' + key, 'res:' + s.brings, 'brings in');
     for (const store of lands) link('skill:' + key, 'store:' + store, 'gathers into');
     // the count that teaches it: whichever actions write that tally
     for (const type in ACTIONS) {
@@ -524,22 +526,19 @@ const theRow = sentinel =>
     byFurniture: 'whatever the piece says (HOUSE_STUFF)',
   })[sentinel];
 
-/** Where a villager job puts what it brings in — never a player own side. */
+/**
+ * Where a villager job puts what it brings in. The job itself says what that is
+ * (`brings`) and the two key lists say where a thing of that kind goes, so this
+ * is a lookup rather than anything the map knows of its own — which is the rule
+ * the whole page is built on.
+ */
 function whereItLands(skill) {
-  const out = [];
-  const yields = {
-    fell: ['wood'],
-    stone: ['stone'],
-    farm: ['wheat'],
-    care: ['wool'],
-    fish: ['fish'],
-  };
-  for (const res of yields[skill] || []) {
-    if (PILE_KEYS.includes(res)) out.push('pile');
-    else if (BAG_KEYS.includes(res)) out.push('bag');
-    else if (FOODS.some(f => f.key === res)) out.push('larder');
-  }
-  return out;
+  const res = VILLAGER_SKILLS[skill]?.brings;
+  if (!res) return [];
+  if (PILE_KEYS.includes(res)) return ['pile'];
+  if (BAG_KEYS.includes(res)) return ['bag'];
+  if (FOODS.some(f => f.key === res)) return ['larder'];
+  return [];
 }
 
 /** The i18n stem for a concern, which is the card name rather than the id. */

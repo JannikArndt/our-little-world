@@ -147,7 +147,7 @@ script so there is nothing to remember and nothing to look up.
 ```
 npm run check      # seconds:  format + lint + unit tests. After every edit.
 npm run verify -- quick   # ~1 min: check + a shortened play-through in a browser
-npm run verify     # ~5 min: everything, incl. German, the lobby and /stats
+npm run verify     # ~5 min: everything, incl. German, the lobby, /stats and /map
 npm run verify -- only=german   # one pass on its own, for the middle of a fix
 npm run shipped    # one question, answered now: is what is here what is live?
 npm run deployed   # only when you want to sit and wait for a push to land
@@ -161,29 +161,35 @@ npm run deployed   # only when you want to sit and wait for a push to land
   into a behaviour change.
 - **`npm run verify -- quick`** adds the browser play-through with every
   assertion, minus the screenshots, the second browser, the three screen sizes,
-  German, the lobby and the stats page. **This is the bar for a push**, and it
+  German, the lobby, the stats page and the map. **This is the bar for a push**, and it
   is meant to be — see the next line.
-- **`npm run verify`** is everything, and **it is what CI runs — so do not sit
-  through it here as well.** The gate exists so that a push costs a minute
+- **`npm run verify`** is everything — the unit tests, the play-through, German,
+  the lobby, `/stats` and `/map` — and **it is what CI runs, so do not sit
+  through it here as well.** The one exception is a branch: `deploy.yml` fires
+  on a push to `main` and on a manual dispatch, so work on a session branch gets
+  no gate but the one you run. The gate exists so that a push costs a minute
   rather than five: run `verify -- quick`, push, and let CI be the gate it was
   built to be. Running it in both places doubles the wait and catches nothing
   twice. Run the whole thing locally only when CI has gone red and you need the
   failure in front of you, and then reach for `only=` first.
 
 - **`npm run verify -- only=<pass>`** runs one of `check`, `smoke`, `german`,
-  `lobby`, `stats` against a fresh server and nothing else. It is for the middle
-  of a fix — a failing pass in its own minute rather than five minutes of the
-  other four — and it says so in its last line, because **it is not the gate**.
+  `lobby`, `stats`, `map` against a fresh server and nothing else. It is for the
+  middle of a fix — a failing pass in its own minute rather than five minutes of
+  the other five — and it says so in its last line, because **it is not the
+  gate**.
 
 Every run ends with one line in the same shape, so it can be found without
 reading the five minutes above it: `verify: all good`, or
 `verify: something is broken`. The play-through and the German pass run at the
-same time, because they take a minute off each other and share nothing.
+same time, because they take a minute off each other and share nothing; the
+lobby, `/stats` and `/map` come after, one at a time, because the first two both
+read the world directory as a whole and would see each other's worlds.
 
 **On waiting.** Three habits cost whole afternoons and none of them buy
 anything: running the full gate here when CI is about to run it anyway; polling
 a deploy with a quarter of an hour of dots when `npm run shipped` answers in one
-second; and re-running five passes to see whether a one-line fix took, when
+second; and re-running every pass to see whether a one-line fix took, when
 `only=` runs the one that failed. Push small, ask later, and let the gate work.
 
 `npm run verify` brings up its own server on a free port and takes it down
@@ -411,10 +417,12 @@ never be allowed to undo it. That cost a road once, on the screen that laid it.
   everything still pending onto an incoming snapshot before adopting it.
 - Five seconds without an ack and it is let go, so an action the host really
   refused does not haunt every snapshot for ever.
-- So an action must stay safe to apply twice. The reducer already does this by
-  checking state first — a felled tree is not standing, a laid road is already
-  road — and a new action has to hold that line or it will double up in the
-  race window.
+- So an action must stay safe to apply twice. Every action does this by checking
+  state first — a felled tree is not standing, a laid road is already road — and
+  **every action's row carries `twice`, the sentence saying why.** That is this
+  law written down once per action rather than hoped for; `tests/actions.test.mjs`
+  fails if any row leaves it out. A new action has to hold that line or it will
+  double up in the race window.
 - The handshake matters too: a reconnect says hello again, an undecided peer
   echoes hello back, and anybody who hears a lower peer id than their own waits
   rather than racing for the clock. `tests/session.test.mjs` wires two real
@@ -476,8 +484,8 @@ upgrade goes through `api.mjs`'s checks.
 ### `server/serve.mjs` — the front door
 
 - **Static files are an allowlist, not a blocklist.** `PUBLIC_FILES`
-  (`index.html`, `stats.html`, `site.webmanifest`) and `PUBLIC_DIRS` (`src`,
-  `styles`, `icons`) are the only things a browser may fetch by path; anything
+  (`index.html`, `stats.html`, `map.html`, `site.webmanifest`) and `PUBLIC_DIRS`
+  (`src`, `styles`, `icons`) are the only things a browser may fetch by path; anything
   else 404s before the filesystem is even touched. This is not just tidiness:
   `DATA_DIR` (every world's save file) defaults to living right under the same
   root this server hands out files from, so before this allowlist existed,
@@ -635,6 +643,10 @@ two and not the third; `package.json` is in the first only. Adding something
 new that should be public needs the third list, specifically — being in the
 build hash does not make a thing servable.
 
+`map.html` is the worked example: it is in all three, plus a fourth line
+rewriting `/map` to it in `serve.mjs`, and `tests/map.test.mjs` checks all four
+so the next page cannot be half-added.
+
 ### CI/CD and the supply chain
 
 - **GitHub Actions are pinned to commit SHAs**, not mutable tags (`actions/
@@ -663,6 +675,7 @@ build hash does not make a thing servable.
 | A legitimate save/join/seen suddenly `403`s | `inWorld()` in `worlds.mjs` — the device string changed, or the world never actually held that seat |
 | A legitimate request suddenly `429`s | `CREATE_PER_HOUR`/`ACTIVITY_PER_HOUR` buckets in `api.mjs` — check whether `TRUST_PROXY` is misconfigured and collapsing many real visitors onto one bucket |
 | A file that should load `404`s | `PUBLIC_FILES`/`PUBLIC_DIRS` in `serve.mjs` — a new top-level file or directory needs adding there, being referenced from HTML is not enough |
+| `/map` is blank, or says a thing is missing | It imports the game's own modules, so an import that throws takes the whole page — look in the browser console first, not in `src/map/` |
 | Two of somebody's own devices can't both stay connected to one room | `MAX_PEERS_PER_ROOM` in `relay.mjs` |
 | A WebSocket closes right after connecting, no obvious reason | Check whether whatever connected sent a fragmented frame — `readFrames()` in `relay.mjs` closes on sight |
 | A word appears in `/stats` that is not a real deed or milestone | `DEED_TYPES`/`PROJECT_TYPES` in `stats.mjs` |
@@ -688,7 +701,8 @@ build hash does not make a thing servable.
 - **No CSP beyond `frame-ancestors`/`X-Frame-Options`.** `index.html` has no
   inline script and exactly one inline `style=` (the `<noscript>` fallback,
   trivial to move into `styles/main.css`), so a real `script-src`/`style-src`
-  CSP is cheap to add there. `stats.html` is not: its entire script and
+  CSP is cheap to add there. `map.html` is already clean the same way, and
+  `tests/map.test.mjs` keeps it that way. `stats.html` is not: its entire script and
   stylesheet are inline, not external files, so a strict CSP would break it
   outright — that page needs its code extracted first, a real if mechanical
   refactor, before it can share whatever CSP `index.html` gets.
@@ -701,7 +715,7 @@ build hash does not make a thing servable.
 | Rate limiting | per-address, two tiers | `CREATE_PER_HOUR`/`ACTIVITY_PER_HOUR`, `api.mjs`; `MAX_PEERS_PER_ROOM`, `relay.mjs` |
 | Input validation | names cleaned before they become paths; snapshot type-checked; deed/mark keys allowlisted | `cleanName()`, `src/core/names.js`; `putSnapshot()`, `worlds.mjs`; `DEED_TYPES`, `stats.mjs` |
 | Resource exhaustion | body/snapshot/frame size caps; fragment rejection; bounded in-memory caches | `MAX_BODY`, `api.mjs`; `MAX_SNAPSHOT`, `worlds.mjs`; `readFrames()`, `KEEP_*`, `relay.mjs` |
-| Information disclosure | static file allowlist; nothing personal ever counted | `PUBLIC_FILES`/`PUBLIC_DIRS`, `serve.mjs`; `stats.mjs` |
+| Information disclosure | static file allowlist; nothing personal ever counted; `/map` reads only the code that already ships | `PUBLIC_FILES`/`PUBLIC_DIRS`, `serve.mjs`; `stats.mjs`; `src/map/` |
 | Transport headers | nosniff, referrer-policy, frame-ancestors, timeouts | `serve.mjs` |
 | TLS | terminated by CapRover's proxy, outside this repo | — |
 | Supply chain | Actions pinned to SHAs, base image pinned by digest, `caprover` version-pinned, dependabot | `.github/workflows/deploy.yml`, `Dockerfile`, `.github/dependabot.yml` |
@@ -713,6 +727,31 @@ build hash does not make a thing servable.
 
 ## ➕ Adding things
 
+### An action
+
+Every change to the world is an action, and every action is one row in one of
+the group files under `src/core/actions/` — `forest`, `workshop`, `crossing`,
+`home`, `projects`, `field`, `animals`, `people`, `sharing`, `session`,
+`happenings`. `index.js` gathers them into `ACTIONS` and `applyAction()` is a
+lookup; `src/core/actions.js` is the door everything still imports through.
+
+A row says the same seven things about itself, and **null is an answer but
+absent is not**: `cap` (a `CAPS` key, or null for either of you, or `byProject`
+/ `bySkill` / `byFurniture` when the row it acts on decides), `minigame`,
+`costs`, `yields`, `tallies`, `journal`, `needs`. Then the shared helpers from
+`kit.js` — `pay`, `gain`, `tally`, `journal`, `fx`, `note` — and an `apply`.
+
+And **`twice`: one sentence saying why applying it twice changes nothing.**
+That is law 12 as a field rather than as a hope. A guest applies its own actions
+at once and the host applies them again, so a second arrival is ordinary, not an
+error. If you cannot write that sentence, the action is wrong.
+
+`cap` is what the world means, not what the reducer enforces — the gate is in
+`src/ui/interact.js`, and moving it into the reducer would change what a guest
+may apply optimistically. `tests/actions.test.mjs` checks the two agree, along
+with everything else on the row, and it holds the count of actions on purpose so
+that adding one is a deliberate act.
+
 ### A project
 
 One row in `PROJECTS` in `src/core/content.js` (cost, which capability builds
@@ -722,7 +761,9 @@ goes, art in `render/art.js` plus a line in the renderer's building switch,
 strings in **every** language table, a `CONCERNS` entry if the guide should
 mention it — **placed where it matters in the order, see law 2** — and a step in
 the smoke test's project loop. `project.build` is the only action needed; there
-is no per-project action.
+is no per-project action. It appears on `/map` on its own, because the map reads
+`PROJECTS` — there is nothing to add there, and `tests/map.test.mjs` goes red if
+that ever stops being true.
 
 Split the cost across roles on purpose (law 7). A project one role can pay for
 alone is a missed conversation.
@@ -758,6 +799,11 @@ in `SKILL_ORDER`. Then:
   in both.
 - **a test in `tests/skills.test.mjs`**, and a line in `catchUp`'s away test
   if the job can happen while nobody is watching.
+- **`brings`: the one thing it puts into the village.** That is what decides
+  where it goes — the pile, their arms or the larder — and it is what joins the
+  job to the thing on `/map`. `tests/map.test.mjs` shows somebody the job, leaves
+  the village alone for six hours and checks that what turns up is what the row
+  claims, so a wrong one is caught rather than drawn confidently.
 
 The `stone` skill is the odd one: it has no capability behind it, so
 `stone.take` carries `tally(w, a.role, 'stone')` purely to be the gate for
@@ -841,7 +887,8 @@ in the list is the decision. Everything else is the queue behind it.
 ### A deed, a notice, a language
 
 - A tally of what somebody has done is one row in `DEEDS` in `hud.js` plus its
-  strings; it reads the `done` count `actions.js` already keeps.
+  strings; it reads the `done` count the actions already keep (`tallies` on the
+  action's own row).
 - `w.notices` still exists and the simulation still raises them. They surface
   under *What has happened*, except where `NOTICE_JOB` in `hud.js` says the
   mission already covers one — the empty bread basket is not worth saying twice.
@@ -870,6 +917,61 @@ pin it to the middle" silently kills panning on that axis — on a phone, always
 the vertical one. The maximum zoom is a size on the glass (`MAX_TILE_PX`), not
 a bare number, because the same number means a different thing on a phone and
 on a laptop. `tools/smoke.mjs` checks both on every screen size it walks.
+
+## 🗺️ The map at `/map`
+
+**A picture of this game as boxes and arrows, for whoever is changing it.** The
+two roles, what each knows how to do, every action with what it costs and gives
+back, the jobs a villager can be shown, what the village builds, the ladder of
+concerns in the order that decides everything, and what the world does on its
+own. Click a box: what it is, which file and symbol it lives in, everything it
+joins to, and the words the game uses for it in every language side by side.
+
+**It is not generated, and that is the whole point.** `src/map/graph.js` imports
+the same modules the game runs from and builds the graph in the browser at load.
+There is no generated file, nothing committed, nothing to regenerate and no step
+anybody can forget — `/map` and the build that served it are the same code by
+construction. The footer line ("in a brand new world the guide would ask for…")
+is worked out from a real `createWorld()` on the page, which is the proof.
+
+**So the map has no content of its own, and must not grow any.** A node is a row
+in `ROLES`, `CAPS`, `ACTIONS`, `RESOURCES`, `PROJECTS`, `VILLAGER_SKILLS`,
+`HOUSE_STUFF`, `CONCERNS` or `EVENTS`; an edge is a field of one of those rows
+pointing at another. **A new project, action, skill, concern or piece of
+furniture is a row in a table and nothing in `src/map/`.** If something can only
+be drawn by writing it down here a second time, put it in the game's own table
+instead — `brings` on a villager skill is that story: it started as a lookup
+inside the map and belongs in `VILLAGER_SKILLS`, where it now is.
+
+- `src/map/graph.js` — pure, no DOM, so `tests/map.test.mjs` can import it.
+  Exports `buildGraph()`, `KINDS`, `VIEWS`, `CEILINGS`, `wordsFor()`.
+- `src/map/view.js` — layout, the SVG, pan and pinch, the panel. `layout()` is
+  pure too, so what is really on a view is checked without a browser.
+- `src/map/page.js` — the entry point, and `window.olwMap` for the browser pass.
+- `map.html`, `styles/map.css` — **script and style stay external.** They are
+  under `src/` and `styles/`, already allowlisted, which keeps this page
+  CSP-ready. `stats.html` is inline and cannot be; do not copy it.
+
+**Four views.** *Who can do what* is the reference and leaves nothing out. The
+other three name a `primary` kind and cut themselves back to what touches it —
+without that, every view is all thirty-five actions and reads like a wall.
+
+**What keeps it true** is the direction that usually gets forgotten: not "can
+the map show something that is gone", which is impossible, but "was something
+added and left off it".
+
+- `tests/map.test.mjs` fails if anything in the tables is missing from the map or
+  laid out on no view, if a box names a file that has moved or a symbol that has
+  been renamed, if a word it shows has no translation in some language, if a
+  mini-game is unreachable, if a villager job would gather straight into a
+  player's own hands (law 9, as an arrow), if a job's `brings` is not what the
+  simulation really brings in, or if `map.html` ever grows content or an inline
+  script of its own.
+- `tools/map.mjs` opens it in a real browser during `npm run verify` — every
+  view, a click, a link followed, the search, Escape, and a phone.
+
+`/map` is a tool for the owner, not a feature for a child: it gets **no
+changelog entry and no version bump**, and nothing in the game links to it.
 
 ## 📊 Counting how much this gets played
 
@@ -917,8 +1019,9 @@ during `npm run verify`.
 
 - Comments say why, not what, and read like the game does: plain, warm, no
   jargon. Names are things in the world (`larder`, `plan`, `landing`).
-- Every change to the world is an action in `src/core/actions.js`; the
-  simulation stays deterministic (fixed 100 ms ticks, seeded rng in the world).
+- Every change to the world is an action in `src/core/actions/`, one file per
+  group, each action a row that says what it is (see below); the simulation
+  stays deterministic (fixed 100 ms ticks, seeded rng in the world).
   Mini-games run entirely on the device that opened them — only the outcome is
   an action, so a wobbly bridge test never travels over the network.
 - Strings live in `src/i18n/` — every table, always; the tests check.

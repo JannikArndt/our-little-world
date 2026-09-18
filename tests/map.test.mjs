@@ -23,6 +23,8 @@ import {
   HOUSE_SHELF,
 } from '../src/core/content.js';
 import { ACTIONS, EVENTS } from '../src/core/actions/index.js';
+import { applyAction } from '../src/core/actions.js';
+import { catchUp } from '../src/core/sim.js';
 import { CONCERNS, MAX_ACTIVE } from '../src/core/guide.js';
 import { STRINGS, LANGUAGES } from '../src/core/i18n.js';
 
@@ -243,3 +245,62 @@ test('a world can still be made in here, which is what the live line needs', () 
     'the map page builds a world to show what the guide would ask for',
   );
 });
+
+test('what a job says it brings in is what it really brings in', () => {
+  // `brings` is what puts a skill next to a resource on the map, and a wrong one
+  // would draw a confident arrow at the wrong thing. So it is not taken on
+  // trust: each job is shown to somebody, the village is left alone, and
+  // whatever turns up is compared with what the row claims.
+  for (const key of SKILL_ORDER) {
+    const skill = VILLAGER_SKILLS[key];
+    const w = createWorld(11);
+    applyAction(w, { type: 'block.start', length: 1000000 });
+    for (const id in w.players)
+      Object.assign(w.players[id].done, { fell: 9, stone: 9, farm: 9, care: 9, fish: 9 });
+    for (const v of w.villagers) v.hunger = 5;
+    // a village with something for every job to actually do: a row standing
+    // ready to reap, and a sheep worth shearing. Without these, farming only
+    // sows and shearing finds nothing on.
+    w.plots[0].state = 'ripe';
+    w.plots[0].growth = 100;
+    for (const sh of w.sheep) sh.fluff = 90;
+    // whatever has to be standing first, stand it up
+    if (skill.needs) {
+      const plan = w.buildings.find(b => b.type === PROJECTS[skill.needs].type);
+      plan.state = 'built';
+      plan.fishedTick = -9999;
+    }
+    const worker = w.villagers.filter(v => v.homeId && !v.kid)[0];
+    assert.ok(worker, 'nobody in this village is settled enough to be shown a job');
+    for (const v of w.villagers) v.skills = [];
+    worker.skills = [{ what: key, by: 'A' }];
+
+    const before = snapshot(w, worker);
+    w.ext.awayAt = Date.now() - 6 * 60 * 60 * 1000;
+    catchUp(w, Date.now());
+    const after = snapshot(w, worker);
+
+    const grew = Object.keys(after).filter(k => after[k] > before[k]);
+    assert.ok(
+      grew.includes(skill.brings),
+      key +
+        ' says it brings in ' +
+        skill.brings +
+        ', but what turned up was: ' +
+        (grew.join(', ') || 'nothing'),
+    );
+  }
+});
+
+/** Everything a villager job could put anywhere, counted in one place. */
+function snapshot(w, v) {
+  const out = {};
+  for (const r of RESOURCES) {
+    out[r.key] =
+      (w.pile[r.key] || 0) +
+      (v.bag?.[r.key] || 0) +
+      (w.larder[r.key] || 0) +
+      (v.carrying?.res === r.key ? v.carrying.n : 0);
+  }
+  return out;
+}

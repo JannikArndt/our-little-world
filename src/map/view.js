@@ -105,7 +105,10 @@ function curve(a, b) {
     y2 = b.y + BOX_H / 2;
   // an edge that goes backwards loops under rather than through everything
   if (x2 < x1) {
-    const dip = Math.max(30, Math.abs(y2 - y1) / 2 + 24);
+    // it loops out to the left rather than through everything — but never past
+    // the edge of the sheet, which is where the ladder's own arrows would go
+    const want = Math.max(30, Math.abs(y2 - y1) / 2 + 24);
+    const dip = Math.max(10, Math.min(want, a.x - 8));
     return (
       'M' +
       a.x +
@@ -208,7 +211,9 @@ export function draw(sheet, plan, onPick) {
       }
       for (const [nid, g] of byId) {
         g.classList.toggle('on', nid === id);
-        g.classList.toggle('dim', !!id && !touching.has(nid));
+        // the one it is about is never dimmed, even when this view shows nothing
+        // it joins to — a box that goes faint when you tap it looks broken
+        g.classList.toggle('dim', !!id && nid !== id && !touching.has(nid));
       }
     },
     /** The boxes whose name matches what somebody typed. */
@@ -216,7 +221,9 @@ export function draw(sheet, plan, onPick) {
       const q = text.trim().toLowerCase();
       let n = 0;
       for (const [nid, g] of byId) {
-        const hit = !!q && nid.toLowerCase().includes(q);
+        const node = plan.placed.get(nid).node;
+        const hay = (nid + ' ' + node.name).toLowerCase();
+        const hit = !!q && hay.includes(q);
         g.classList.toggle('hit', hit);
         if (hit) n++;
       }
@@ -243,11 +250,31 @@ const el = (tag, cls, text) => {
   return e;
 };
 
+/**
+ * What the panel says with nothing picked. The lines are worked out on the page
+ * from a real world, so this is also the proof that the map is reading the live
+ * code rather than something written out earlier.
+ */
+export function blank(panel, lines) {
+  panel.textContent = '';
+  panel.classList.add('empty');
+  panel.appendChild(
+    el('p', 'hint', 'Tap a box. Its arrows light up and everything it joins to is listed here.'),
+  );
+  const dl = el('dl', 'live');
+  dl.id = 'live';
+  for (const [k, v] of lines) {
+    dl.appendChild(el('dt', null, k));
+    dl.appendChild(el('dd', null, String(v)));
+  }
+  panel.appendChild(dl);
+}
+
 /** Everything known about one box, including the words the game says for it. */
 export function describe(panel, graph, id, onPick) {
   const n = graph.nodes.find(x => x.id === id);
   panel.textContent = '';
-  panel.hidden = false;
+  panel.classList.remove('empty');
   if (!n) return;
 
   const close = el('button', 'close', '×');
@@ -282,6 +309,14 @@ export function describe(panel, graph, id, onPick) {
   const into = graph.edges.filter(e => e.to === id);
   if (out.length) panel.appendChild(related('this points at', out, 'to', graph, onPick));
   if (into.length) panel.appendChild(related('points at this', into, 'from', graph, onPick));
+  if (!out.length && !into.length) {
+    // said rather than left blank: a box with no arrows is a fact about the
+    // game, not a page that failed to draw them
+    panel.appendChild(el('h3', null, 'what it joins to'));
+    panel.appendChild(
+      el('p', 'what', 'Nothing. No table names it and it names none — it stands on its own.'),
+    );
+  }
 
   const words = wordsFor(n);
   if (words.length) {
@@ -364,17 +399,25 @@ export function camera(sheet, getRoot, plan) {
   };
 
   /**
-   * Fit the whole picture, unless fitting it would make the boxes too small to
-   * read — on a phone it always would, so there it zooms in and starts at the
-   * top left instead, and you pan. A map you have to pinch before you can read
-   * a single word is not a map.
+   * Fit the whole picture, unless fitting it would make the words too small to
+   * read — on a phone it always would, and on a laptop with the panel open it
+   * does too. A map you have to zoom before you can read a single word is not a
+   * map, so the writing wins and you pan instead. Whatever will not fit then
+   * runs off to the right and the bottom, never off the top left, because that
+   * is where reading starts.
    */
-  const READABLE = 104; // how wide a box has to be on the glass, in CSS pixels
+  const READABLE = 11; // how tall the writing has to be on the glass, in CSS pixels
+  const TEXT = 13; // and how tall it is in the picture's own units
   const fit = () => {
-    const onGlass = BOX_W / perPixel();
-    scale = Math.max(1, Math.min(2.4, READABLE / Math.max(1, onGlass)));
-    ox = 0;
-    oy = 0;
+    const k = 1 / perPixel();
+    scale = Math.max(1, Math.min(6, READABLE / TEXT / Math.max(k, 0.01)));
+    // top left, always: the columns read left to right and start at the top, so
+    // slack belongs at the bottom and the right rather than as a band above the
+    // first row
+    const b = box();
+    const p = plan();
+    ox = p.width / 2 - b.width / (2 * k);
+    oy = p.height / 2 - b.height / (2 * k);
     apply();
   };
 
@@ -440,18 +483,50 @@ export function camera(sheet, getRoot, plan) {
   sheet.addEventListener('pointercancel', up);
   sheet.addEventListener('pointerleave', up);
 
-  /** Bring one box to the middle, so a link in the panel actually goes there. */
+  /** Bring one box to the middle. */
   const goTo = at => {
-    if (!at) return;
     const p = plan();
     ox = p.width / 2 - (at.x + BOX_W / 2) * scale;
     oy = p.height / 2 - (at.y + BOX_H / 2) * scale;
     apply();
   };
 
+  /** Where a box has ended up on the glass, which is the reverse of pointAt. */
+  const glassRect = at => {
+    const b = box();
+    const p = plan();
+    const k = 1 / perPixel();
+    return {
+      x: b.left + (b.width - p.width * k) / 2 + (ox + at.x * scale) * k,
+      y: b.top + (b.height - p.height * k) / 2 + (oy + at.y * scale) * k,
+      w: BOX_W * scale * k,
+      h: BOX_H * scale * k,
+    };
+  };
+
+  /**
+   * Show a box **without moving anything if it is already showing**. Tapping a
+   * box you can see must not shift the picture under your finger: the whole use
+   * of a fixed layout is that where a thing is stays where it is. Only a link
+   * to something off the glass — which you would otherwise never find — pans,
+   * and even then the zoom is left alone.
+   */
+  const reveal = at => {
+    if (!at) return;
+    const b = box();
+    const r = glassRect(at);
+    const m = 6; // a box just touching the edge counts as off it
+    const showing =
+      r.x >= b.left + m &&
+      r.y >= b.top + m &&
+      r.x + r.w <= b.right - m &&
+      r.y + r.h <= b.bottom - m;
+    if (!showing) goTo(at);
+  };
+
   return {
     fit,
-    goTo,
+    reveal,
     apply,
     zoom: f => {
       const b = box();

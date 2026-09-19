@@ -27,6 +27,7 @@ import { applyAction } from '../src/core/actions.js';
 import { catchUp } from '../src/core/sim.js';
 import { CONCERNS, MAX_ACTIVE } from '../src/core/guide.js';
 import { STRINGS, LANGUAGES } from '../src/core/i18n.js';
+import { MINIGAMES } from '../src/minigames/list.js';
 
 const graph = buildGraph();
 const ids = new Set(graph.nodes.map(n => n.id));
@@ -60,16 +61,16 @@ test('and nothing is on the map that is not in the game', () => {
   for (const n of graph.nodes) {
     const table = real[n.kind];
     if (!table) continue; // res, store, game, gives and concern are checked below
-    assert.ok(table[n.name], n.id + ' is on the map but nowhere in the game');
+    assert.ok(table[n.key], n.id + ' is on the map but nowhere in the game');
   }
   for (const n of of('res'))
     assert.ok(
-      RESOURCES.some(r => r.key === n.name),
+      RESOURCES.some(r => r.key === n.key),
       n.id + ' is no real thing',
     );
   for (const n of of('concern'))
     assert.ok(
-      CONCERNS.some(c => c.id === n.name),
+      CONCERNS.some(c => c.id === n.key),
       n.id + ' is no real concern',
     );
 });
@@ -81,26 +82,36 @@ test('every box says where in the code to look, and is right about it', () => {
     // readFileSync throwing is half the test: a file that has moved fails here
     const src = readFileSync(new URL('../' + n.file, import.meta.url), 'utf8');
     assert.ok(src.length > 0, n.file + ' is empty');
-    // For anything named after a row in a table, the name has to appear in the
-    // file it claims — that is what stops a rename leaving the map pointing at
-    // the wrong place. A mini-game is named after its file instead, so opening
-    // the file at all is the whole check there.
-    if (n.kind === 'game') continue;
-    assert.ok(src.includes(n.name), n.id + ' is not mentioned in ' + n.file);
+    // The key a table knows it by has to appear in the file it claims — that is
+    // what stops a rename leaving the map pointing at the wrong place. The box
+    // may say something friendlier (ROLES.A is the Builder), and the symbol is
+    // checked instead for those.
+    const want = n.kind === 'game' ? n.symbol.replace('()', '') : n.key;
+    assert.ok(src.includes(want), n.id + ' says ' + want + ', which is not in ' + n.file);
   }
 });
 
-test('every mini-game on the map is a file that really exists', () => {
-  const onDisk = readdirSync(new URL('../src/minigames/', import.meta.url))
-    .filter(f => f.endsWith('.js'))
-    .map(f => f.slice(0, -3));
-  const shown = of('game').map(n => n.name);
-  for (const g of shown)
-    assert.ok(onDisk.includes(g), 'the map shows a mini-game that is gone: ' + g);
-  // the other direction is a real gap worth knowing about: a mini-game no action
-  // opens is a mini-game nobody can reach
-  for (const g of onDisk)
-    assert.ok(shown.includes(g), 'no action opens src/minigames/' + g + '.js — is it reachable?');
+test('every mini-game on the map is one a player can really open', () => {
+  const shown = of('game').map(n => n.key);
+  for (const g of shown) assert.ok(MINIGAMES[g], 'the map shows a mini-game that is gone: ' + g);
+  // the other direction: a game in the table that no action opens would be a
+  // game nobody can reach, and the map is where that shows up
+  for (const g in MINIGAMES) assert.ok(shown.includes(g), 'nothing opens the ' + g + ' mini-game');
+  // and the box says what happens in it rather than what happens in all of them
+  for (const n of of('game')) {
+    const says = n.facts.find(([k]) => k === 'what you do');
+    assert.ok(says, n.id + ' does not say what a player does in it');
+    assert.equal(says[1], MINIGAMES[n.key].what);
+  }
+  // the files on disk are still worth a look: one nothing names is unreachable
+  const files = readdirSync(new URL('../src/minigames/', import.meta.url)).filter(
+    f => f.endsWith('.js') && f !== 'list.js',
+  );
+  for (const f of files)
+    assert.ok(
+      Object.values(MINIGAMES).some(m => m.file === f),
+      'src/minigames/' + f + ' is on no mini-game row',
+    );
 });
 
 test('no arrow points at a box that is not there', () => {
@@ -183,7 +194,7 @@ test('every view has something in it, and between them they show the lot', () =>
     const plan = layout(graph, v.id);
     assert.ok(plan.placed.size > 3, 'the "' + v.id + '" view is nearly empty');
     assert.ok(plan.lines.length > 2, 'the "' + v.id + '" view has almost no arrows');
-    assert.ok(v.title && v.blurb, v.id + ' does not say what it is');
+    assert.ok(v.title && v.note, v.id + ' does not say what it is');
     for (const id of plan.placed.keys()) seen.add(id);
   }
   for (const n of graph.nodes)
@@ -304,3 +315,59 @@ function snapshot(w, v) {
   }
   return out;
 }
+
+test('nothing about the village stands there joined to nothing', () => {
+  // A box with no arrow is a row nothing else in the game refers to, and on the
+  // page it looks broken: tapping it lights nothing up. Two kinds of action
+  // really are joined to nothing, and both are about the session rather than
+  // the village — the block starting and ending, a peer seen, a notice put
+  // away, a region opening, and answering a tap on somebody. Anything else
+  // lonely is a table that stopped being read.
+  const touched = new Set();
+  for (const e of graph.edges) {
+    touched.add(e.from);
+    touched.add(e.to);
+  }
+  const lonely = graph.nodes.filter(n => !touched.has(n.id));
+  for (const n of lonely) {
+    assert.equal(n.kind, 'action', n.id + ' has no arrows at all, and it is not even an action');
+    const row = ACTIONS[n.key];
+    assert.ok(
+      row.group === 'session' || n.key === 'villager.poke',
+      n.id + ' has no arrows at all — nothing in the game mentions it',
+    );
+  }
+  // and the plumbing is small, so a village action hiding in it would show up
+  assert.ok(
+    lonely.length < 9,
+    lonely.length + ' boxes join to nothing now: ' + lonely.map(n => n.id).join(', '),
+  );
+});
+
+test('every piece of furniture changes the house it stands in', () => {
+  // The question the map is supposed to answer: a blanket gives nothing, so
+  // does it do anything? It adds to comfort, and that arrow has to be there or
+  // the picture says it is decoration.
+  for (const key of HOUSE_SHELF) {
+    const out = graph.edges.filter(e => e.from === 'stuff:' + key && e.to.startsWith('gives:'));
+    assert.ok(out.length, key + ' points at nothing a house ends up with');
+    const f = HOUSE_STUFF[key];
+    if (f.comfort)
+      assert.ok(
+        out.some(e => e.to === 'gives:comfort' && e.label === '+' + f.comfort),
+        key + ' adds ' + f.comfort + ' comfort, and the map does not say so',
+      );
+  }
+  // and comfort comes from every piece, which is the whole point of it
+  const adders = graph.edges.filter(e => e.to === 'gives:comfort').length;
+  assert.equal(adders, HOUSE_SHELF.filter(k => HOUSE_STUFF[k].comfort).length);
+});
+
+test('the two players are called what the game calls them', () => {
+  // 'A' and 'B' are keys, not names. A page for whoever is changing this should
+  // say Builder and Keeper, in the game's own words rather than the map's.
+  for (const n of of('role')) {
+    assert.equal(n.name, STRINGS.en['role.' + n.key + '.short']);
+    assert.notEqual(n.name, n.key, 'the map is still showing the role key as a name');
+  }
+});

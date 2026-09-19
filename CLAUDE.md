@@ -741,6 +741,16 @@ absent is not**: `cap` (a `CAPS` key, or null for either of you, or `byProject`
 `costs`, `yields`, `tallies`, `journal`, `needs`. Then the shared helpers from
 `kit.js` — `pay`, `gain`, `tally`, `journal`, `fx`, `note` — and an `apply`.
 
+**`minigame` is a key in `MINIGAMES` (`src/minigames/list.js`), not a file
+name.** A file is not a game: `modes.js` holds three of them and `sawmill.js`
+and `bridge.js` two each, so a row names the one function that opens it —
+`roadMode`, `openMill`, `openRepair` — and that table says which file it is in
+and, in one line, what a player actually does in it. `tests/actions.test.mjs`
+opens every one of those files and checks it really exports what the row claims,
+so a rename cannot leave the table quietly wrong. Naming a mini-game an action
+does not open is how `plot.water` came to claim one for a while when watering is
+a plain dispatch.
+
 And **`twice`: one sentence saying why applying it twice changes nothing.**
 That is law 12 as a field rather than as a hope. A guest applies its own actions
 at once and the host applies them again, so a second arrival is ordinary, not an
@@ -931,13 +941,17 @@ joins to, and the words the game uses for it in every language side by side.
 the same modules the game runs from and builds the graph in the browser at load.
 There is no generated file, nothing committed, nothing to regenerate and no step
 anybody can forget — `/map` and the build that served it are the same code by
-construction. The footer line ("in a brand new world the guide would ask for…")
-is worked out from a real `createWorld()` on the page, which is the proof.
+construction. What the panel says before anything is picked — the first mission
+in a brand new world, the concerns queued behind it, what a house shell costs,
+the ceilings — is worked out from a real `createWorld()` on the page, which is
+the proof.
 
 **So the map has no content of its own, and must not grow any.** A node is a row
 in `ROLES`, `CAPS`, `ACTIONS`, `RESOURCES`, `PROJECTS`, `VILLAGER_SKILLS`,
-`HOUSE_STUFF`, `CONCERNS` or `EVENTS`; an edge is a field of one of those rows
-pointing at another. **A new project, action, skill, concern or piece of
+`HOUSE_STUFF`, `MINIGAMES`, `CONCERNS` or `EVENTS`; an edge is a field of one of
+those rows pointing at another. A box says the table's own key and is checked
+against the file it names — except a role, which says what the game calls it
+(`ROLES.A` is the Builder), because `A` is a key and not a name. **A new project, action, skill, concern or piece of
 furniture is a row in a table and nothing in `src/map/`.** If something can only
 be drawn by writing it down here a second time, put it in the game's own table
 instead — `brings` on a villager skill is that story: it started as a lookup
@@ -952,9 +966,21 @@ inside the map and belongs in `VILLAGER_SKILLS`, where it now is.
   under `src/` and `styles/`, already allowlisted, which keeps this page
   CSP-ready. `stats.html` is inline and cannot be; do not copy it.
 
-**Four views.** *Who can do what* is the reference and leaves nothing out. The
-other three name a `primary` kind and cut themselves back to what touches it —
-without that, every view is all thirty-five actions and reads like a wall.
+**Four views, named for what is in them** — *Actions*, *Missions*, *Houses*,
+*Village*. *Actions* is the reference and leaves nothing out; the other three
+name a `primary` kind and cut themselves back to what touches it, without which
+every view is all thirty-five actions and reads like a wall. A view's `note` is
+the button's tooltip and nothing else: this page is for an engineer, so the
+picture and the panel carry it rather than a paragraph above the buttons.
+
+**Tapping a box never moves the picture.** A fixed layout is only worth having
+if a thing stays where it was, so a tap lights the box and its arrows and leaves
+the camera alone; only a link to something off the glass pans, and even then the
+zoom is untouched. The panel keeps its column whether or not anything is picked,
+because a panel that appears would resize the sheet and move everything on it.
+The picture is scaled so the **writing** is legible rather than so the whole
+thing fits — a map you have to zoom before you can read a word is not a map — so
+on a phone, and on a laptop with the panel open, you pan.
 
 **What keeps it true** is the direction that usually gets forgotten: not "can
 the map show something that is gone", which is impossible, but "was something
@@ -963,12 +989,15 @@ added and left off it".
 - `tests/map.test.mjs` fails if anything in the tables is missing from the map or
   laid out on no view, if a box names a file that has moved or a symbol that has
   been renamed, if a word it shows has no translation in some language, if a
-  mini-game is unreachable, if a villager job would gather straight into a
-  player's own hands (law 9, as an arrow), if a job's `brings` is not what the
-  simulation really brings in, or if `map.html` ever grows content or an inline
+  mini-game is unreachable or stops saying what happens in it, if a villager job
+  would gather straight into a player's own hands (law 9, as an arrow), if a
+  job's `brings` is not what the simulation really brings in, if a piece of
+  furniture stops changing the house it stands in, if a box about the village
+  joins to nothing at all, or if `map.html` ever grows content or an inline
   script of its own.
 - `tools/map.mjs` opens it in a real browser during `npm run verify` — every
-  view, a click, a link followed, the search, Escape, and a phone.
+  view, a click that must not move the camera, a link followed, a box with no
+  arrows of its own, the search, Escape, and a phone.
 
 `/map` is a tool for the owner, not a feature for a child: it gets **no
 changelog entry and no version bump**, and nothing in the game links to it.

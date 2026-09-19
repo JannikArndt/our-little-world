@@ -60,21 +60,11 @@ header {
   z-index: 3;
 }
 h1 {
-  font-size: 18px;
-  margin: 0 0 2px;
+  font-size: 15px;
+  margin: 0 0 8px;
   font-weight: 650;
-}
-h1 small {
-  font-weight: 400;
-  color: var(--ink-faint);
-  font-size: 13px;
-  margin-left: 8px;
-}
-.blurb {
-  margin: 4px 0 8px;
   color: var(--ink-soft);
-  font-size: 13px;
-  max-width: 78ch;
+  letter-spacing: 0.02em;
 }
 .bar {
   display: flex;
@@ -123,11 +113,6 @@ input.find {
   flex: 1 1 14ch;
   max-width: 26ch;
 }
-.count {
-  color: var(--ink-faint);
-  font-size: 12px;
-}
-
 /* ---- the picture ------------------------------------------------- */
 main {
   flex: 1 1 auto;
@@ -226,13 +211,22 @@ main {
   padding: 14px 16px 24px;
   -webkit-overflow-scrolling: touch;
 }
-#panel[hidden] {
-  display: none;
-}
 #panel h2 {
   font-size: 17px;
   margin: 0 0 2px;
   word-break: break-word;
+}
+#panel .hint {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin: 0 0 14px;
+}
+#panel dl.live dt {
+  margin-top: 10px;
+}
+#panel dl.live dd {
+  color: var(--ink-soft);
+  font-size: 12.5px;
 }
 #panel .kindline {
   color: var(--ink-faint);
@@ -342,39 +336,9 @@ main {
   min-height: 32px;
 }
 
-/* ---- the legend and the footer ----------------------------------- */
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  font-size: 11.5px;
-  color: var(--ink-soft);
-  margin: 8px 0 0;
-}
-.legend span {
-  white-space: nowrap;
-}
-.legend i {
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 2px;
-  margin-right: 4px;
-  vertical-align: baseline;
-}
-footer {
-  flex: 0 0 auto;
-  padding: 6px 16px;
-  border-top: 1px solid var(--line);
-  background: var(--card);
-  font-size: 11.5px;
-  color: var(--ink-faint);
-}
-footer a {
-  color: var(--ink-soft);
-}
-#live {
-  color: var(--ink-faint);
+/* ---- without JavaScript ------------------------------------------ */
+noscript p {
+  padding: 16px;
 }
 
 /* ---- a phone ----------------------------------------------------- */
@@ -390,21 +354,13 @@ footer a {
     border-top: 1px solid var(--line);
     box-shadow: 0 -6px 14px rgba(67, 55, 42, 0.08);
   }
-  .blurb {
+  h1 {
     display: none;
   }
-  .legend {
+  /* the picture is the small screen's whole budget: an empty panel is not worth
+     a third of it, so down here it appears only once something is picked */
+  #panel.empty {
     display: none;
-  }
-  h1 small {
-    display: none;
-  }
-  /* one line, always: a footer that grows is a footer that eats the panel */
-  footer {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding-bottom: calc(6px + env(safe-area-inset-bottom));
   }
   #panel {
     padding-bottom: calc(24px + env(safe-area-inset-bottom));

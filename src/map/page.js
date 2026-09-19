@@ -5,8 +5,8 @@
 // imports the same modules the game runs from, so what it shows is what is true
 // of the build that served it.
 
-import { buildGraph, VIEWS, KINDS, CEILINGS, SHELL, missionFor } from './graph.js';
-import { layout, draw, describe, camera } from './view.js';
+import { buildGraph, VIEWS, CEILINGS, SHELL, missionFor } from './graph.js';
+import { layout, draw, describe, blank, camera } from './view.js';
 import { createWorld } from '../core/world.js';
 import { setLang } from '../core/i18n.js';
 
@@ -18,10 +18,7 @@ const graph = buildGraph();
 const sheet = document.getElementById('sheet');
 const panel = document.getElementById('panel');
 const tabs = document.getElementById('tabs');
-const blurb = document.getElementById('blurb');
-const count = document.getElementById('count');
 const find = document.getElementById('find');
-const legend = document.getElementById('legend');
 
 let plan = null;
 let drawn = null;
@@ -37,7 +34,7 @@ const cam = camera(
 function pick(id) {
   picked = id;
   if (!id) {
-    panel.hidden = true;
+    blank(panel, LIVE);
     drawn.light(null);
     return;
   }
@@ -51,7 +48,8 @@ function pick(id) {
   }
   describe(panel, graph, id, pick);
   drawn.light(id);
-  cam.goTo(drawn.at(id));
+  // deliberately not cam.goTo: a box you can already see does not move
+  cam.reveal(drawn.at(id));
 }
 
 function show(next, thenPick) {
@@ -59,35 +57,18 @@ function show(next, thenPick) {
   plan = layout(graph, viewId);
   drawn = draw(sheet, plan, pick);
   cam.fit();
-  blurb.textContent = plan.view.blurb;
-  count.textContent = plan.placed.size + ' things, ' + plan.lines.length + ' connections';
   for (const b of tabs.children) b.setAttribute('aria-pressed', String(b.dataset.view === viewId));
-  drawLegend();
   if (find.value) drawn.find(find.value);
   if (thenPick) pick(thenPick);
   else if (picked && plan.placed.has(picked)) pick(picked);
-  else {
-    panel.hidden = true;
-    picked = null;
-  }
-}
-
-function drawLegend() {
-  legend.textContent = '';
-  for (const c of plan.columns) {
-    const s = document.createElement('span');
-    const i = document.createElement('i');
-    i.style.background = 'var(--k-' + c.kind + ')';
-    s.appendChild(i);
-    s.appendChild(document.createTextNode(c.kind + ' — ' + KINDS[c.kind].label));
-    legend.appendChild(s);
-  }
+  else pick(null);
 }
 
 for (const v of VIEWS) {
   const b = document.createElement('button');
   b.className = 'tab';
   b.textContent = v.title;
+  b.title = v.note;
   b.dataset.view = v.id;
   b.addEventListener('click', () => show(v.id));
   tabs.appendChild(b);
@@ -106,24 +87,27 @@ document.addEventListener('keydown', ev => {
 });
 window.addEventListener('resize', () => cam.apply());
 
-show(viewId);
-
-/* --- the one line that proves this is reading the live code -------- */
+/* --- the lines that prove this is reading the live code ------------- */
 // A fresh world, right here in the page, asked what it would put in front of a
-// player first. If the concern list changes, this line changes with it.
+// player first. If the concern list changes, these lines change with it.
 const fresh = createWorld(42);
 const mission = missionFor(fresh);
-document.getElementById('live').textContent =
-  'In a brand new world the guide would ask for: ' +
-  (mission.first ? mission.first.id : 'nothing — the calm card') +
-  ' · ' +
-  mission.queue.length +
-  ' more waiting behind it · a house shell costs ' +
-  Object.entries(SHELL)
-    .map(([k, v]) => v + ' ' + k)
-    .join(' and ') +
-  ' · ' +
-  CEILINGS.map(c => c.name + ' ' + c.value).join(', ');
+const LIVE = [
+  [
+    'the first mission in a new world',
+    mission.first ? mission.first.id : 'nothing — the calm card',
+  ],
+  ['waiting behind it', mission.queue.length + ' more concerns'],
+  [
+    'a house shell',
+    Object.entries(SHELL)
+      .map(([k, v]) => v + ' ' + k)
+      .join(' and '),
+  ],
+  ['the ceilings', CEILINGS.map(c => c.name + ' ' + c.value).join(', ')],
+];
+
+show(viewId);
 
 // so a browser test can ask the page what it thinks rather than guess from pixels
 window.olwMap = { graph, plan: () => plan, view: () => viewId, pick };

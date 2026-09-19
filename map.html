@@ -14,31 +14,21 @@
   </head>
   <body>
     <header>
-      <h1>
-        The map of Our Little World
-        <small>built from the code this page came with, so it cannot be a version behind</small>
-      </h1>
-      <p class="blurb" id="blurb"></p>
+      <h1>Our Little World</h1>
       <div class="bar">
         <div class="tabs" id="tabs"></div>
         <input class="find" id="find" type="search" placeholder="find…" aria-label="find a thing" />
         <button class="plain" id="out" aria-label="zoom out">−</button>
         <button class="plain" id="inn" aria-label="zoom in">+</button>
         <button class="plain" id="fit">fit</button>
-        <span class="count" id="count"></span>
       </div>
-      <p class="legend" id="legend"></p>
     </header>
     <main>
       <svg id="sheet" role="img" aria-label="the game as boxes and arrows"></svg>
-      <aside id="panel" hidden aria-live="polite"></aside>
+      <aside id="panel" class="empty" aria-live="polite"></aside>
     </main>
-    <footer>
-      <span id="live"></span> · <a href="/">the game</a> ·
-      <a href="/stats">how much it gets played</a>
-    </footer>
     <noscript>
-      <p style="padding: 16px">
+      <p>
         This page works the game out from its own code, which needs JavaScript. The rulebook in
         CLAUDE.md says the same things in words.
       </p>

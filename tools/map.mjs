@@ -43,34 +43,45 @@ console.log('the views are:', drawn.views.join(' · '));
 // how it looks before anybody has touched it, which is how it will be met
 await page.screenshot({ path: SHOTS + '90-map.png' }).catch(() => {});
 
-// the footer line is worked out from a real world at load, so it proves the page
-// is reading the live code rather than something written out earlier
+// with nothing picked, the panel says what a real world made on this page would
+// ask for first — which is the proof it is reading the live code rather than
+// something written out earlier
 const live = await page.textContent('#live');
-console.log('the live line says:', live.trim());
-if (!/guide would ask for: \w+/.test(live)) throw new Error('the live line says nothing');
-if (!/MAX_ACTIVE 1/.test(live)) throw new Error('the live line lost the ceilings');
+console.log('the panel says, before anything is picked:', live.replace(/\s+/g, ' ').trim());
+if (!/homeless|no_bridge|calm/.test(live)) throw new Error('the live lines name no first mission');
+if (!/MAX_ACTIVE 1/.test(live)) throw new Error('the live lines lost the ceilings');
 
-// every view draws something, and the count in the bar matches the boxes
+// the views are named for what is in them, not for a sentence about them
+const NAMES = ['Actions', 'Missions', 'Houses', 'Village'];
+for (const want of NAMES)
+  if (!drawn.views.includes(want))
+    throw new Error('no "' + want + '" view: ' + drawn.views.join(' | '));
+
+// every view draws something, and every column says what kind of thing it holds
 for (const title of drawn.views) {
   await page.getByRole('button', { name: title, exact: true }).click();
   await page.waitForFunction(() => document.querySelectorAll('#sheet .node').length > 3);
   const seen = await page.evaluate(() => ({
     boxes: document.querySelectorAll('#sheet .node').length,
-    says: document.getElementById('count').textContent,
     heads: [...document.querySelectorAll('#sheet .colhead')].map(t => t.textContent),
   }));
-  const claimed = Number((seen.says.match(/^(\d+) things/) || [])[1]);
-  if (claimed !== seen.boxes)
-    throw new Error(title + ': the bar says ' + claimed + ' but ' + seen.boxes + ' were drawn');
   if (!seen.heads.length) throw new Error(title + ': the columns have no names');
   console.log('  ' + title + ': ' + seen.boxes + ' boxes, columns: ' + seen.heads.join(' | '));
+  // one picture per view, so a wall or an empty sheet is visible to a human
+  await page.screenshot({ path: SHOTS + '93-map-' + title.toLowerCase() + '.png' }).catch(() => {});
 }
 
 // back to the first view, and open one box we can predict everything about
 await page.getByRole('button', { name: drawn.views[0], exact: true }).click();
 await page.waitForFunction(() => document.querySelectorAll('#sheet .node').length > 3);
+// and the picture must not move under the finger when a box is tapped
+const before = await page.getAttribute('#sheet > g', 'transform');
 await page.locator('#sheet .node[data-id="action:tree.fell"]').click();
-await page.waitForSelector('#panel:not([hidden])', { timeout: 5000 });
+await page.waitForSelector('#panel:not(.empty)', { timeout: 5000 });
+const after = await page.getAttribute('#sheet > g', 'transform');
+if (before !== after)
+  throw new Error('tapping a box moved the camera: ' + before + ' became ' + after);
+console.log('tapping a box left the picture where it was');
 const card = await page.evaluate(() => ({
   title: document.querySelector('#panel h2').textContent,
   where: [...document.querySelectorAll('#panel code.where')].map(c => c.textContent),
@@ -110,10 +121,29 @@ await page.fill('#find', '');
 
 await page.screenshot({ path: SHOTS + '92-map-open.png' }).catch(() => {});
 
-// escape puts the panel away, the way it does everywhere else in this game
+// escape puts the panel back to what it says with nothing picked — and that must
+// not move the picture either
+const held = await page.getAttribute('#sheet > g', 'transform');
 await page.keyboard.press('Escape');
-await page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 3000 });
-console.log('escape put the panel away');
+await page.waitForSelector('#panel.empty', { timeout: 3000 });
+if ((await page.getAttribute('#sheet > g', 'transform')) !== held)
+  throw new Error('escape moved the camera');
+console.log('escape cleared the panel and left the picture alone');
+
+// a box with no arrows of its own still lights up and still explains itself
+await page.locator('#sheet .node[data-id="action:block.start"]').click();
+await page.waitForSelector('#panel:not(.empty)', { timeout: 5000 });
+const lonely = await page.evaluate(() => ({
+  on: document.querySelectorAll('#sheet .node.on').length,
+  faint: document.querySelector('#sheet .node.on').classList.contains('dim'),
+  says: document.getElementById('panel').textContent,
+}));
+if (lonely.on !== 1) throw new Error('a box with no arrows did not light up');
+if (lonely.faint) throw new Error('the box that was tapped went faint — it must never dim itself');
+if (!/stands on its own/.test(lonely.says))
+  throw new Error('the panel does not say that this box joins to nothing');
+console.log('a box with no arrows lights up and says so');
+await page.keyboard.press('Escape');
 
 // and on a phone: nothing hanging off the side, and the panel as a bottom sheet
 const phone = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -121,7 +151,7 @@ phone.on('pageerror', e => errors.push('phone page error: ' + e.message));
 await phone.goto(BASE + '/map', { waitUntil: 'load' });
 await phone.waitForSelector('#sheet .node', { timeout: 15000 });
 await phone.locator('#sheet .node').first().click();
-await phone.waitForSelector('#panel:not([hidden])', { timeout: 5000 });
+await phone.waitForSelector('#panel:not(.empty)', { timeout: 5000 });
 const small = await phone.evaluate(() => ({
   sideways: document.documentElement.scrollWidth > window.innerWidth + 1,
   panelTop: document.getElementById('panel').getBoundingClientRect().top,
@@ -130,7 +160,7 @@ const small = await phone.evaluate(() => ({
     b => b.getBoundingClientRect().height >= 30,
   ),
   panelBottom: document.getElementById('panel').getBoundingClientRect().bottom,
-  footerTop: document.querySelector('footer').getBoundingClientRect().top,
+  screen: window.innerHeight,
   boxWidth: document.querySelector('#sheet .node rect').getBoundingClientRect().width,
 }));
 console.log('on a phone:', JSON.stringify(small));
@@ -138,9 +168,9 @@ if (small.sideways) throw new Error('the map scrolls sideways on a phone');
 if (small.panelTop <= small.sheetTop)
   throw new Error('on a phone the panel should sit under the picture, not beside it');
 if (!small.tapTargets) throw new Error('a button in the bar is too small to tap');
-if (small.panelBottom > small.footerTop + 1)
-  throw new Error('the footer is sitting on top of the panel on a phone');
-if (small.boxWidth < 80)
+if (small.panelBottom > small.screen + 1)
+  throw new Error('the panel runs off the bottom of the phone');
+if (small.boxWidth < 120)
   throw new Error('the boxes are ' + small.boxWidth + 'px wide on a phone — nobody can read that');
 console.log('a box on a phone is', Math.round(small.boxWidth) + 'px wide');
 await phone.screenshot({ path: SHOTS + '91-map-phone.png', fullPage: false }).catch(() => {});

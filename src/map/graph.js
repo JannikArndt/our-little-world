@@ -31,6 +31,7 @@ import {
   SAPLING_TICKS,
 } from '../core/content.js';
 import { ACTIONS, EVENTS } from '../core/actions/index.js';
+import { MINIGAMES } from '../minigames/list.js';
 import { CONCERNS, MAX_ACTIVE, allProblems } from '../core/guide.js';
 import { STRINGS, LANGUAGES } from '../core/i18n.js';
 
@@ -44,99 +45,99 @@ import { STRINGS, LANGUAGES } from '../core/i18n.js';
  * purpose, so "the box to the left of saw.run" means the same thing twice.
  */
 export const KINDS = {
-  role: { label: 'a player', column: 0, what: 'One of the two people playing.' },
+  role: {
+    label: 'roles',
+    column: 0,
+    what: 'One of the two people playing. A row in ROLES: which capabilities it starts with, and what it starts holding.',
+  },
   cap: {
-    label: 'something you know how to do',
+    label: 'capabilities',
     column: 1,
-    what: 'A capability. You start with some and can be shown the rest.',
+    what: 'What a role may do. A key in CAPS — either of you can be taught any of them, which is why a column is where things start rather than a wall.',
   },
   action: {
-    label: 'a thing that changes the world',
+    label: 'actions',
     column: 2,
-    what: 'The only way the world ever changes. Everything else reads it.',
+    what: 'The only way the world ever changes: applyAction(w, a). A row in one of the group files under src/core/actions/.',
   },
   game: {
-    label: 'a mini-game',
+    label: 'mini-games',
     column: 3,
-    what: 'What stands between wanting a thing and having it, because free is the wrong price.',
+    what: 'What stands between wanting a thing and having it, because a tap is free and free is the wrong price. One function, opened by one action.',
   },
-  res: { label: 'a thing you can hold', column: 4, what: 'Carried by a player, spent on things.' },
+  res: {
+    label: 'resources',
+    column: 4,
+    what: 'One of the things RESOURCES lists: carried, spent, and gathered.',
+  },
   store: {
-    label: 'somewhere things sit',
+    label: 'stores',
     column: 5,
-    what: 'Not in anybody hands: a pile, a basket, a pair of arms.',
+    what: 'Where resources sit. A player inventory is theirs; the pile, a villager arms and the larder are not.',
   },
   project: {
-    label: 'something the village builds',
+    label: 'projects',
     column: 3,
-    what: 'Marked out on the map from the start, built once, there for good.',
+    what: 'Something the village builds. A row in PROJECTS: marked out on the map from the start, built once, there for good.',
   },
   skill: {
-    label: 'a job a villager can be shown',
+    label: 'villager skills',
     column: 2,
-    what: 'Show somebody twice and they can do it themselves, here and while you are away.',
+    what: 'A job a villager can be shown. A row in VILLAGER_SKILLS: show somebody TEACH_TIMES and they do it themselves, here and while you are away.',
   },
   stuff: {
-    label: 'something that goes in a house',
+    label: 'furniture',
     column: 4,
-    what: 'Written or drawn before it can be placed. A house is furnished for ever.',
+    what: 'A row in HOUSE_STUFF. Written or drawn before it can be placed, and a house is furnished for ever.',
   },
   gives: {
-    label: 'what a house ends up with',
+    label: 'house properties',
     column: 5,
-    what: 'Worked out from the furniture in the room, never written directly.',
+    what: 'Something true of a house. houseFit() derives all of these from the furniture standing in the room, so they can never drift from it.',
   },
   concern: {
-    label: 'something the guide may ask for',
+    label: 'concerns',
     column: 0,
-    what: 'The world reads itself and picks one. Where it stands in the list is the design.',
+    what: 'Something the guide may ask for. A row in CONCERNS — the world reads itself and the first one that applies is the mission.',
   },
   event: {
-    label: 'something the world does',
+    label: 'events',
     column: 1,
-    what: 'Raised during a play block, never while nobody is watching.',
+    what: 'Something the world does during a play block. A row in EVENTS, never raised while nobody is watching.',
   },
 };
 
-/** The three pictures. A node belongs to a view if its kind is listed here. */
+/** The four pictures. A node belongs to a view if its kind is listed here. */
 export const VIEWS = [
   {
     id: 'doing',
-    title: 'Who can do what',
-    blurb:
-      'Every way a player changes the world, what it costs and what it gives back. ' +
-      'A capability can be taught, so the columns are where things start, not a wall.',
+    title: 'Actions',
+    note: 'Every way a player changes the world, what it costs and what it gives back.',
     kinds: ['role', 'cap', 'action', 'game', 'res', 'store'],
     // the reference view: everything a player can do, nothing left out
     prune: false,
   },
   {
     id: 'ladder',
-    title: 'The one mission, and the queue behind it',
-    blurb:
-      'The guide shows exactly ' +
+    title: 'Missions',
+    note:
+      'CONCERNS in order. The guide shows ' +
       MAX_ACTIVE +
-      ' thing. It walks this list in order and the first that applies is the mission, ' +
-      'the same on both screens — so where a concern stands here decides whether anybody ever sees it.',
+      ', so where a concern stands here decides whether anybody ever sees it.',
     kinds: ['concern', 'action', 'project', 'event'],
     primary: ['concern'],
   },
   {
     id: 'house',
-    title: 'A house, and what goes in it',
-    blurb:
-      'A house goes up in one action and is furnished for ever, one piece at a time, ' +
-      'by both of you — the Builder has the planks and the Keeper has the wool and the flowers. ' +
-      'Nothing writes what a house is like: houseFit() works it out from what is standing in it.',
+    title: 'Houses',
+    note: 'What a piece of furniture costs, and what a house ends up being because of it.',
     kinds: ['action', 'res', 'stuff', 'gives'],
     primary: ['stuff', 'gives'],
   },
   {
     id: 'alone',
-    title: 'The village on its own',
-    blurb:
-      'What happens with nobody watching, and the ceilings that keep it from ever ' +
-      'becoming a thing that gets bigger the more you play. Only kind things: it only ever adds.',
+    title: 'Village',
+    note: 'What happens with nobody watching, and the ceilings that bound it. Only kind things: it only ever adds.',
     kinds: ['skill', 'project', 'store', 'res', 'event'],
     primary: ['skill', 'store', 'res', 'event'],
   },
@@ -165,6 +166,10 @@ export function buildGraph() {
   const nodes = [];
   const edges = [];
   const add = n => {
+    // `key` is what the table calls it and `name` is what the box says. They are
+    // the same for almost everything, and are not for a role: ROLES.A is called
+    // the Builder. Tests match on `key`, so a rename cannot slip past them.
+    n.key = n.id.slice(n.id.indexOf(':') + 1);
     nodes.push(n);
     return n;
   };
@@ -178,13 +183,16 @@ export function buildGraph() {
     add({
       id: 'role:' + id,
       kind: 'role',
-      name: id,
+      // 'A' and 'B' are how the code keys them; the Builder and the Keeper is
+      // who they are, and the game's own words are where that comes from
+      name: english('role.' + id + '.short') || id,
       icon: r.emoji,
       colour: r.colour,
       file: 'src/core/content.js',
       symbol: 'ROLES.' + id,
       keys: ['role.' + id + '.name', 'role.' + id + '.short', 'role.' + id + '.desc'],
       facts: [
+        ['known in the code as', 'role ' + id + ' — w.players.' + id],
         ['starts knowing', Object.keys(r.caps).join(', ')],
         ['starts holding', costWords(r.res)],
       ],
@@ -226,14 +234,16 @@ export function buildGraph() {
   const stores = [
     {
       key: 'players',
+      name: 'inventory',
       icon: '🤲',
       holds: RESOURCES.map(r => r.key),
       cap: null,
       symbol: 'w.players[role].res',
-      note: 'A player own things. Nothing a villager gathers ever lands here without being asked for.',
+      note: 'What a player holds, one inventory each. Nothing a villager gathers ever lands here unasked (law 9).',
     },
     {
       key: 'pile',
+      name: 'pile',
       icon: '🪵',
       holds: PILE_KEYS,
       cap: PILE_CAP,
@@ -242,14 +252,16 @@ export function buildGraph() {
     },
     {
       key: 'bag',
+      name: 'bag',
       icon: '🎒',
       holds: BAG_KEYS,
       cap: BAG_CAP,
       symbol: 'v.bag / BAG_KEYS',
-      note: 'In a villager arms, theirs until somebody asks for it.',
+      note: 'In a villager own arms, theirs until somebody asks for it.',
     },
     {
       key: 'larder',
+      name: 'larder',
       icon: '🧺',
       holds: FOODS.map(f => f.key),
       cap: null,
@@ -261,7 +273,7 @@ export function buildGraph() {
     add({
       id: 'store:' + s.key,
       kind: 'store',
-      name: s.key,
+      name: s.name,
       icon: s.icon,
       file: 'src/core/world.js',
       symbol: s.symbol,
@@ -274,6 +286,10 @@ export function buildGraph() {
     });
     for (const k of s.holds) link('store:' + s.key, 'res:' + k, 'holds');
   }
+  // the one action that moves a thing from one player to the other rather than
+  // spending it, which is why its row names neither a cost nor a yield. Law 7
+  // is the reason it exists at all.
+  link('action:give', 'store:players', 'hands over');
 
   /* --- every way the world changes ---------------------------------- */
   const games = new Set();
@@ -340,20 +356,23 @@ export function buildGraph() {
         link('action:' + type, 'res:' + k, 'yields', String(row.yields[k]));
   }
 
-  for (const g of [...games].sort())
+  for (const g of [...games].sort()) {
+    const m = MINIGAMES[g];
     add({
       id: 'game:' + g,
       kind: 'game',
       name: g,
       icon: '🎯',
-      file: 'src/minigames/' + g + '.js',
-      symbol: g,
+      file: 'src/minigames/' + m.file,
+      symbol: m.opens + '()',
       keys: [],
       facts: [
-        ['runs', 'on the device that opened it — only the outcome travels'],
-        ['what it is for', 'a tap is free, and free is the wrong price'],
+        ['what you do', m.what],
+        ['opened by', m.opens + '() in src/minigames/' + m.file],
+        ['runs', 'on the device that opened it — only the outcome travels as an action'],
       ],
     });
+  }
 
   /* --- what the village builds for itself --------------------------- */
   for (const key in PROJECTS) {
@@ -403,11 +422,15 @@ export function buildGraph() {
     if (s.needs) link('project:' + s.needs, 'skill:' + key, 'needed by');
     if (s.brings) link('skill:' + key, 'res:' + s.brings, 'brings in');
     for (const store of lands) link('skill:' + key, 'store:' + store, 'gathers into');
-    // the count that teaches it: whichever actions write that tally
     for (const type in ACTIONS) {
       const row = ACTIONS[type];
       if (row.aliasOf) continue;
-      if (row.tallies.includes(s.tally)) link('action:' + type, 'skill:' + key, 'teaches');
+      // the count that earns the right to show it: whichever actions write that tally
+      if (row.tallies.includes(s.tally)) link('action:' + type, 'skill:' + key, 'counts towards');
+      // and the act of showing it. A row saying `bySkill` is a row the skill
+      // decides for, which is the same thing as an arrow to every skill.
+      if (row.cap === 'bySkill' || row.needs === 'bySkill')
+        link('action:' + type, 'skill:' + key, 'shows');
     }
   }
 
@@ -432,14 +455,24 @@ export function buildGraph() {
       ],
     });
     link('action:house.put', 'stuff:' + key, 'puts up');
+    // moving is the one action that changes nothing about a house except where a
+    // thing stands, so this arrow is all it has — and without it the box floats
+    link('action:house.move', 'stuff:' + key, 'moves');
     if (HOUSE_START.includes(key)) link('action:house.build', 'stuff:' + key, 'comes with');
     for (const k in f.cost) link('res:' + k, 'stuff:' + key, 'costs', String(f.cost[k]));
     if (f.gives) {
       givens.add(f.gives);
       link('stuff:' + key, 'gives:' + f.gives, 'gives');
     }
+    // and comfort, which every piece adds to whether or not it gives anything
+    // else. Without this arrow a blanket looks like it does nothing at all.
+    if (f.comfort) {
+      givens.add('comfort');
+      link('stuff:' + key, 'gives:comfort', 'adds to', '+' + f.comfort);
+    }
   }
-  for (const g of [...givens].sort())
+  for (const g of [...givens].sort()) {
+    const from = HOUSE_SHELF.filter(k => HOUSE_STUFF[k].gives === g);
     add({
       id: 'gives:' + g,
       kind: 'gives',
@@ -449,10 +482,17 @@ export function buildGraph() {
       symbol: 'houseFit()',
       keys: [],
       facts: [
-        ['worked out from', 'the furniture in the room, by houseFit()'],
-        ['never', 'written directly — that is what stops it drifting'],
+        [
+          'comes from',
+          g === 'comfort'
+            ? 'every piece, by however much its row says'
+            : from.join(' or ') + ' — nothing else gives it',
+        ],
+        ['read as', 'b.' + (g === 'bed' ? 'beds' : g)],
+        ['never', 'written directly — that is what stops it drifting from the room'],
       ],
     });
+  }
 
   /* --- what the guide asks for, in the order it matters ------------- */
   CONCERNS.forEach((c, i) => {
@@ -540,6 +580,9 @@ function whereItLands(skill) {
   if (FOODS.some(f => f.key === res)) return ['larder'];
   return [];
 }
+
+/** What the game calls something, in the language the map is written in. */
+const english = key => STRINGS.en?.[key] ?? null;
 
 /** The i18n stem for a concern, which is the card name rather than the id. */
 const TITLES = {

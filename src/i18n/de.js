@@ -508,7 +508,7 @@ export const de = {
   'house.notEnough': 'Das reicht noch nicht. Grau ist das, was fehlt.',
   'house.window': 'Fenster',
   'house.lamp': 'Kerze',
-  'house.shelf': 'Brotkorb',
+  'house.shelf': 'Brotregal',
   'house.bed': 'Bett',
   'house.stove': 'Ofen',
   'house.table': 'Tisch',

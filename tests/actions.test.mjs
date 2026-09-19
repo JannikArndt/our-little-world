@@ -48,9 +48,13 @@ test('every action says why applying it twice is safe — law 12', () => {
 });
 
 test('every action answers all of it, and null is an answer', () => {
-  const fields = ['cap', 'minigame', 'costs', 'yields', 'tallies', 'journal', 'needs'];
+  const fields = ['cap', 'minigame', 'costs', 'yields', 'tallies', 'journal', 'needs', 'once'];
   for (const [type, row] of real)
     for (const f of fields) assert.ok(f in row, type + ' does not say anything about ' + f);
+  // `once` is the one that has to be a yes or a no rather than a null: either
+  // what it does stays, or it comes round again
+  for (const [type, row] of real)
+    assert.equal(typeof row.once, 'boolean', type + ' does not say whether what it does stays');
 });
 
 test('what an action asks for and gives back is named in the real tables', () => {

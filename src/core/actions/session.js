@@ -18,6 +18,7 @@ export const session = {
     tallies: [],
     journal: null,
     needs: null,
+    once: false,
     twice: 'it sets the block up from scratch rather than adding to it',
     apply(w, a) {
       w.block.active = true;
@@ -56,6 +57,7 @@ export const session = {
     tallies: [],
     journal: null,
     needs: null,
+    once: false,
     twice: 'an ended block is not active, so the second one is refused',
     apply(w) {
       if (!w.block.active) return false;
@@ -73,6 +75,7 @@ export const session = {
     tallies: [],
     journal: null,
     needs: null,
+    once: false,
     twice: 'it sets what somebody is up to rather than adding to it',
     apply(w, a) {
       const p = w.players[a.role];
@@ -91,6 +94,7 @@ export const session = {
     tallies: [],
     journal: null,
     needs: null,
+    once: false,
     twice: 'the notice is already gone, and filtering an absent one changes nothing',
     apply(w, a) {
       w.notices = w.notices.filter(n => n.id !== a.id);
@@ -107,6 +111,7 @@ export const session = {
     tallies: [],
     journal: null,
     needs: null,
+    once: false,
     twice: 'an empty list has nothing left to clear, which is a no',
     apply(w, a) {
       const list = w.ext.since?.[a.role];
@@ -125,6 +130,7 @@ export const session = {
     tallies: [],
     journal: 'j.region',
     needs: null,
+    once: true,
     twice: 'only a region that is still "later" can open',
     apply(w, a) {
       if (!w.regions || w.regions[a.id] !== 'later') return false;

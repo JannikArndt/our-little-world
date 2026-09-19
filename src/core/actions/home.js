@@ -23,6 +23,7 @@ export const home = {
     tallies: ['house'],
     journal: 'j.house',
     needs: null,
+    once: true,
     twice: 'a built house is no longer a site',
     apply(w, a) {
       const site = byId(w.buildings, a.siteId);
@@ -55,6 +56,7 @@ export const home = {
     tallies: ['furnish'],
     journal: null,
     needs: null,
+    once: true,
     twice: 'the slot has to be empty, and the second time something stands there',
     apply(w, a) {
       const b = byId(w.buildings, a.houseId);
@@ -85,6 +87,7 @@ export const home = {
     tallies: [],
     journal: null,
     needs: null,
+    once: false,
     twice: 'the slot it moved to is occupied by then — by the piece itself',
     apply(w, a) {
       const b = byId(w.buildings, a.houseId);

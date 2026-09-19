@@ -15,6 +15,14 @@
 // saying why the second one changes nothing. If you add an action and cannot
 // write that sentence, the action is wrong, not the field.
 //
+// `once` is the other kind of question a row answers: does what it does stay?
+// A bridge is built once, a piece of furniture is placed for ever, a capability
+// handed over is held — those are `once: true`. Felling, sawing, sowing,
+// reaping, shearing and sharing all come round again, and are `once: false`.
+// Nothing in the reducer reads it; it is there so the list can be read as what
+// it is — a handful of things that build the village, and the everyday round
+// that keeps it going.
+//
 // `cap` is what the world's rules *mean*, not what the reducer enforces: the
 // gate that stops a Keeper felling a tree is in src/ui/interact.js, and moving
 // it in here would change what a guest is allowed to apply optimistically.

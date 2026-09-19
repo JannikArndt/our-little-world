@@ -21,6 +21,7 @@ export const people = {
     tallies: [],
     journal: null,
     needs: null,
+    once: false,
     twice: 'nothing is added or taken — it only ever sets what somebody is doing',
     apply(w, a) {
       const v = byId(w.villagers, a.id);
@@ -75,6 +76,7 @@ export const people = {
     tallies: [],
     journal: 'j.taught',
     needs: null,
+    once: true,
     twice: 'the receiver already holds it by then, which is a no',
     apply(w, a) {
       if (!CAPS[a.cap]) return false;
@@ -106,6 +108,7 @@ export const people = {
     tallies: ['taught'],
     journal: 'j.taughtVillager',
     needs: 'bySkill', // VILLAGER_SKILLS[what].needs — fishing wants a boat first
+    once: true,
     twice: 'by then they already know it, and knowing it is a no',
     apply(w, a) {
       const v = byId(w.villagers, a.id);
@@ -149,6 +152,7 @@ export const people = {
     tallies: [],
     journal: null,
     needs: null,
+    once: false,
     twice: 'their arms are empty by then, and empty arms are a no',
     apply(w, a) {
       const v = byId(w.villagers, a.id);

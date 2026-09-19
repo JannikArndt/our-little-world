@@ -29,6 +29,7 @@ export const crossing = {
     tallies: ['bridge'],
     journal: 'j.bridge',
     needs: null,
+    once: true,
     twice: 'it is paid for again, so a second one needs the planks and stone for it',
     apply(w, a) {
       const cost = { plank: a.planks, stone: a.stone };
@@ -60,6 +61,7 @@ export const crossing = {
     tallies: [],
     journal: 'j.mended',
     needs: null,
+    once: false,
     twice: 'a mended bridge is not damaged, so the second one is refused',
     apply(w, a) {
       if (!w.bridge.damaged) return false;
@@ -81,6 +83,7 @@ export const crossing = {
     tallies: ['road'],
     journal: 'j.road',
     needs: null,
+    once: true,
     twice: 'a tile that is already road is filtered out, and no tiles left is a no',
     apply(w, a) {
       const tiles = (a.tiles || []).filter(

@@ -23,6 +23,7 @@ export const workshop = {
     tallies: ['saw', 'sawPerfect'],
     journal: 'j.sawed',
     needs: null,
+    once: false,
     twice: 'it is paid for again, so a second one needs the wood for it',
     apply(w, a) {
       if (!pay(w, a.role, { wood: a.wood })) return false;
@@ -43,6 +44,7 @@ export const workshop = {
     tallies: ['mill'],
     journal: 'j.baked',
     needs: null,
+    once: false,
     twice: 'it is paid for again, so a second one needs the wheat for it',
     apply(w, a) {
       if (!pay(w, a.role, { wheat: a.wheat })) return false;

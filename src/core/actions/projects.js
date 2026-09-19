@@ -15,6 +15,7 @@ export const projects = {
     tallies: ['byProject'], // the project's own type, so each one counts itself
     journal: 'byProject',
     needs: null,
+    once: true,
     twice: 'a built project is no longer a plan',
     apply(w, a) {
       const def = PROJECTS[a.what];

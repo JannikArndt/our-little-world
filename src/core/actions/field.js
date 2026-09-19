@@ -14,6 +14,7 @@ export const field = {
     tallies: ['farm', 'sow'],
     journal: null,
     needs: null,
+    once: false,
     twice: 'a sown row is not empty, so the second one is refused',
     apply(w, a) {
       const p = byId(w.plots, a.plotId);
@@ -37,6 +38,7 @@ export const field = {
     tallies: [],
     journal: null,
     needs: null,
+    once: false,
     twice: 'water is set to full rather than added to, so twice is once',
     apply(w, a) {
       const p = byId(w.plots, a.plotId);
@@ -55,6 +57,7 @@ export const field = {
     tallies: ['farm', 'reap'],
     journal: 'j.wheat',
     needs: null,
+    once: false,
     twice: 'a reaped row is empty, and an empty row is not ripe',
     apply(w, a) {
       const p = byId(w.plots, a.plotId);

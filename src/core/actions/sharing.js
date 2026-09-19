@@ -17,6 +17,7 @@ export const sharing = {
     tallies: [],
     journal: 'j.shared',
     needs: null,
+    once: false,
     twice: 'it can only move what is really there, and by then it has moved',
     apply(w, a) {
       const from = w.players[a.from],
@@ -39,6 +40,7 @@ export const sharing = {
     tallies: [],
     journal: 'j.basket',
     needs: null,
+    once: false,
     twice: 'it can only move what is really there, and by then it has moved',
     apply(w, a) {
       const from = w.players[a.from];
@@ -75,6 +77,7 @@ export const sharing = {
     tallies: [],
     journal: null,
     needs: null,
+    once: false,
     twice: 'the pile is empty by then, and an empty pile is a no',
     apply(w, a) {
       if (!w.pile || !w.players[a.role]) return false;

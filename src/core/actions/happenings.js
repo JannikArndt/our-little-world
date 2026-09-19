@@ -107,6 +107,7 @@ export const happenings = {
     tallies: [],
     journal: null,
     needs: null,
+    once: false,
     twice: 'each event refuses when what it would add is already there',
     apply(w, a) {
       const ev = EVENTS[a.event];

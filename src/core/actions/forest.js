@@ -18,6 +18,7 @@ export const forest = {
     tallies: ['fell'],
     journal: 'j.felled',
     needs: null,
+    once: false,
     twice: 'a felled tree is not standing, so the second one finds a stump',
     apply(w, a) {
       const tree = byId(w.trees, a.treeId);
@@ -61,6 +62,7 @@ export const forest = {
     tallies: ['plant'],
     journal: 'j.planted',
     needs: null,
+    once: false,
     twice: 'only a stump can be planted, and a sapling is no longer one',
     apply(w, a) {
       const t = byId(w.trees, a.treeId);
@@ -83,6 +85,7 @@ export const forest = {
     tallies: [],
     journal: null,
     needs: null,
+    once: false,
     twice: 'the log is gone from w.logs, so the second time there is none to find',
     apply(w, a) {
       const l = byId(w.logs, a.id);
@@ -104,6 +107,7 @@ export const forest = {
     tallies: ['stone'],
     journal: null,
     needs: null,
+    once: false,
     twice: 'the pile is one smaller, and an empty pile is a no',
     apply(w, a) {
       const b = byId(w.stones, a.id);

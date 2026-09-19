@@ -13,6 +13,7 @@ export const animals = {
     tallies: [],
     journal: null,
     needs: null,
+    once: false,
     twice: 'it sets where the sheep is headed rather than adding to it',
     apply(w, a) {
       const s = byId(w.sheep, a.sheepId);
@@ -33,6 +34,7 @@ export const animals = {
     tallies: ['care', 'shear'],
     journal: 'j.sheep',
     needs: null,
+    once: false,
     twice: 'hunger and thirst floor at zero and a shorn sheep has no fluff left',
     apply(w, a) {
       const s = byId(w.sheep, a.sheepId);
@@ -63,6 +65,7 @@ export const animals = {
     tallies: ['fish'],
     journal: 'j.fished',
     needs: 'boat',
+    once: false,
     twice: 'the fish are already in the basket; a second one just goes out again',
     apply(w, a) {
       const boat = project(w, 'boat');

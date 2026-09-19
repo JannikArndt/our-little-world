@@ -19,6 +19,7 @@ const sheet = document.getElementById('sheet');
 const panel = document.getElementById('panel');
 const tabs = document.getElementById('tabs');
 const find = document.getElementById('find');
+const hops = document.getElementById('hops');
 
 let plan = null;
 let drawn = null;
@@ -35,7 +36,7 @@ function pick(id) {
   picked = id;
   if (!id) {
     blank(panel, LIVE);
-    drawn.light(null);
+    drawn.light(null, 1);
     return;
   }
   // a link in the panel may point at something this view does not show
@@ -47,7 +48,7 @@ function pick(id) {
     }
   }
   describe(panel, graph, id, pick);
-  drawn.light(id);
+  drawn.light(id, Number(hops.value));
   // deliberately not cam.goTo: a box you can already see does not move
   cam.reveal(drawn.at(id));
 }
@@ -73,6 +74,12 @@ for (const v of VIEWS) {
   b.addEventListener('click', () => show(v.id));
   tabs.appendChild(b);
 }
+
+// how far out from a box to light things up. Four is far enough to follow a
+// chain — wood to plank to house — and near enough not to light the lot.
+hops.addEventListener('change', () => {
+  if (picked) drawn.light(picked, Number(hops.value));
+});
 
 find.addEventListener('input', () => {
   const n = drawn.find(find.value);

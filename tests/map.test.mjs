@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 
-import { buildGraph, VIEWS, KINDS, CEILINGS, wordsFor } from '../src/map/graph.js';
+import { buildGraph, VIEWS, KINDS, LANES, CEILINGS, wordsFor } from '../src/map/graph.js';
 // layout() draws nothing and touches no DOM, so the real placement can be checked
 // here rather than only in a browser
 import { layout } from '../src/map/view.js';
@@ -370,4 +370,49 @@ test('the two players are called what the game calls them', () => {
     assert.equal(n.name, STRINGS.en['role.' + n.key + '.short']);
     assert.notEqual(n.name, n.key, 'the map is still showing the role key as a name');
   }
+});
+
+test('a concern says how it turns up and what would end it', () => {
+  // The panel used to say the same sentence about every concern, which is no
+  // use at all. These are the two questions worth asking of one — and both are
+  // answered in the game's own words rather than the map's.
+  for (const n of of('concern')) {
+    assert.ok(n.says, n.id + ' does not say what the guide asks for');
+    assert.ok(n.why && n.why.length > 20, n.id + ' does not say how it turns up');
+    assert.ok(/=>/.test(n.when), n.id + ' does not show the test the world runs');
+    assert.ok(n.steps.length, n.id + ' does not say what would end it');
+    for (const st of n.steps) assert.ok(st.text, n.id + ' has a step that says nothing');
+    // the words are the real strings, not something written down here twice
+    assert.equal(n.says, STRINGS.en['guide.' + n.keys[0].split('.')[1] + '.title']);
+  }
+  // and nothing points from one concern to the next any more: the rank says the
+  // order, and fifteen arrows down a column said nothing the numbers did not
+  for (const e of graph.edges)
+    assert.ok(
+      !(e.from.startsWith('concern:') && e.to.startsWith('concern:')),
+      'a concern points at another concern again: ' + e.from + ' → ' + e.to,
+    );
+});
+
+test('every action stands in one of the three lanes', () => {
+  // A list of thirty-five hides that the village is built by a handful of
+  // things that stay and kept going by a round that comes back.
+  const lanes = new Set(LANES.map(l => l.id));
+  for (const n of of('action')) assert.ok(lanes.has(n.lane), n.id + ' is in no lane');
+  // named cases rather than the rule restated: a bridge is built once and a
+  // tree comes back, and if those two ever swap lanes something is inverted
+  const laneOf = id => graph.nodes.find(n => n.id === id).lane;
+  assert.equal(laneOf('action:bridge.build'), 'once');
+  assert.equal(laneOf('action:house.put'), 'once');
+  assert.equal(laneOf('action:tree.fell'), 'again');
+  assert.equal(laneOf('action:larder.give'), 'again');
+  assert.equal(laneOf('action:seen'), 'plumbing');
+  // an alias stands with what it forwards to, not on its own
+  assert.equal(laneOf('action:boat.build'), laneOf('action:' + ACTIONS['boat.build'].aliasOf));
+  // all three have something in them, or a lane is a label with nothing behind it
+  for (const l of LANES)
+    assert.ok(
+      of('action').some(n => n.lane === l.id),
+      'the "' + l.label + '" lane is empty',
+    );
 });

@@ -751,6 +751,14 @@ so a rename cannot leave the table quietly wrong. Naming a mini-game an action
 does not open is how `plot.water` came to claim one for a while when watering is
 a plain dispatch.
 
+**`once` is a yes or a no, never a null: does what it does stay?** A bridge is
+built once, a piece of furniture is placed for ever, a capability handed over is
+held — those are `once: true`. Felling, sawing, sowing, reaping, shearing and
+sharing all come round again. Nothing in the reducer reads it; it is there so
+that the list can be read as what it is, a handful of things that build the
+village and the everyday round that keeps it going, and `/map` stands the
+actions in those two columns plus a third for the session's own plumbing.
+
 And **`twice`: one sentence saying why applying it twice changes nothing.**
 That is law 12 as a field rather than as a hope. A guest applies its own actions
 at once and the host applies them again, so a second arrival is ordinary, not an
@@ -973,6 +981,20 @@ every view is all thirty-five actions and reads like a wall. A view's `note` is
 the button's tooltip and nothing else: this page is for an engineer, so the
 picture and the panel carry it rather than a paragraph above the buttons.
 
+**The panel answers the question the box raises, in the game's own words.** A
+concern says what the guide asks for and why (`guide.<x>.title` and `.why`, the
+strings a player really reads), shows the literal predicate the world runs to
+decide whether it applies, and lists the card's steps — each with who it is for
+and a link to the action it asks for. What a kind of box *is* sits last and
+quiet, because it is useful once and noise the fifteenth time. Strings are
+stacked, a key and then a line per language, because a table of languages side
+by side means scrolling sideways on a phone.
+
+**Clicking lights up what is within `hops` arrows**, four by default, fainter
+the further out — one hop is what a box touches, four is far enough to follow
+wood to plank to house. The picker is in the bar; nothing else on the page
+depends on it.
+
 **Tapping a box never moves the picture.** A fixed layout is only worth having
 if a thing stays where it was, so a tap lights the box and its arrows and leaves
 the camera alone; only a link to something off the glass pans, and even then the
@@ -993,11 +1015,13 @@ added and left off it".
   would gather straight into a player's own hands (law 9, as an arrow), if a
   job's `brings` is not what the simulation really brings in, if a piece of
   furniture stops changing the house it stands in, if a box about the village
-  joins to nothing at all, or if `map.html` ever grows content or an inline
-  script of its own.
+  joins to nothing at all, if a concern stops saying how it turns up or what
+  would end it, if an action stands in no lane, or if `map.html` ever grows
+  content or an inline script of its own.
 - `tools/map.mjs` opens it in a real browser during `npm run verify` — every
   view, a click that must not move the camera, a link followed, a box with no
-  arrows of its own, the search, Escape, and a phone.
+  arrows of its own, a concern that has to explain itself, the hops picker
+  reaching further than one, the search, Escape, and a phone.
 
 `/map` is a tool for the owner, not a feature for a child: it gets **no
 changelog entry and no version bump**, and nothing in the game links to it.

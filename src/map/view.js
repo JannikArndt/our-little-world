@@ -4,17 +4,17 @@
 // are written — so the picture is the same every time and "the box under
 // saw.run" means something. Nothing is a force simulation and nothing wobbles.
 
-import { KINDS, VIEWS, wordsFor } from './graph.js';
+import { KINDS, VIEWS, LANES, wordsFor } from './graph.js';
 
 const BOX_W = 168;
 const BOX_H = 34;
 const COL_GAP = 66;
 const ROW_GAP = 10;
-// Past this a column wraps into another of its own. 18 is not a round number:
-// it is the one that puts the 35 actions in two columns rather than three, so
-// the picture comes out about as wide as a screen is rather than half as wide
-// again and shrunk to fit.
-const MAX_ROWS = 18;
+// Past this a column wraps into another of its own. 20 is not a round number:
+// it is one more than the longest lane of actions, so the everyday round stands
+// as the one column it is rather than splitting in half and making the whole
+// picture a third wider.
+const MAX_ROWS = 20;
 const PAD = 40;
 const HEAD = 26; // room above the first box for the column's name
 
@@ -40,21 +40,33 @@ export function layout(graph, viewId) {
   let x = PAD;
   const columns = [];
   for (const kind of kinds) {
-    const rows = mine.filter(n => n.kind === kind);
-    if (kind === 'concern') rows.sort((a, b) => a.rank - b.rank);
-    const subs = Math.ceil(rows.length / MAX_ROWS);
-    const per = Math.ceil(rows.length / subs);
-    columns.push({ kind, x, subs, label: KINDS[kind].label });
-    rows.forEach((n, i) => {
-      const sub = Math.floor(i / per);
-      const row = i % per;
-      placed.set(n.id, {
-        node: n,
-        x: x + sub * (BOX_W + 14),
-        y: PAD + HEAD + row * (BOX_H + ROW_GAP),
+    const all = mine.filter(n => n.kind === kind);
+    if (kind === 'concern') all.sort((a, b) => a.rank - b.rank);
+    // a kind whose rows say which lane they are in gets a column each, because
+    // the whole point of the lane is that the three are not one list
+    const lanes = LANES.filter(l => all.some(n => n.lane === l.id));
+    const stacks = lanes.length
+      ? lanes.map(l => ({
+          label: KINDS[kind].label + ' · ' + l.label,
+          rows: all.filter(n => n.lane === l.id),
+        }))
+      : [{ label: KINDS[kind].label, rows: all }];
+    for (const stack of stacks) {
+      const rows = stack.rows;
+      const subs = Math.max(1, Math.ceil(rows.length / MAX_ROWS));
+      const per = Math.ceil(rows.length / subs);
+      columns.push({ kind, x, subs, label: stack.label });
+      rows.forEach((n, i) => {
+        const sub = Math.floor(i / per);
+        const row = i % per;
+        placed.set(n.id, {
+          node: n,
+          x: x + sub * (BOX_W + 14),
+          y: PAD + HEAD + row * (BOX_H + ROW_GAP),
+        });
       });
-    });
-    x += subs * (BOX_W + 14) - 14 + COL_GAP;
+      x += subs * (BOX_W + 14) - 14 + COL_GAP;
+    }
   }
 
   const lines = graph.edges
@@ -153,6 +165,16 @@ export function draw(sheet, plan, onPick) {
   }
 
   const byId = new Map();
+  // who touches whom on this view, for counting hops out from a box
+  const near = new Map();
+  const joins = (a, b) => {
+    if (!near.has(a)) near.set(a, new Set());
+    near.get(a).add(b);
+  };
+  for (const line of plan.lines) {
+    joins(line.from, line.to);
+    joins(line.to, line.from);
+  }
   for (const line of plan.lines) {
     const p = svgEl('path', { class: 'edge', d: curve(line.a, line.b) });
     p.dataset.from = line.from;
@@ -196,24 +218,51 @@ export function draw(sheet, plan, onPick) {
     byId.set(id, g);
   }
 
+  /** How far every box is from this one, counting arrows, up to `hops`. */
+  const stepsOut = (id, hops) => {
+    const far = new Map([[id, 0]]);
+    let edge = [id];
+    for (let d = 1; d <= hops; d++) {
+      const next = [];
+      for (const here of edge)
+        for (const there of near.get(here) || [])
+          if (!far.has(there)) {
+            far.set(there, d);
+            next.push(there);
+          }
+      edge = next;
+    }
+    return far;
+  };
+
+  const FAR = ['l1', 'l2', 'l3', 'l4', 'l5', 'l6'];
+
   return {
-    /** Light up one box and everything it touches; dim the rest. */
-    light(id) {
-      const touching = new Set();
+    /**
+     * Light up one box and everything within `hops` arrows of it, fainter the
+     * further out it is, and dim the rest. One hop is what it touches; four is
+     * far enough to see a whole chain — wood to plank to house — without the
+     * picture turning back into a wall.
+     */
+    light(id, hops) {
+      const far = id ? stepsOut(id, Math.max(1, hops || 1)) : new Map();
       for (const p of sheet.querySelectorAll('path.edge')) {
-        const on = id && (p.dataset.from === id || p.dataset.to === id);
-        p.classList.toggle('lit', !!on);
+        const a = far.get(p.dataset.from);
+        const b = far.get(p.dataset.to);
+        const on = a !== undefined && b !== undefined;
+        p.classList.remove(...FAR);
+        p.classList.toggle('lit', on);
         p.classList.toggle('dim', !!id && !on);
-        if (on) {
-          touching.add(p.dataset.from);
-          touching.add(p.dataset.to);
-        }
+        if (on) p.classList.add(FAR[Math.min(FAR.length - 1, Math.max(a, b) - 1)]);
       }
       for (const [nid, g] of byId) {
+        const d = far.get(nid);
+        g.classList.remove(...FAR);
         g.classList.toggle('on', nid === id);
         // the one it is about is never dimmed, even when this view shows nothing
         // it joins to — a box that goes faint when you tap it looks broken
-        g.classList.toggle('dim', !!id && nid !== id && !touching.has(nid));
+        g.classList.toggle('dim', !!id && d === undefined);
+        if (d > 0) g.classList.add(FAR[Math.min(FAR.length - 1, d - 1)]);
       }
     },
     /** The boxes whose name matches what somebody typed. */
@@ -284,7 +333,36 @@ export function describe(panel, graph, id, onPick) {
 
   panel.appendChild(el('h2', null, n.icon + ' ' + n.name));
   panel.appendChild(el('p', 'kindline', KINDS[n.kind].label));
-  panel.appendChild(el('p', 'what', KINDS[n.kind].what));
+
+  // what the game itself says about this, where it says anything: the guide's
+  // own words for a concern, which are what a player reads
+  if (n.says) panel.appendChild(el('p', 'says', '“' + n.says + '”'));
+  if (n.why) panel.appendChild(el('p', 'what', n.why));
+
+  if (n.when) {
+    panel.appendChild(el('h3', null, 'it applies when'));
+    panel.appendChild(el('pre', 'when', n.when));
+  }
+
+  if (n.steps?.length) {
+    panel.appendChild(el('h3', null, 'and is over when'));
+    const ol = el('ol', 'steps');
+    for (const st of n.steps) {
+      const li = el('li');
+      li.appendChild(el('span', 'stepicon', st.icon || '•'));
+      li.appendChild(el('span', 'steptext', st.text));
+      const foot = el('span', 'stepwho', st.who || '');
+      li.appendChild(foot);
+      if (st.does) {
+        const [type, what] = st.does.split(':');
+        const b = el('button', 'go', type + (what ? ' → ' + what : ''));
+        b.addEventListener('click', () => onPick('action:' + type));
+        li.appendChild(b);
+      }
+      ol.appendChild(li);
+    }
+    panel.appendChild(ol);
+  }
 
   panel.appendChild(el('h3', null, 'where it lives'));
   const where = el('p');
@@ -318,25 +396,30 @@ export function describe(panel, graph, id, onPick) {
     );
   }
 
+  // the words, stacked: a key, then one line per language. A table of
+  // languages side by side needs scrolling sideways on a phone, and sideways
+  // scrolling inside a panel is nobody's friend.
   const words = wordsFor(n);
   if (words.length) {
     panel.appendChild(el('h3', null, 'what the game says'));
-    const table = el('table', 'says');
-    const head = el('tr');
-    head.appendChild(el('th', null, 'key'));
-    for (const l of Object.keys(words[0].said)) head.appendChild(el('th', null, l));
-    table.appendChild(head);
+    const list = el('div', 'says');
     for (const wd of words) {
-      const tr = el('tr');
-      tr.appendChild(el('td', 'k', wd.key));
+      const box = el('div', 'saidkey');
+      box.appendChild(el('code', 'k', wd.key));
       for (const l in wd.said) {
-        const td = el('td', wd.said[l] == null ? 'missing' : null, wd.said[l] ?? 'missing!');
-        tr.appendChild(td);
+        const row = el('p', wd.said[l] == null ? 'said missing' : 'said');
+        row.appendChild(el('span', 'lang', l));
+        row.appendChild(document.createTextNode(wd.said[l] ?? 'no word for this'));
+        box.appendChild(row);
       }
-      table.appendChild(tr);
+      list.appendChild(box);
     }
-    panel.appendChild(table);
+    panel.appendChild(list);
   }
+
+  // the definition of this kind of box, last and quiet: useful once, noise the
+  // fifteenth time somebody opens a concern
+  panel.appendChild(el('p', 'kindnote', KINDS[n.kind].what));
   panel.scrollTop = 0;
 }
 

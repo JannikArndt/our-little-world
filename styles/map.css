@@ -113,6 +113,25 @@ input.find {
   flex: 1 1 14ch;
   max-width: 26ch;
 }
+label.hops {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+label.hops select {
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 6px;
+  min-height: 32px;
+  cursor: pointer;
+}
+
 /* ---- the picture ------------------------------------------------- */
 main {
   flex: 1 1 auto;
@@ -144,6 +163,37 @@ main {
 }
 .edge.dim {
   opacity: 0.18;
+}
+/* one hop is the point of it; further out is still there but quieter */
+.edge.lit.l2 {
+  stroke-width: 1.8;
+  opacity: 0.7;
+}
+.edge.lit.l3 {
+  stroke-width: 1.5;
+  opacity: 0.5;
+}
+.edge.lit.l4 {
+  stroke-width: 1.3;
+  opacity: 0.38;
+}
+.edge.lit.l5,
+.edge.lit.l6 {
+  stroke-width: 1.2;
+  opacity: 0.28;
+}
+.node.l2 {
+  opacity: 0.9;
+}
+.node.l3 {
+  opacity: 0.75;
+}
+.node.l4 {
+  opacity: 0.62;
+}
+.node.l5,
+.node.l6 {
+  opacity: 0.5;
 }
 
 .node {
@@ -294,33 +344,79 @@ main {
   color: var(--ink-faint);
   font-size: 11.5px;
 }
-#panel table.says {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 12.5px;
+#panel .says {
+  font-size: 13px;
 }
-#panel table.says th {
-  text-align: left;
-  font-weight: 600;
+#panel .saidkey {
+  margin: 0 0 10px;
+}
+#panel .saidkey code.k {
+  font-size: 11px;
+  color: var(--ink-soft);
+  background: none;
+  padding: 0;
+}
+#panel p.said {
+  margin: 1px 0 0;
+  padding-left: 2px;
+}
+#panel p.said .lang {
+  display: inline-block;
+  min-width: 2.2em;
   color: var(--ink-faint);
   font-size: 11px;
   text-transform: uppercase;
-  border-bottom: 1px solid var(--hair);
-  padding: 3px 4px;
-}
-#panel table.says td {
-  padding: 4px;
-  border-bottom: 1px solid var(--hair);
-  vertical-align: top;
-}
-#panel table.says td.k {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  color: var(--ink-soft);
-  word-break: break-all;
 }
 #panel .missing {
   color: #b2543c;
+}
+#panel .says-quote,
+#panel p.says {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+#panel pre.when {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  background: var(--paper-deep);
+  padding: 7px 9px;
+  border-radius: 7px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+#panel ol.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  counter-reset: step;
+}
+#panel ol.steps li {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 2px 4px;
+  margin: 0 0 8px;
+}
+#panel .stepicon {
+  grid-row: span 2;
+}
+#panel .stepwho {
+  color: var(--ink-faint);
+  font-size: 11.5px;
+  margin-right: 6px;
+}
+#panel .stepwho,
+#panel ol.steps .go {
+  grid-column: 2;
+  display: inline;
+}
+#panel .kindnote {
+  margin: 22px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--hair);
+  color: var(--ink-faint);
+  font-size: 11.5px;
 }
 .close {
   float: right;
@@ -346,13 +442,22 @@ noscript p {
   main {
     flex-direction: column;
   }
+  /* a sheet that lies over the picture rather than taking a quarter of it away:
+     if the panel changed the size of #sheet, the whole map would rescale and
+     everything would shift the moment you tapped a box — which is the one thing
+     this page must not do */
   #panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
     flex: 0 0 auto;
     max-width: none;
-    max-height: 58%;
+    max-height: 25%;
     border-left: none;
     border-top: 1px solid var(--line);
-    box-shadow: 0 -6px 14px rgba(67, 55, 42, 0.08);
+    box-shadow: 0 -6px 14px rgba(67, 55, 42, 0.14);
   }
   h1 {
     display: none;

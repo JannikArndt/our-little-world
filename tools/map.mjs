@@ -66,6 +66,8 @@ for (const title of drawn.views) {
     heads: [...document.querySelectorAll('#sheet .colhead')].map(t => t.textContent),
   }));
   if (!seen.heads.length) throw new Error(title + ': the columns have no names');
+  if (title === 'Actions' && !seen.heads.some(h => /again and again/.test(h)))
+    throw new Error('the actions are not split into what stays and what comes round again');
   console.log('  ' + title + ': ' + seen.boxes + ' boxes, columns: ' + seen.heads.join(' | '));
   // one picture per view, so a wall or an empty sheet is visible to a human
   await page.screenshot({ path: SHOTS + '93-map-' + title.toLowerCase() + '.png' }).catch(() => {});
@@ -86,7 +88,7 @@ const card = await page.evaluate(() => ({
   title: document.querySelector('#panel h2').textContent,
   where: [...document.querySelectorAll('#panel code.where')].map(c => c.textContent),
   facts: [...document.querySelectorAll('#panel dt')].map(d => d.textContent),
-  said: [...document.querySelectorAll('#panel table.says td')].map(t => t.textContent),
+  said: [...document.querySelectorAll('#panel .said')].map(t => t.textContent),
   missing: document.querySelectorAll('#panel .missing').length,
   lit: document.querySelectorAll('#sheet path.edge.lit').length,
 }));
@@ -103,6 +105,18 @@ if (!card.said.some(t => /Baum|gefällt|Holz/i.test(t)))
   throw new Error('the panel is not showing the German side');
 if (!card.lit) throw new Error('opening a box lit none of its arrows');
 
+// how far the light spreads is the reader's to choose, and more hops is more
+const lit = async n => {
+  await page.selectOption('#hops', String(n));
+  return page.$$eval('#sheet path.edge.lit', p => p.length);
+};
+const near = await lit(1);
+const wide = await lit(4);
+console.log('lighting up tree.fell reaches', near, 'arrows at 1 hop and', wide, 'at 4');
+if (wide <= near) throw new Error('four hops lit no more than one did');
+if (!near) throw new Error('one hop lit nothing at all');
+await page.selectOption('#hops', '4');
+
 // a link in the panel goes to the thing it names, even into another view
 await page.locator('#panel .go').first().click();
 await page.waitForFunction(() => {
@@ -110,6 +124,32 @@ await page.waitForFunction(() => {
   return h && !/tree\.fell/.test(h.textContent);
 });
 console.log('following a link landed on:', (await page.textContent('#panel h2')).trim());
+
+// a concern has to say how it turns up and what ends it, in the game's own
+// words — the panel is useless if every concern reads the same
+await page.getByRole('button', { name: 'Missions', exact: true }).click();
+await page.waitForFunction(() => document.querySelectorAll('#sheet .node').length > 3);
+await page.locator('#sheet .node[data-id="concern:poorly"]').click();
+await page.waitForSelector('#panel:not(.empty)', { timeout: 5000 });
+const concern = await page.evaluate(() => ({
+  says: document.querySelector('#panel p.says')?.textContent || '',
+  why: document.querySelector('#panel p.what')?.textContent || '',
+  when: document.querySelector('#panel pre.when')?.textContent || '',
+  steps: [...document.querySelectorAll('#panel ol.steps li')].map(li => li.textContent),
+}));
+console.log('the concern panel says:', concern.says.trim());
+console.log('  it applies when:', concern.when.trim());
+console.log('  and is over when:', concern.steps.join(' | '));
+if (!/water|clean/i.test(concern.says)) throw new Error('a concern does not say what it asks for');
+if (!/river/i.test(concern.why)) throw new Error('a concern does not say how it turns up');
+if (!/poorly\(w\)/.test(concern.when)) throw new Error('a concern does not show its own test');
+if (concern.steps.length < 3) throw new Error('a concern does not say what would end it');
+if (!concern.steps.some(t => /project\.build/.test(t)))
+  throw new Error('the steps do not name the actions they ask for');
+await page.screenshot({ path: SHOTS + '94-map-concern.png' }).catch(() => {});
+await page.keyboard.press('Escape');
+await page.getByRole('button', { name: drawn.views[0], exact: true }).click();
+await page.waitForFunction(() => document.querySelectorAll('#sheet .node').length > 3);
 
 // finding something highlights it rather than hiding everything else
 await page.fill('#find', 'house');
@@ -150,8 +190,14 @@ const phone = await browser.newPage({ viewport: { width: 390, height: 844 } });
 phone.on('pageerror', e => errors.push('phone page error: ' + e.message));
 await phone.goto(BASE + '/map', { waitUntil: 'load' });
 await phone.waitForSelector('#sheet .node', { timeout: 15000 });
+// on a phone the panel lies over the picture instead of taking room from it,
+// so that opening one does not resize the sheet and shift the whole map
+const tall = await phone.$eval('#sheet', s => s.getBoundingClientRect().height);
 await phone.locator('#sheet .node').first().click();
 await phone.waitForSelector('#panel:not(.empty)', { timeout: 5000 });
+const still = await phone.$eval('#sheet', s => s.getBoundingClientRect().height);
+if (Math.abs(tall - still) > 1)
+  throw new Error('opening the panel resized the picture on a phone: ' + tall + ' -> ' + still);
 const small = await phone.evaluate(() => ({
   sideways: document.documentElement.scrollWidth > window.innerWidth + 1,
   panelTop: document.getElementById('panel').getBoundingClientRect().top,

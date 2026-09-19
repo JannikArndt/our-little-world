@@ -305,7 +305,15 @@ export function buildGraph() {
         symbol: type,
         keys: [],
         alias: row.aliasOf,
-        facts: [['an older name for', row.aliasOf]],
+        lane: laneOf(ACTIONS[row.aliasOf]),
+        facts: [
+          ['is', 'another name for ' + row.aliasOf],
+          [
+            'why it is still here',
+            'a screen on an older build still sends this one, and law 12 says never ' +
+              'take back what somebody just did — so it is kept and forwarded',
+          ],
+        ],
       });
       link('action:' + type, 'action:' + row.aliasOf, 'same as');
       continue;
@@ -318,8 +326,10 @@ export function buildGraph() {
       file: row.file,
       symbol: type,
       group: row.group,
+      lane: laneOf(row),
       keys: row.journal && !BY.includes(row.journal) ? [row.journal] : [],
       facts: [
+        ['done', row.once ? 'once — what it does stays' : 'again and again'],
         [
           'who may',
           row.cap === null ? 'either of you' : BY.includes(row.cap) ? theRow(row.cap) : row.cap,
@@ -497,6 +507,8 @@ export function buildGraph() {
   /* --- what the guide asks for, in the order it matters ------------- */
   CONCERNS.forEach((c, i) => {
     const card = safeCard(c);
+    const stem = titleKey(c.id);
+    const above = CONCERNS.slice(0, i).map(x => x.id);
     add({
       id: 'concern:' + c.id,
       kind: 'concern',
@@ -506,19 +518,34 @@ export function buildGraph() {
       symbol: 'CONCERNS[' + i + ']',
       rank: i + 1,
       cardId: card?.id || null,
-      keys: card ? ['guide.' + titleKey(c.id) + '.title'] : [],
+      // the game's own words for it: what it asks, and why it is asking. Both
+      // are strings the players really read, so they are not written twice here
+      says: english('guide.' + stem + '.title'),
+      why: english('guide.' + stem + '.why'),
+      // the literal test the world runs to decide whether this applies, which
+      // is the only honest answer to "when does this turn up?"
+      when: String(c.when).replace(/\s+/g, ' '),
+      steps: (card?.steps || []).map(st => ({
+        icon: st.icon,
+        text: st.text,
+        who: st.who,
+        does: st.does || null,
+      })),
+      keys: ['guide.' + stem + '.title', 'guide.' + stem + '.why'],
       facts: [
-        ['stands', i + 1 + ' of ' + CONCERNS.length + ' — only the first that applies is shown'],
-        ['draws the card', card ? card.id : '(needs a world that has this wrong)'],
-        ['steps', card ? card.steps.map(s => s.role + ': ' + (s.does || 'wait')).join(' · ') : '—'],
+        [
+          'it is shown',
+          above.length
+            ? 'when none of the ' + above.length + ' above it applies (' + above.join(', ') + ')'
+            : 'first — nothing stands in front of it',
+        ],
       ],
     });
-    if (i > 0) link('concern:' + CONCERNS[i - 1].id, 'concern:' + c.id, 'then');
-    for (const s of card?.steps || []) {
-      if (!s.does) continue;
-      const [type, what] = s.does.split(':');
-      link('concern:' + c.id, 'action:' + type, 'asks for', s.role);
-      if (what) link('concern:' + c.id, 'project:' + what, 'asks for', s.role);
+    for (const st of card?.steps || []) {
+      if (!st.does) continue;
+      const [type, what] = st.does.split(':');
+      link('concern:' + c.id, 'action:' + type, 'asks for', st.role);
+      if (what) link('concern:' + c.id, 'project:' + what, 'asks for', st.role);
     }
   });
 
@@ -592,6 +619,20 @@ const TITLES = {
   replant_last: 'replant',
 };
 const titleKey = id => TITLES[id] || id;
+
+/**
+ * Which of the three columns of actions this one stands in. The village is
+ * built by a handful of things that stay, kept going by an everyday round that
+ * comes back, and held together by plumbing that is not about the village at
+ * all — and reading all thirty-five in one list hides that completely.
+ */
+export const LANES = [
+  { id: 'once', label: 'once, and it stays' },
+  { id: 'again', label: 'again and again' },
+  { id: 'plumbing', label: 'the session, not the village' },
+];
+const laneOf = row =>
+  row.group === 'session' || row.group === 'happenings' ? 'plumbing' : row.once ? 'once' : 'again';
 
 /** A little picture for an action, borrowed from whatever it is mostly about. */
 function iconFor(row) {

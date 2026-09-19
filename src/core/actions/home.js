@@ -17,7 +17,7 @@ export const home = {
    */
   'house.build': {
     cap: 'house',
-    minigame: 'house',
+    minigame: 'raise',
     costs: HOUSE_SHELL,
     yields: null,
     tallies: ['house'],

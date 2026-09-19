@@ -31,7 +31,7 @@ export const field = {
 
   'plot.water': {
     cap: 'farm',
-    minigame: 'modes',
+    minigame: null,
     costs: null,
     yields: null,
     tallies: [],

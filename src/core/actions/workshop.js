@@ -37,7 +37,7 @@ export const workshop = {
 
   'mill.run': {
     cap: 'mill',
-    minigame: 'sawmill',
+    minigame: 'mill',
     costs: { wheat: '*' },
     yields: { food: '*' },
     tallies: ['mill'],

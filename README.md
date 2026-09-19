@@ -114,7 +114,9 @@ src/
   map/           what /map draws: graph.js (the game as nodes and edges, read
                  from the tables), view.js, page.js
   minigames/     chop, sawmill, bridge, house, care, fish, trace (writing and
-                 drawing), and modes.js (which of the two you last chose)
+                 drawing), and modes.js (the ones played on the world itself:
+                 laying a road, walking a sheep). list.js says which function
+                 opens each one and what you do in it
 server/
   serve.mjs      static files + the relay + the directory, no dependencies
   relay.mjs      a ~200 line WebSocket relay, no dependencies

@@ -12,6 +12,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { ACTIONS, GROUPS, EVENTS } from '../src/core/actions/index.js';
 import { CAPS, RESOURCES } from '../src/core/world.js';
 import { PROJECTS, VILLAGER_SKILLS } from '../src/core/content.js';
+import { MINIGAMES } from '../src/minigames/list.js';
 import { en } from '../src/i18n/en.js';
 import { CONCERNS, allProblems, currentProblem } from '../src/core/guide.js';
 import { createWorld } from '../src/core/world.js';
@@ -24,11 +25,11 @@ const resKeys = RESOURCES.map(r => r.key);
 // the sentinels: "the project decides", "the skill decides", "the piece decides"
 const BY = ['byProject', 'bySkill', 'byFurniture'];
 
-// found on disk rather than listed here, so a mini-game nobody can open and an
-// action pointing at a file that has gone both fail
-const minigames = readdirSync(new URL('../src/minigames/', import.meta.url))
-  .filter(f => f.endsWith('.js'))
-  .map(f => f.slice(0, -3));
+// the files on disk, so a mini-game nobody can open and a row pointing at a
+// file that has gone both fail
+const onDisk = readdirSync(new URL('../src/minigames/', import.meta.url)).filter(f =>
+  f.endsWith('.js'),
+);
 
 test('every action is in a group, and every group names its own file', () => {
   for (const [type, row] of Object.entries(ACTIONS)) {
@@ -59,7 +60,7 @@ test('what an action asks for and gives back is named in the real tables', () =>
     if (row.needs !== null && !BY.includes(row.needs))
       assert.ok(PROJECTS[row.needs], type + ' needs a project that does not exist: ' + row.needs);
     if (row.minigame !== null)
-      assert.ok(minigames.includes(row.minigame), type + ' opens no such mini-game');
+      assert.ok(MINIGAMES[row.minigame], type + ' opens no such mini-game: ' + row.minigame);
     for (const side of ['costs', 'yields']) {
       const v = row[side];
       if (v === null || BY.includes(v)) continue;
@@ -188,4 +189,33 @@ test('every step the guide asks for names an action that exists', () => {
         assert.ok(PROJECTS[what], c.id + ' asks for a project that does not exist: ' + what);
     }
   assert.ok(steps > 30, 'only ' + steps + ' steps were checked — did the cards change shape?');
+});
+
+test('every mini-game is one function in one file that really exports it', () => {
+  // A file name is not the name of a game: modes.js holds three and sawmill.js
+  // and bridge.js hold two each. So a row names the function, and this is what
+  // stops a rename leaving it pointing at nothing.
+  for (const [key, m] of Object.entries(MINIGAMES)) {
+    assert.ok(onDisk.includes(m.file), key + ' names a file that is not there: ' + m.file);
+    const src = readFileSync(new URL('../src/minigames/' + m.file, import.meta.url), 'utf8');
+    assert.ok(
+      src.includes('export function ' + m.opens) || src.includes('export const ' + m.opens),
+      m.file + ' does not export ' + m.opens + ', which ' + key + ' says opens it',
+    );
+    assert.ok(m.what && m.what.length > 20, key + ' does not say what a player does in it');
+  }
+  // the other direction: a file no row names is a game nobody can reach
+  for (const f of onDisk) {
+    if (f === 'list.js') continue; // this table itself
+    assert.ok(
+      Object.values(MINIGAMES).some(m => m.file === f),
+      'no mini-game in src/minigames/' + f + ' — is it reachable?',
+    );
+  }
+  // and every game in the table is opened by an action, or nothing opens it
+  for (const key in MINIGAMES)
+    assert.ok(
+      real.some(([, row]) => row.minigame === key),
+      'no action opens the ' + key + ' mini-game',
+    );
 });

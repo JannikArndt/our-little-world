@@ -54,7 +54,7 @@ export const crossing = {
 
   'bridge.repair': {
     cap: 'bridge',
-    minigame: 'bridge',
+    minigame: 'repair',
     costs: { plank: 1 },
     yields: null,
     tallies: [],
@@ -75,7 +75,7 @@ export const crossing = {
 
   'road.build': {
     cap: 'road',
-    minigame: 'modes',
+    minigame: 'road',
     costs: { stone: '*' }, // one stone for every two tiles, rounded up
     yields: null,
     tallies: ['road'],

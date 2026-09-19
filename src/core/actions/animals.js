@@ -7,7 +7,7 @@ import { fx, gain, journal, tally } from './kit.js';
 export const animals = {
   'sheep.send': {
     cap: 'herd',
-    minigame: 'modes',
+    minigame: 'sheep',
     costs: null,
     yields: null,
     tallies: [],

@@ -1174,7 +1174,11 @@ function awayWork(w, ticks) {
       .map(k => got[k] + ' ' + iconOf(k))
       .join(' + ');
     if (brought) addSinceAll(w, icon || '👐', 'j.villagerWork', { name: v.name, what: brought });
-    else if (sown) addSinceAll(w, '🌱', 'j.villagerSowed', { name: v.name, n: sown });
+    else if (sown)
+      addSinceAll(w, '🌱', 'j.villagerSowed' + (sown === 1 ? '_one' : '_other'), {
+        name: v.name,
+        n: sown,
+      });
   }
 
   // a tree that came down is a sapling now, and the tile it stood on is open

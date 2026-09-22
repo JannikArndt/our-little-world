@@ -3,7 +3,7 @@
 //   mill:    wheat -> bread   (turn the stone, then bake)
 
 import { el, openPanel, makeCanvas, onPointer, loop } from '../ui/overlay.js';
-import { C, rr, glyph } from '../render/art.js';
+import { C, rr, glyph, lite, dusk, wob } from '../render/art.js';
 import { tr, trn } from '../core/i18n.js';
 import { makeRng } from '../core/rng.js';
 
@@ -149,32 +149,64 @@ export function openSawmill(game) {
   newOrder();
 
   /* ---- drawing ---- */
+  /** A piece of timber: a lit top edge, a shaded bottom one, grain running
+   *  its length, and a pale sawn end so you can tell which way it was cut. */
   function plank(ctx, x, y, w, h, ok) {
-    ctx.fillStyle = ok ? C.wood : '#8e7550';
+    const tone = ok ? C.wood : '#8e7550';
+    ctx.fillStyle = dusk(tone, 0.2);
     rr(ctx, x, y, w, h, 5);
     ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,.18)';
-    rr(ctx, x + 2, y + 3, Math.max(2, w - 5), Math.max(2, h * 0.26), 3);
+    ctx.save();
+    rr(ctx, x, y, w, h, 5);
+    ctx.clip();
+    ctx.fillStyle = tone;
+    ctx.fillRect(x, y, w, h * 0.74);
+    ctx.fillStyle = lite(tone, 0.26);
+    ctx.fillRect(x, y, w, h * 0.3);
+    ctx.fillStyle = 'rgba(255,255,255,.2)';
+    rr(ctx, x + 2, y + 2.4, Math.max(2, w - 5), Math.max(2, h * 0.16), 2);
     ctx.fill();
+    // grain: two long lines that wander, and a knot where they part
     ctx.strokeStyle = 'rgba(120,80,45,.35)';
     ctx.lineWidth = 1;
     for (let g = 1; g < 3; g++) {
+      const gy = y + (h / 3) * g;
       ctx.beginPath();
-      ctx.moveTo(x + 4, y + (h / 3) * g);
-      ctx.lineTo(x + w - 5, y + (h / 3) * g);
+      ctx.moveTo(x + 2, gy);
+      ctx.bezierCurveTo(x + w * 0.3, gy - 2, x + w * 0.7, gy + 2, x + w - 2, gy);
       ctx.stroke();
     }
+    if (w > 26) {
+      ctx.fillStyle = 'rgba(120,80,45,.3)';
+      ctx.beginPath();
+      ctx.ellipse(x + w * 0.62, y + h * 0.5, 2.2, 3, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // the sawn end, paler than the face of it
+    ctx.fillStyle = lite(tone, 0.4);
+    ctx.fillRect(x + w - 4, y, 4, h);
+    ctx.restore();
   }
 
   function stack(ctx, x, label, n, colour) {
     const show = Math.min(n, 6);
     for (let i = 0; i < show; i++) {
+      const sy = 176 - i * 11;
+      ctx.fillStyle = dusk(colour, 0.22);
+      rr(ctx, x - 26, sy, 52, 10, 3);
+      ctx.fill();
       ctx.fillStyle = colour;
-      rr(ctx, x - 26, 176 - i * 11, 52, 9, 3);
+      rr(ctx, x - 26, sy, 52, 7, 3);
+      ctx.fill();
+      ctx.fillStyle = lite(colour, 0.28);
+      rr(ctx, x - 25, sy + 0.6, 50, 2.4, 1.2);
+      ctx.fill();
+      ctx.fillStyle = lite(colour, 0.45); // the end you would pick it up by
+      rr(ctx, x + 21, sy, 5, 9, 2);
       ctx.fill();
       ctx.strokeStyle = 'rgba(120,80,45,.3)';
       ctx.lineWidth = 1;
-      rr(ctx, x - 26, 176 - i * 11, 52, 9, 3);
+      rr(ctx, x - 26, sy, 52, 10, 3);
       ctx.stroke();
     }
     ctx.fillStyle = '#43372a';
@@ -227,10 +259,36 @@ export function openSawmill(game) {
       }
     }
 
-    // bench
-    ctx.fillStyle = '#c9b38c';
-    rr(ctx, X0 - 14, Y + 26, X1 - X0 + 28, 14, 6);
+    // the bench the log lies on, with a leg under each end of it
+    const bench = '#c9b38c';
+    ctx.fillStyle = dusk(bench, 0.28);
+    for (const lx of [X0 + 6, X1 - 18]) {
+      rr(ctx, lx, Y + 34, 12, 26, 3);
+      ctx.fill();
+    }
+    ctx.fillStyle = dusk(bench, 0.16);
+    rr(ctx, X0 - 14, Y + 26, X1 - X0 + 28, 15, 6);
     ctx.fill();
+    ctx.fillStyle = bench;
+    rr(ctx, X0 - 14, Y + 26, X1 - X0 + 28, 10, 5);
+    ctx.fill();
+    ctx.fillStyle = lite(bench, 0.3);
+    rr(ctx, X0 - 14, Y + 26, X1 - X0 + 28, 3.6, 1.8);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(232,206,158,.75)'; // sawdust along the bench
+    for (let i = 0; i < 14; i++) {
+      ctx.beginPath();
+      ctx.ellipse(
+        X0 - 10 + wob(i) * (X1 - X0 + 20),
+        Y + 40 + wob(i * 3) * 4,
+        2.2,
+        1.1,
+        wob(i * 5) * 3,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
 
     // the log, cut where you said
     const ps = pieces();
@@ -438,8 +496,18 @@ export function openMill(game) {
     ctx.fillStyle = '#efe4cd';
     ctx.fillRect(0, 0, 400, 240);
 
-    // hopper
-    ctx.fillStyle = '#b5946a';
+    // the hopper: a wooden box on two legs, with the grain in it showing over
+    // the top and a dusting of flour down the chute
+    const hop = '#b5946a';
+    ctx.fillStyle = dusk(hop, 0.22);
+    ctx.beginPath();
+    ctx.moveTo(118, 18);
+    ctx.lineTo(182, 18);
+    ctx.lineTo(163, 58);
+    ctx.lineTo(137, 58);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = hop;
     ctx.beginPath();
     ctx.moveTo(120, 20);
     ctx.lineTo(180, 20);
@@ -447,31 +515,108 @@ export function openMill(game) {
     ctx.lineTo(138, 56);
     ctx.closePath();
     ctx.fill();
-    ctx.font = '18px system-ui, "Apple Color Emoji", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('🌾🌾', 150, 40);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(120, 20);
+    ctx.lineTo(180, 20);
+    ctx.lineTo(162, 56);
+    ctx.lineTo(138, 56);
+    ctx.closePath();
+    ctx.clip();
+    ctx.fillStyle = lite(hop, 0.3);
+    ctx.fillRect(118, 18, 18, 42);
+    ctx.strokeStyle = 'rgba(70,52,34,.22)'; // the boards it is made of
+    ctx.lineWidth = 1;
+    for (const py of [30, 42]) {
+      ctx.beginPath();
+      ctx.moveTo(118, py);
+      ctx.lineTo(182, py);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = dusk(hop, 0.32); // the iron band round the mouth of it
+    ctx.fillRect(136, 54, 28, 3.4);
+    ctx.fillStyle = '#e0b950'; // grain, heaped over the top
+    for (let i = 0; i < 9; i++) {
+      ctx.beginPath();
+      ctx.ellipse(126 + i * 6, 20 - (i % 3), 4, 2.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = lite('#e0b950', 0.35);
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.ellipse(130 + i * 10, 18.5 - (i % 2), 2.4, 1.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // a dusting of flour where it comes out at the bottom
+    ctx.fillStyle = 'rgba(248,242,228,.75)';
+    for (let i = 0; i < 6; i++) {
+      ctx.beginPath();
+      ctx.arc(140 + i * 4, 60 + ((i * 3) % 5), 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
-    // millstone
+    // millstone: a great flat wheel with grooves cut across its face, a square
+    // iron eye at the middle and a handle worn smooth
+    ctx.fillStyle = 'rgba(70,60,45,.18)'; // it is heavy, and it sits on a bed
+    ctx.beginPath();
+    ctx.ellipse(152, 126, 58, 56, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.save();
     ctx.translate(150, 120);
     ctx.rotate(angle);
-    ctx.fillStyle = '#a9a49b';
+    ctx.fillStyle = '#8b867e';
     ctx.beginPath();
     ctx.arc(0, 0, 56, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#8b867e';
+    ctx.fillStyle = '#a9a49b';
+    ctx.beginPath();
+    ctx.arc(-1.5, -1.5, 54, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = lite('#a9a49b', 0.26); // the light on the upper left of it
+    ctx.beginPath();
+    ctx.arc(-14, -14, 34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0, 0, 54, 0, Math.PI * 2);
+    ctx.clip();
+    // the furrows: eight, each a trough with a lit lip, struck off the centre
     for (let i = 0; i < 8; i++) {
       ctx.save();
       ctx.rotate((i * Math.PI) / 4);
-      ctx.fillRect(-2.5, -54, 5, 44);
+      ctx.fillStyle = '#7a756d';
+      ctx.fillRect(-3, -54, 6, 44);
+      ctx.fillStyle = 'rgba(255,250,235,.3)';
+      ctx.fillRect(2, -54, 1.6, 44);
       ctx.restore();
     }
-    ctx.fillStyle = '#6f6a63';
-    ctx.beginPath();
-    ctx.arc(0, 0, 11, 0, Math.PI * 2);
+    // and the pitting between them, which is what actually grinds
+    ctx.fillStyle = 'rgba(110,104,94,.4)';
+    for (let i = 0; i < 26; i++) {
+      const a = wob(i) * Math.PI * 2,
+        r = 14 + wob(i * 3) * 38;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * r, Math.sin(a) * r, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    ctx.fillStyle = '#6f6a63'; // the iron eye
+    rr(ctx, -11, -11, 22, 22, 3);
     ctx.fill();
-    ctx.fillStyle = '#8a5c30';
+    ctx.fillStyle = lite('#6f6a63', 0.3);
+    rr(ctx, -11, -11, 8, 22, 3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(248,242,228,.6)'; // flour working its way out
+    ctx.beginPath();
+    ctx.arc(0, 0, 14, 0, Math.PI * 2);
+    ctx.arc(0, 0, 9, 0, Math.PI * 2);
+    ctx.fill('evenodd');
+    ctx.fillStyle = '#8a5c30'; // the handle
     rr(ctx, 30, -6, 26, 12, 5);
+    ctx.fill();
+    ctx.fillStyle = lite('#8a5c30', 0.34);
+    rr(ctx, 30, -6, 26, 4.4, 2.2);
     ctx.fill();
     ctx.restore();
 
@@ -524,22 +669,68 @@ export function openMill(game) {
     ctx.textBaseline = 'middle';
     ctx.fillText(Math.round(pct * 100) + '%', bx0 + barW + 10, by + segH / 2);
 
-    // flour chute + oven
-    ctx.fillStyle = '#c9b38c';
-    rr(ctx, 210, 150, 150, 12, 5);
+    // the chute the flour runs down, and the oven at the end of it
+    const chute = '#c9b38c';
+    ctx.fillStyle = dusk(chute, 0.24);
+    rr(ctx, 210, 150, 150, 13, 5);
+    ctx.fill();
+    ctx.fillStyle = chute;
+    rr(ctx, 210, 150, 150, 8, 4);
+    ctx.fill();
+    ctx.fillStyle = lite(chute, 0.3);
+    rr(ctx, 210, 150, 150, 3.4, 1.7);
     ctx.fill();
     if (flour >= 1) {
-      ctx.fillStyle = '#f3ecdc';
+      ctx.fillStyle = '#e8ddc6'; // a heap of flour, lit on top
       ctx.beginPath();
-      ctx.ellipse(255, 146, 22, 10, 0, 0, Math.PI * 2);
+      ctx.ellipse(255, 147, 22, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f8f2e4';
+      ctx.beginPath();
+      ctx.ellipse(252, 144, 16, 6.4, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = '#9a6b4c';
+    // the oven: brick, a stone arch over the mouth, and a lit fire inside
+    const brick = '#9a6b4c';
+    ctx.fillStyle = 'rgba(70,52,34,.18)';
+    rr(ctx, 287, 82, 82, 70, 10);
+    ctx.fill();
+    ctx.fillStyle = brick;
     rr(ctx, 285, 78, 82, 72, 10);
+    ctx.fill();
+    ctx.save();
+    rr(ctx, 285, 78, 82, 72, 10);
+    ctx.clip();
+    ctx.fillStyle = lite(brick, 0.24);
+    ctx.fillRect(285, 78, 24, 72);
+    ctx.strokeStyle = 'rgba(70,45,30,.28)'; // courses of brick
+    ctx.lineWidth = 1;
+    for (let r = 1; r < 5; r++) {
+      ctx.beginPath();
+      ctx.moveTo(285, 78 + r * 14);
+      ctx.lineTo(367, 78 + r * 14);
+      ctx.stroke();
+      for (let k = 0; k < 4; k++) {
+        const bx = 285 + k * 22 + (r % 2) * 11;
+        ctx.beginPath();
+        ctx.moveTo(bx, 78 + r * 14);
+        ctx.lineTo(bx, 78 + (r - 1) * 14);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+    ctx.fillStyle = dusk(brick, 0.2); // the arch over the mouth
+    rr(ctx, 293, 90, 66, 56, 12);
     ctx.fill();
     ctx.fillStyle = baking > 0 ? '#f0a34a' : '#5a3f2c';
     rr(ctx, 297, 96, 58, 44, 8);
     ctx.fill();
+    if (baking > 0) {
+      ctx.fillStyle = 'rgba(255,180,90,.45)'; // the glow out of the mouth
+      ctx.beginPath();
+      ctx.ellipse(326, 118, 46, 34, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.font = '24px system-ui, "Apple Color Emoji", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

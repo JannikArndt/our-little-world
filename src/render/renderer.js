@@ -24,30 +24,147 @@ import * as art from './art.js';
 
 const C = art.C;
 
-/** A friendly face for the field. */
+/** A friendly face for the field: a sack head, a straw hat with a brim that
+ *  droops, a shirt on a crossbar, straw coming out of the cuffs, and a bird
+ *  who has worked out that none of it means anything. */
 function scarecrow(ctx, x, y) {
   ctx.save();
-  ctx.strokeStyle = '#8a6f4a';
-  ctx.lineWidth = 2.6;
   ctx.lineCap = 'round';
+  // the post and the crossbar
+  ctx.strokeStyle = '#8a6f4a';
+  ctx.lineWidth = 2.8;
   ctx.beginPath();
   ctx.moveTo(x, y + 26);
   ctx.lineTo(x, y + 4);
-  ctx.moveTo(x - 9, y + 11);
-  ctx.lineTo(x + 9, y + 11);
+  ctx.moveTo(x - 10, y + 11);
+  ctx.lineTo(x + 10, y + 11);
   ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,240,210,.28)';
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(x - 1, y + 25);
+  ctx.lineTo(x - 1, y + 5);
+  ctx.stroke();
+
+  // a shirt hung on it, with a sleeve blown out to one side
+  ctx.fillStyle = '#9db7a0';
+  ctx.beginPath();
+  ctx.moveTo(x - 7, y + 9);
+  ctx.lineTo(x + 7, y + 9);
+  ctx.lineTo(x + 6, y + 20);
+  ctx.lineTo(x - 6, y + 20);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#88a48c';
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + 9);
+  ctx.lineTo(x + 7, y + 9);
+  ctx.lineTo(x + 6, y + 20);
+  ctx.lineTo(x + 2, y + 20);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#9db7a0';
+  ctx.lineWidth = 3.4;
+  ctx.beginPath();
+  ctx.moveTo(x - 6, y + 10);
+  ctx.lineTo(x - 10, y + 12);
+  ctx.moveTo(x + 6, y + 10);
+  ctx.lineTo(x + 10, y + 11);
+  ctx.stroke();
+  // straw out of both cuffs and the bottom of the shirt
+  ctx.strokeStyle = '#d8bd6e';
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  for (let i = -1; i <= 1; i++) {
+    ctx.moveTo(x - 10, y + 12);
+    ctx.lineTo(x - 13.5, y + 12 + i * 2);
+    ctx.moveTo(x + 10, y + 11);
+    ctx.lineTo(x + 13.5, y + 11 + i * 2);
+    ctx.moveTo(x + i * 3, y + 20);
+    ctx.lineTo(x + i * 4, y + 23.5);
+  }
+  ctx.stroke();
+
+  // the head: a sack, tied at the neck
   ctx.fillStyle = '#c9974f';
   ctx.beginPath();
-  ctx.arc(x, y + 3, 5, 0, Math.PI * 2);
+  ctx.arc(x, y + 3, 5.2, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#8a6f4a';
+  ctx.fillStyle = 'rgba(255,245,215,.3)';
   ctx.beginPath();
-  ctx.ellipse(x, y - 1, 8.5, 2.6, 0, 0, Math.PI * 2);
+  ctx.arc(x - 1.6, y + 1.6, 3.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#8a6f4a';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(x - 3.4, y + 7.6);
+  ctx.lineTo(x + 3.4, y + 7.6);
+  ctx.stroke();
+
+  // a straw hat: a crown, and a brim that has given up
+  ctx.fillStyle = '#b8964f';
+  ctx.beginPath();
+  ctx.ellipse(x, y - 1.4, 4, 2.8, 0, Math.PI, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#d8bd6e';
+  ctx.beginPath();
+  ctx.moveTo(x - 9, y - 0.6);
+  ctx.quadraticCurveTo(x, y - 3.4, x + 9, y - 0.6);
+  ctx.quadraticCurveTo(x, y + 1.6, x - 9, y - 0.6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(120,92,40,.3)';
+  ctx.beginPath();
+  ctx.moveTo(x - 9, y - 0.6);
+  ctx.quadraticCurveTo(x, y + 1.6, x + 9, y - 0.6);
+  ctx.quadraticCurveTo(x, y + 0.8, x - 9, y - 0.6);
+  ctx.closePath();
+  ctx.fill();
+
+  // two button eyes, a stitched smile, and one rosy cheek
+  ctx.fillStyle = '#43372a';
+  ctx.beginPath();
+  ctx.arc(x - 2, y + 3, 0.9, 0, Math.PI * 2);
+  ctx.arc(x + 2, y + 3, 0.9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.beginPath();
+  ctx.arc(x - 2.2, y + 2.7, 0.3, 0, Math.PI * 2);
+  ctx.arc(x + 1.8, y + 2.7, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#43372a';
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.arc(x, y + 4.4, 2, 0.2 * Math.PI, 0.8 * Math.PI);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(214,120,110,.35)';
+  ctx.beginPath();
+  ctx.ellipse(x - 3.4, y + 4.6, 1.2, 0.8, 0, 0, Math.PI * 2);
+  ctx.ellipse(x + 3.4, y + 4.6, 1.2, 0.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // and the bird, sitting on the end of the crossbar
+  ctx.fillStyle = '#5d5148';
+  ctx.beginPath();
+  ctx.ellipse(x + 11, y + 8, 2.6, 2.1, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 12.6, y + 6.2, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#e0a03e';
+  ctx.beginPath();
+  ctx.moveTo(x + 13.9, y + 6.1);
+  ctx.lineTo(x + 15.6, y + 6.6);
+  ctx.lineTo(x + 13.9, y + 7);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x + 13, y + 5.9, 0.42, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = '#43372a';
   ctx.beginPath();
-  ctx.arc(x - 2, y + 3, 0.8, 0, Math.PI * 2);
-  ctx.arc(x + 2, y + 3, 0.8, 0, Math.PI * 2);
+  ctx.arc(x + 13.1, y + 5.9, 0.24, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -194,7 +311,9 @@ export class Renderer {
     this.water.length = 0;
     c.clearRect(0, 0, WORLD_W, WORLD_H);
 
-    // 1. a meadow, in soft patches rather than squares
+    // 1. a meadow, in soft patches rather than squares — two passes, a broad
+    //    one for the lie of the land and a finer one for the mown-in-places
+    //    look a field gets when animals have been over it
     c.fillStyle = C.grass;
     c.fillRect(0, 0, WORLD_W, WORLD_H);
     for (let i = 0; i < 150; i++) {
@@ -207,13 +326,37 @@ export class Renderer {
       c.ellipse(n1 * WORLD_W, n2 * WORLD_H, 26 + n3 * 46, 18 + n1 * 26, n2 * 3, 0, Math.PI * 2);
       c.fill();
     }
+    for (let i = 0; i < 90; i++) {
+      const n1 = tileNoise(i, 71),
+        n2 = tileNoise(i, 97),
+        n3 = tileNoise(i, 131);
+      c.fillStyle = n3 > 0.5 ? art.lite(C.grassLite, 0.22) : art.dusk(C.grassDark, 0.1);
+      c.globalAlpha = 0.16;
+      c.beginPath();
+      c.ellipse(n1 * WORLD_W, n2 * WORLD_H, 9 + n3 * 16, 6 + n1 * 10, n2 * 3, 0, Math.PI * 2);
+      c.fill();
+    }
     c.globalAlpha = 1;
 
-    // 2. the forest as a mass of overlapping canopy shade
+    // 2. the forest as a mass of overlapping canopy shade, with the warm
+    //    leaf litter under it showing through in the gaps
     for (let y = 0; y < GH; y++)
       for (let x = 0; x < GW; x++) {
         if (w.terrain[idx(x, y)] !== T.FOREST) continue;
         const n = tileNoise(x, y);
+        c.globalAlpha = 0.2;
+        c.fillStyle = '#9c8046';
+        c.beginPath();
+        c.ellipse(
+          x * TILE + TILE / 2,
+          y * TILE + TILE / 2,
+          TILE * 0.7,
+          TILE * 0.6,
+          n * 3,
+          0,
+          Math.PI * 2,
+        );
+        c.fill();
         c.globalAlpha = 0.52;
         c.fillStyle = n > 0.5 ? C.forest : C.forestDark;
         c.beginPath();
@@ -227,6 +370,36 @@ export class Renderer {
           Math.PI * 2,
         );
         c.fill();
+      }
+    // fallen leaves and a few ferns, where the light gets through
+    for (let y = 0; y < GH; y++)
+      for (let x = 0; x < GW; x++) {
+        if (w.terrain[idx(x, y)] !== T.FOREST) continue;
+        const n = tileNoise(x + 61, y + 7);
+        c.globalAlpha = 0.34;
+        for (let i = 0; i < 3; i++) {
+          const m = tileNoise(x + i * 13, y + i * 29);
+          c.fillStyle = m > 0.66 ? '#b8933f' : m > 0.33 ? '#8f7434' : C.forestDark;
+          c.beginPath();
+          c.ellipse(
+            x * TILE + 4 + m * (TILE - 8),
+            y * TILE + 4 + n * (TILE - 8) + i * 5,
+            2.2,
+            1.1,
+            m * 3,
+            0,
+            Math.PI * 2,
+          );
+          c.fill();
+        }
+        if (n > 0.78) {
+          // a patch of sun on the forest floor
+          c.globalAlpha = 0.18;
+          c.fillStyle = '#fff3c8';
+          c.beginPath();
+          c.ellipse(x * TILE + 12, y * TILE + 12, 8, 5, n * 3, 0, Math.PI * 2);
+          c.fill();
+        }
       }
     c.globalAlpha = 1;
 
@@ -260,21 +433,34 @@ export class Renderer {
           );
           c.fill();
         }
-      c.strokeStyle = 'rgba(120,95,60,.10)';
-      c.lineWidth = 1.4;
-      c.lineCap = 'round';
+      // furrows, each a dark trough with a lit ridge beside it, and clods
       for (let y = 0; y < GH; y++)
         for (let x = 0; x < GW; x++) {
           if (w.terrain[idx(x, y)] !== T.FIELD) continue;
           for (let i = 0; i < 2; i++) {
             const yy = y * TILE + 7 + i * 10;
+            c.fillStyle = 'rgba(120,95,60,.12)';
+            c.fillRect(x * TILE, yy - 1, TILE, 2);
+            c.fillStyle = 'rgba(255,240,205,.16)';
+            c.fillRect(x * TILE, yy + 1, TILE, 1.2);
+          }
+          const n = tileNoise(x + 5, y + 17);
+          c.fillStyle = 'rgba(120,95,60,.16)';
+          for (let i = 0; i < 3; i++) {
             c.beginPath();
-            c.moveTo(x * TILE + 3, yy);
-            c.lineTo(x * TILE + TILE - 3, yy);
-            c.stroke();
+            c.ellipse(
+              x * TILE + 3 + ((n * 617 + i * 211) % (TILE - 6)),
+              y * TILE + 3 + ((n * 431 + i * 157) % (TILE - 6)),
+              1.6,
+              1,
+              n * 3,
+              0,
+              Math.PI * 2,
+            );
+            c.fill();
           }
         }
-      scarecrow(c, fx0 * TILE + 8, fy0 * TILE + 6);
+      scarecrow(c, fx0 * TILE + 10, fy0 * TILE + 6);
     }
 
     // 4. the river, as one smooth ribbon rather than a staircase of tiles
@@ -303,19 +489,55 @@ export class Renderer {
         c.closePath();
         c.fill();
       };
-      band(TILE * 0.8, C.sand);
-      band(0, C.water);
+      // dry sand out at the edge, damp sand where the water actually reaches,
+      // then the river itself: darker along both banks, paler in the middle,
+      // which is what a shallow river bed does to the colour of it
+      band(TILE * 0.85, C.sand);
+      band(TILE * 0.25, art.dusk(C.sand, 0.14));
+      band(0, C.waterDeep);
+      band(-TILE * 0.28, C.water);
       c.save();
-      c.globalAlpha = 0.35;
+      c.globalAlpha = 0.3;
       c.strokeStyle = C.waterDeep;
-      c.lineWidth = 5;
+      c.lineWidth = 7;
       c.beginPath();
-      ribbon(c, left, 2, false);
+      ribbon(c, left, 3, false);
       c.stroke();
       c.beginPath();
-      ribbon(c, right, -2, false);
+      ribbon(c, right, -3, false);
       c.stroke();
       c.restore();
+
+      // pebbles up the sand, and reeds where the bank meets the water
+      for (let i = 0; i < left.length; i += 2) {
+        const n = tileNoise(i, 23);
+        for (const [p, side] of [
+          [left[i], -1],
+          [right[i], 1],
+        ]) {
+          const m = tileNoise(i * 3, side + 9);
+          c.fillStyle = 'rgba(150,140,120,.45)';
+          c.beginPath();
+          c.ellipse(p.x + side * (4 + m * 12), p.y + n * 8 - 4, 2.2, 1.4, m * 3, 0, Math.PI * 2);
+          c.fill();
+          if (m > 0.62) {
+            c.strokeStyle = 'rgba(96,140,78,.75)';
+            c.lineWidth = 1.2;
+            c.lineCap = 'round';
+            c.beginPath();
+            for (let k = -1; k <= 1; k++) {
+              c.moveTo(p.x + side * 2 + k, p.y + 3);
+              c.lineTo(p.x + side * 2 + k * 2.4, p.y - 6 - Math.abs(k) * 2);
+            }
+            c.stroke();
+            c.fillStyle = '#8a6f4a';
+            c.beginPath();
+            c.ellipse(p.x + side * 2, p.y - 7.5, 0.9, 2.2, 0, 0, Math.PI * 2);
+            c.fill();
+          }
+        }
+      }
+
       for (let y = 0; y < GH; y++)
         for (let x = 0; x < GW; x++) {
           const t = w.terrain[idx(x, y)];
@@ -324,8 +546,9 @@ export class Renderer {
         }
     }
 
-    // 5. roads: overlapping rounded patches make a path, not a row of squares
-    c.fillStyle = C.road;
+    // 5. roads: overlapping rounded patches make a path, not a row of squares,
+    //    with two ruts worn down the middle and grass creeping in at the edges
+    c.fillStyle = C.roadDark;
     for (let y = 0; y < GH; y++)
       for (let x = 0; x < GW; x++) {
         if (w.terrain[idx(x, y)] !== T.ROAD) continue;
@@ -333,8 +556,24 @@ export class Renderer {
         c.ellipse(
           x * TILE + TILE / 2,
           y * TILE + TILE / 2,
-          TILE * 0.62,
+          TILE * 0.64,
+          TILE * 0.6,
+          0,
+          0,
+          Math.PI * 2,
+        );
+        c.fill();
+      }
+    c.fillStyle = C.road;
+    for (let y = 0; y < GH; y++)
+      for (let x = 0; x < GW; x++) {
+        if (w.terrain[idx(x, y)] !== T.ROAD) continue;
+        c.beginPath();
+        c.ellipse(
+          x * TILE + TILE / 2,
+          y * TILE + TILE / 2 - 0.8,
           TILE * 0.58,
+          TILE * 0.54,
           0,
           0,
           Math.PI * 2,
@@ -346,6 +585,10 @@ export class Renderer {
         if (w.terrain[idx(x, y)] !== T.ROAD) continue;
         const n = tileNoise(x, y + 5),
           m = tileNoise(x + 7, y);
+        // the ruts, where a cart has been this way more than once
+        c.fillStyle = 'rgba(150,120,80,.2)';
+        c.fillRect(x * TILE, y * TILE + 6, TILE, 2.4);
+        c.fillRect(x * TILE, y * TILE + 16, TILE, 2.4);
         c.fillStyle = C.roadDark;
         for (let i = 0; i < 5; i++)
           c.fillRect(
@@ -353,6 +596,15 @@ export class Renderer {
             y * TILE + ((m * 419 + i * 251) % TILE),
             1.8,
             1.8,
+          );
+        // and a few paler bits of grit that catch the light
+        c.fillStyle = 'rgba(255,245,215,.3)';
+        for (let i = 0; i < 3; i++)
+          c.fillRect(
+            x * TILE + ((m * 593 + i * 137) % TILE),
+            y * TILE + ((n * 311 + i * 197) % TILE),
+            1.4,
+            1.4,
           );
       }
 
@@ -365,30 +617,85 @@ export class Renderer {
         const px = x * TILE + 4 + ((n * 311) % (TILE - 8));
         const py = y * TILE + 4 + ((n * 907) % (TILE - 8));
         if (t === T.SAND) {
-          if (n < 0.86) continue;
-          c.fillStyle = 'rgba(150,140,120,.5)';
-          c.beginPath();
-          c.ellipse(px, py, 2.4, 1.7, n * 3, 0, Math.PI * 2);
-          c.fill();
+          if (n < 0.8) continue;
+          // a pebble with a light on top of it and a shadow under it, or a
+          // little piece of driftwood
+          if (n > 0.95) {
+            c.fillStyle = 'rgba(140,115,80,.45)';
+            c.beginPath();
+            c.ellipse(px, py, 4.4, 1.3, n * 3, 0, Math.PI * 2);
+            c.fill();
+          } else {
+            c.fillStyle = 'rgba(120,110,95,.3)';
+            c.beginPath();
+            c.ellipse(px + 0.6, py + 0.8, 2.6, 1.7, n * 3, 0, Math.PI * 2);
+            c.fill();
+            c.fillStyle = 'rgba(168,158,138,.75)';
+            c.beginPath();
+            c.ellipse(px, py, 2.4, 1.7, n * 3, 0, Math.PI * 2);
+            c.fill();
+            c.fillStyle = 'rgba(255,250,235,.45)';
+            c.beginPath();
+            c.ellipse(px - 0.6, py - 0.5, 1.2, 0.8, n * 3, 0, Math.PI * 2);
+            c.fill();
+          }
         } else if (n > 0.955) {
-          c.fillStyle = C.forestDark; // a little bush
+          // a little bush, with a lit crown and a shadow of its own
+          c.fillStyle = 'rgba(60,50,35,.12)';
+          c.beginPath();
+          c.ellipse(px + 2, py + 3.4, 6, 2, 0, 0, Math.PI * 2);
+          c.fill();
+          c.fillStyle = C.forestDark;
           c.beginPath();
           c.arc(px, py, 4.2, 0, Math.PI * 2);
           c.arc(px + 4, py + 1.4, 3.4, 0, Math.PI * 2);
           c.fill();
+          c.fillStyle = art.lite(C.forest, 0.18);
+          c.beginPath();
+          c.arc(px - 0.8, py - 1.4, 2.6, 0, Math.PI * 2);
+          c.fill();
         } else if (n > 0.9) {
-          const petal = n > 0.93 ? '#f6e08a' : '#f0a8b8'; // flowers
-          c.fillStyle = petal;
-          for (let i = 0; i < 3; i++) c.fillRect(px + i * 3, py + ((i * 5) % 4), 1.8, 1.8);
-        } else if (n > 0.882) {
+          // flowers: a petalled head on a stem, not three pixels in a row
+          const petal = n > 0.93 ? '#f6e08a' : '#f0a8b8';
+          for (let f = 0; f < 3; f++) {
+            const fx = px + f * 4,
+              fy = py + ((f * 5) % 4);
+            c.strokeStyle = 'rgba(110,160,90,.8)';
+            c.lineWidth = 0.8;
+            c.beginPath();
+            c.moveTo(fx, fy + 3.4);
+            c.lineTo(fx, fy);
+            c.stroke();
+            c.fillStyle = petal;
+            for (let k = 0; k < 4; k++) {
+              const a = (k / 4) * Math.PI * 2;
+              c.beginPath();
+              c.arc(fx + Math.cos(a) * 1.1, fy + Math.sin(a) * 1.1, 0.95, 0, Math.PI * 2);
+              c.fill();
+            }
+            c.fillStyle = '#e8c05a';
+            c.beginPath();
+            c.arc(fx, fy, 0.7, 0, Math.PI * 2);
+            c.fill();
+          }
+        } else if (n > 0.86) {
+          // a tuft of longer grass, three blades and a shadow at the root
+          c.strokeStyle = 'rgba(96,150,72,.45)';
+          c.lineWidth = 1.5;
+          c.lineCap = 'round';
+          c.beginPath();
+          c.moveTo(px + 1, py + 3.6);
+          c.lineTo(px + 1.4, py - 1.6);
+          c.stroke();
           c.strokeStyle = C.grassLite;
           c.lineWidth = 1.4;
-          c.lineCap = 'round';
           c.beginPath();
           c.moveTo(px, py + 3);
           c.lineTo(px + 1, py - 2);
           c.moveTo(px + 3, py + 3);
           c.lineTo(px + 2.5, py - 3);
+          c.moveTo(px + 5, py + 3);
+          c.lineTo(px + 6, py - 1.4);
           c.stroke();
         }
       }

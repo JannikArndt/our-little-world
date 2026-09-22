@@ -12,7 +12,7 @@
 // screens show the same room doing the same thing without saying a word.
 
 import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overlay.js';
-import { rr, glyph, drawVillager } from '../render/art.js';
+import { rr, glyph, drawVillager, houseFace } from '../render/art.js';
 import { tr, trn } from '../core/i18n.js';
 import {
   HOUSE_SHELL,
@@ -131,34 +131,20 @@ export function openRaise(game, site) {
     ctx.fillStyle = '#cfe3d4';
     rr(ctx, 6, 8, CW - 12, 174, 18);
     ctx.fill();
-    const x = CW / 2,
-      y = 150;
-    ctx.fillStyle = 'rgba(60,50,35,.16)';
+    ctx.fillStyle = 'rgba(255,255,255,.42)'; // a bit of grass to stand it on
     ctx.beginPath();
-    ctx.ellipse(x, y + 4, 92, 12, 0, 0, Math.PI * 2);
+    ctx.ellipse(CW / 2, 170, 152, 16, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#d3a877';
-    rr(ctx, x - 76, y - 62, 152, 62, 6);
-    ctx.fill();
-    ctx.fillStyle = '#a8543c';
-    ctx.beginPath();
-    ctx.moveTo(x - 88, y - 60);
-    ctx.lineTo(x, y - 104);
-    ctx.lineTo(x + 88, y - 60);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#7d5730';
-    rr(ctx, x - 14, y - 34, 28, 34, 3);
-    ctx.fill();
-    const flick = 0.8 + Math.sin(t * 0.004) * 0.1;
-    ctx.fillStyle = 'rgba(255,216,115,' + flick + ')';
-    rr(ctx, x + 30, y - 50, 22, 22, 3);
-    ctx.fill();
-    ctx.strokeStyle = '#8a6540';
-    ctx.lineWidth = 2;
-    rr(ctx, x + 30, y - 50, 22, 22, 3);
-    ctx.stroke();
-    glyph(ctx, '🛏️', x - 42, y - 39, 22);
+    // The house you are actually buying, drawn by the same hand that will
+    // draw it in the village — so what turns up is what was promised. Twice
+    // the size it stands at out there, so a child can see the window boxes.
+    const k = 2.1;
+    ctx.save();
+    ctx.translate(CW / 2, 170);
+    ctx.scale(k, k);
+    houseFace(ctx, -36, -48, 72, 48, { beds: 2, smoke: true }, t);
+    ctx.restore();
+    glyph(ctx, '🛏️', 60, 146, 26); // and a bed, which is the point of it
   });
   return p;
 }

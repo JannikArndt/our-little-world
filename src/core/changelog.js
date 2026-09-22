@@ -4,9 +4,31 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '2.9';
+export const VERSION = '3.0';
 
 export const CHANGELOG = [
+  {
+    v: '3.0',
+    date: '2026-09-22',
+    en: [
+      'Somebody has been round the whole village with a paintbrush. Every tree, every roof, every sheep has been drawn again — same village, same faces, but now with a light falling on it from over your left shoulder and a shadow under everything that stands up.',
+      'The houses have grown up: shingles on the roof, a stone footing, beams in the plaster, a plank door with an iron hinge and a step worn flat, real windows with four panes and a sill — and a window box with flowers in it. There is a stack of firewood by the wall and a brick chimney with real bricks in it.',
+      'The trees have bark that goes round, roots into the grass, and leaves in three greens with the sun catching the top of them. One kind carries berries and one carries blossom. The shade they throw is dappled now, the way shade actually is.',
+      'The sheep have ears, curls in the fleece, hooves and a tail. Everybody in the village has boots, hands, eyebrows and a little white glint in the eye — which turns out to be most of what makes a face look like it is really looking at you.',
+      'The ground got the same treatment: flowers that are flowers rather than three dots, wheel ruts down the road, leaf litter and patches of sun on the forest floor, pebbles and reeds along the river, and a proper beach where the water reaches.',
+      'The well, the outhouse, the playground, the boat, the fence and the bridge all got their afternoon too — courses of stone, planks with seams, a windlass and a bucket with an iron hoop, a sandcastle in the sandpit with a flag on it.',
+      'And the mini-games came along: the tree you fell now stands in a wood with the rest of the forest behind it, the river you fish has a far bank and clouds, and the picture on the “shall we put a house here?” panel is the very house that turns up.',
+    ],
+    de: [
+      'Jemand ist mit dem Pinsel durchs ganze Dorf gegangen. Jeder Baum, jedes Dach, jedes Schaf ist neu gezeichnet — dasselbe Dorf, dieselben Gesichter, aber jetzt mit Licht, das über deine linke Schulter fällt, und einem Schatten unter allem, was steht.',
+      'Die Häuser sind erwachsen geworden: Schindeln auf dem Dach, ein Sockel aus Stein, Balken im Putz, eine Bretter­tür mit eisernem Band und einer abgetretenen Stufe, echte Fenster mit vier Scheiben und einem Sims — und einem Blumenkasten davor. An der Wand liegt ein Stapel Brennholz, und der Schornstein hat richtige Ziegel.',
+      'Die Bäume haben Rinde, die sich um den Stamm legt, Wurzeln im Gras und Blätter in drei Grüntönen, oben von der Sonne angefasst. Eine Sorte trägt Beeren, eine trägt Blüten. Ihr Schatten ist jetzt gefleckt, so wie Schatten eben sind.',
+      'Die Schafe haben Ohren, Locken im Vlies, Hufe und einen Schwanz. Alle im Dorf haben Schuhe, Hände, Augenbrauen und einen kleinen weißen Glanzpunkt im Auge — und der macht fast allein aus, dass ein Gesicht einen wirklich anschaut.',
+      'Der Boden hat dasselbe bekommen: Blumen, die wirklich Blumen sind statt drei Punkten, Wagenspuren auf dem Weg, Laub und Sonnenflecken im Wald, Kiesel und Schilf am Fluss und einen richtigen Strand, wo das Wasser hinkommt.',
+      'Brunnen, Häuschen, Spielplatz, Boot, Zaun und Brücke haben ihren Nachmittag auch bekommen — Steinlagen, Bretter mit Fugen, eine Winde und ein Eimer mit Eisenreif, eine Sandburg mit Fähnchen im Sandkasten.',
+      'Und die Minispiele sind mitgekommen: Der Baum, den du fällst, steht jetzt im Wald, der Fluss, an dem du angelst, hat ein anderes Ufer und Wolken, und das Bild auf „Sollen wir hier ein Haus hinstellen?“ zeigt genau das Haus, das danach dasteht.',
+    ],
+  },
   {
     v: '2.9',
     date: '2026-09-18',

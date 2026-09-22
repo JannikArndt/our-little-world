@@ -12,7 +12,7 @@
 
 import { openPanel, makeCanvas, onPointer, loop } from '../ui/overlay.js';
 import { T, tileAt, inBounds } from '../core/grid.js';
-import { C, rr, glyph } from '../render/art.js';
+import { C, rr, glyph, blob, lite, dusk, wob } from '../render/art.js';
 import { tr, trn } from '../core/i18n.js';
 
 const W = 340,
@@ -26,10 +26,11 @@ const CUT = 246; // the height an axe swings at
 const SPREAD = 21; // half the mouth of the notch
 const SKY = '#cfe3d4';
 
+// the same three trees the village has, at the size you stand under one
 const CANOPY = [
-  ['#6ea75a', '#8cc471'],
-  ['#5f9a4d', '#7fb865'],
-  ['#77b063', '#9ad07e'],
+  ['#41763a', '#59994a', '#7cc064', '#8a5c30', null],
+  ['#365f33', '#4a8240', '#6cb057', '#75502c', '#c9543f'],
+  ['#4a7f40', '#66a552', '#8acb70', '#9c6b3c', '#f5c6d4'],
 ];
 
 /** How thick the trunk is at a given height. */
@@ -88,6 +89,7 @@ export function openChop(game, tree) {
   const w = game.world;
   const dir = whereItFalls(w, tree);
   const kind = CANOPY[(tree.kind - 1) % 3];
+  const seed = (tree.sway || 0) + tree.x * 3 + tree.y * 7;
 
   // The only thing practice buys: a bigger mark to hit.
   const fells = w.players[game.role].done.fell || 0;
@@ -180,26 +182,63 @@ export function openChop(game, tree) {
 
   /* ---- drawing ------------------------------------------------------- */
 
+  // what is behind the tree this frame, so a notch cuts a hole to it rather
+  // than to a flat colour that stopped matching the sky
+  let behind = SKY;
+
   function trunk(ctx) {
-    ctx.fillStyle = C.wood;
+    // a trunk with a flare into the ground and a light down one side, so the
+    // thing you are swinging at is round rather than a plank
+    ctx.fillStyle = kind[3];
     ctx.beginPath();
     ctx.moveTo(CX - HALF_T, TOP);
     ctx.lineTo(CX + HALF_T, TOP);
     ctx.lineTo(CX + HALF_B, GROUND);
-    ctx.lineTo(CX - HALF_B, GROUND);
+    ctx.quadraticCurveTo(CX + HALF_B + 7, GROUND + 5, CX + HALF_B + 14, GROUND + 7);
+    ctx.lineTo(CX - HALF_B - 14, GROUND + 7);
+    ctx.quadraticCurveTo(CX - HALF_B - 7, GROUND + 5, CX - HALF_B, GROUND);
     ctx.closePath();
     ctx.fill();
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = lite(kind[3], 0.26); // the sunward side
+    ctx.fillRect(CX - HALF_B - 14, TOP - 4, 16, GROUND - TOP + 14);
+    ctx.fillStyle = dusk(kind[3], 0.3); // and the side the sun is not on
+    ctx.fillRect(CX + HALF_T + 1, TOP - 4, HALF_B + 14, GROUND - TOP + 14);
     // bark, so the trunk has a grain to aim along
-    ctx.strokeStyle = 'rgba(120,80,45,.35)';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    for (let i = 0; i < 5; i++) {
-      const f = 0.18 + i * 0.16;
+    for (let i = 0; i < 9; i++) {
+      const f = 0.08 + i * 0.105;
+      ctx.strokeStyle = i % 2 ? 'rgba(120,80,45,.32)' : 'rgba(255,240,210,.14)';
+      ctx.lineWidth = 1.6 + (i % 3) * 0.8;
+      ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(CX - HALF_T + HALF_T * 2 * f, TOP + 8);
-      ctx.lineTo(CX - HALF_B + HALF_B * 2 * f, GROUND - 6);
+      ctx.moveTo(CX - HALF_T + HALF_T * 2 * f, TOP - 2);
+      ctx.bezierCurveTo(
+        CX - HALF_T + HALF_T * 2 * f + (i % 2 ? 5 : -5),
+        TOP + 60,
+        CX - HALF_B + HALF_B * 2 * f + (i % 2 ? -4 : 4),
+        GROUND - 80,
+        CX - HALF_B + HALF_B * 2 * f,
+        GROUND + 4,
+      );
       ctx.stroke();
     }
+    // a knot or two, where a branch used to be
+    for (const [ky, kx] of [
+      [TOP + 40, -0.4],
+      [TOP + 96, 0.35],
+    ]) {
+      ctx.fillStyle = dusk(kind[3], 0.34);
+      ctx.beginPath();
+      ctx.ellipse(CX + half(ky) * kx, ky, 6, 8, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = dusk(kind[3], 0.14);
+      ctx.beginPath();
+      ctx.ellipse(CX + half(ky) * kx, ky, 3, 4.4, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
     for (const s of scars) {
       ctx.fillStyle = 'rgba(90,60,32,.5)';
       ctx.beginPath();
@@ -208,13 +247,20 @@ export function openChop(game, tree) {
       ctx.lineTo(leftEdge(s.y) - 1, s.y + 5);
       ctx.closePath();
       ctx.fill();
+      ctx.fillStyle = 'rgba(232,211,170,.6)';
+      ctx.beginPath();
+      ctx.moveTo(leftEdge(s.y) - 1, s.y - 5);
+      ctx.lineTo(leftEdge(s.y) + 4, s.y - 1.5);
+      ctx.lineTo(leftEdge(s.y) - 1, s.y - 0.5);
+      ctx.closePath();
+      ctx.fill();
     }
   }
 
   function notch(ctx) {
     if (depth <= 0) return;
     const d = Math.min(depth, NEED);
-    ctx.fillStyle = SKY;
+    ctx.fillStyle = behind; // whatever is behind the tree, showing through
     ctx.beginPath();
     ctx.moveTo(leftEdge(CUT - SPREAD) - 3, CUT - SPREAD);
     ctx.lineTo(leftEdge(CUT) + d, CUT);
@@ -237,24 +283,50 @@ export function openChop(game, tree) {
     const sway = Math.sin(t * 0.0012) * (falling > 0 ? 0 : 2.2);
     ctx.save();
     ctx.translate(CX + sway, TOP - 6);
+
+    // the same canopy the village draws, at the size you stand under one: a
+    // pale silhouette with everything else set down and right of it, so the
+    // top-left edge is a thread of sun on the outermost leaves
+    const RX = 96,
+      RY = 74,
+      CY = -40;
+    blob(ctx, 0, CY, RX, RY, 8, seed);
+    ctx.fillStyle = lite(kind[2], 0.4);
+    ctx.fill();
+    ctx.save();
+    blob(ctx, 0, CY, RX, RY, 8, seed);
+    ctx.clip();
+    blob(ctx, 5, CY + 6, RX, RY, 8, seed);
     ctx.fillStyle = kind[0];
-    ctx.beginPath();
-    ctx.ellipse(0, -46, 80, 60, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(-52, -8, 44, 34, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(52, -8, 44, 34, 0, 0, Math.PI * 2);
-    ctx.fill();
+    blob(ctx, 0, CY - 8, RX * 0.9, RY * 0.88, 7, seed + 40);
     ctx.fillStyle = kind[1];
-    ctx.beginPath();
-    ctx.ellipse(-16, -60, 54, 40, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,.16)';
-    ctx.beginPath();
-    ctx.ellipse(-28, -76, 26, 17, 0, 0, Math.PI * 2);
+    blob(ctx, -21, CY - 24, RX * 0.58, RY * 0.56, 6, seed + 80);
+    ctx.fillStyle = kind[2];
     ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.18)';
+    ctx.beginPath();
+    ctx.ellipse(-34, -62, 24, 15, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(28,44,24,.3)'; // dark where the trunk goes up into it
+    ctx.beginPath();
+    ctx.ellipse(0, 18, 46, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (kind[4]) {
+      ctx.fillStyle = kind[4];
+      for (let i = 0; i < 7; i++) {
+        const a = wob(seed + i * 11) * Math.PI * 2;
+        const r = 20 + wob(seed + i * 17) * 52;
+        const fx = Math.cos(a) * r,
+          fy = CY + Math.sin(a) * r * 0.7;
+        ctx.beginPath();
+        ctx.arc(fx, fy, 4.4, 0, Math.PI * 2);
+        ctx.arc(fx + 7, fy + 4, 3.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
     ctx.restore();
   }
 
@@ -265,18 +337,37 @@ export function openChop(game, tree) {
         rowN = Math.floor(i / 3);
       const x = 258 + col * 26 + rowN * 13,
         y = 314 - rowN * 22;
-      ctx.fillStyle = C.woodDark;
+      ctx.fillStyle = 'rgba(60,50,35,.14)';
+      ctx.beginPath();
+      ctx.ellipse(x + 2, y + 9, 13, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = dusk(C.wood, 0.24);
       ctx.beginPath();
       ctx.ellipse(x, y, 12, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = C.wood;
+      ctx.beginPath();
+      ctx.ellipse(x - 0.6, y - 0.8, 11, 9, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#e8d3aa';
       ctx.beginPath();
       ctx.ellipse(x, y, 8.5, 7, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(140,95,50,.5)';
-      ctx.lineWidth = 1;
+      ctx.fillStyle = lite('#e8d3aa', 0.3);
       ctx.beginPath();
-      ctx.ellipse(x, y, 4.5, 3.6, 0, 0, Math.PI * 2);
+      ctx.ellipse(x - 1.4, y - 1.4, 6, 4.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(140,95,50,.45)';
+      ctx.lineWidth = 1;
+      for (let k = 1; k <= 3; k++) {
+        ctx.beginPath();
+        ctx.ellipse(x - 0.4, y - 0.4, 1.6 * k, 1.3 * k, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(140,95,50,.6)'; // the split across the end
+      ctx.beginPath();
+      ctx.moveTo(x - 6, y + 2.4);
+      ctx.lineTo(x + 3.4, y - 3);
       ctx.stroke();
     }
     if (logs > 8) glyph(ctx, '…', 330, 314, 16);
@@ -314,15 +405,51 @@ export function openChop(game, tree) {
   function draw(t) {
     const ctx = cv.ctx;
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = SKY;
+
+    // A morning in the wood: a sky that warms toward the ground, the rest of
+    // the forest a long way back and out of focus, and grass at your feet.
+    const sky = ctx.createLinearGradient(0, 0, 0, GROUND);
+    sky.addColorStop(0, '#bcd9d9');
+    sky.addColorStop(0.6, SKY);
+    sky.addColorStop(1, '#e2eddb');
+    behind = sky; // so the notch cuts a hole to whatever is really behind
+    ctx.fillStyle = sky;
     ctx.fillRect(0, 0, W, H);
+    // other trees, far enough off to be one colour each
+    for (let i = 0; i < 9; i++) {
+      const bx = 6 + i * 41 + ((i * 29) % 15);
+      const r = 15 + ((i * 13) % 9);
+      ctx.fillStyle = i % 2 ? 'rgba(126,162,120,.2)' : 'rgba(108,146,108,.17)';
+      ctx.beginPath();
+      ctx.arc(bx, GROUND - 16 - r * 0.5, r, 0, Math.PI * 2);
+      ctx.arc(bx - r * 0.6, GROUND - 10, r * 0.7, 0, Math.PI * 2);
+      ctx.arc(bx + r * 0.6, GROUND - 10, r * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.fillStyle = C.grass;
     ctx.fillRect(0, GROUND - 2, W, H - GROUND + 2);
-    ctx.fillStyle = C.grassDark;
-    for (let i = 0; i < 14; i++) {
-      const gx = 8 + i * 25,
-        gy = GROUND + 8 + (i % 3) * 11;
-      ctx.fillRect(gx, gy, 2, 6);
+    ctx.fillStyle = 'rgba(255,250,215,.2)'; // the sun on the top of the grass
+    ctx.fillRect(0, GROUND - 2, W, 5);
+    ctx.fillStyle = 'rgba(96,150,72,.22)'; // and the shade further down it
+    ctx.fillRect(0, GROUND + 22, W, H - GROUND - 22);
+    // blades, tufts and a daisy or two
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 26; i++) {
+      const gx = 4 + i * 13 + ((i * 7) % 9),
+        gy = GROUND + 6 + (i % 4) * 9;
+      ctx.strokeStyle = i % 3 ? C.grassDark : C.grassLite;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(gx, gy + 6);
+      ctx.quadraticCurveTo(gx + 1, gy + 1, gx + 2.6, gy - 3);
+      ctx.stroke();
+      if (i % 9 === 4) {
+        ctx.fillStyle = '#f6e08a';
+        ctx.beginPath();
+        ctx.arc(gx + 3, gy - 4, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     // the shadow belongs to the ground, so it is drawn before anything turns
@@ -330,6 +457,20 @@ export function openChop(game, tree) {
     ctx.beginPath();
     ctx.ellipse(CX + 14, GROUND + 6, 44, 10, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = 'rgba(60,50,35,.08)'; // dappled, the way a canopy throws it
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.ellipse(
+        CX + 14 + (wob(seed + i) - 0.5) * 120,
+        GROUND + 4 + (wob(seed + i * 5) - 0.5) * 22,
+        16,
+        5,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
 
     ctx.save();
     if (falling > 0) {

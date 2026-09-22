@@ -3,7 +3,7 @@
 // Three and it sags. Four and it goes in the river.
 
 import { el, openPanel, makeCanvas, onPointer, loop, message } from '../ui/overlay.js';
-import { C, rr } from '../render/art.js';
+import { C, rr, lite, dusk } from '../render/art.js';
 import { tr } from '../core/i18n.js';
 
 const PIER_STONE = 2;
@@ -138,9 +138,18 @@ export function openBridge(game) {
   function draw(t) {
     const ctx = cv.ctx;
     ctx.clearRect(0, 0, 480, 206);
-    ctx.fillStyle = '#cfe6f2';
+    // a section through the crossing: sky above, the river cut open below, and
+    // the two banks it has eaten into either side
+    const sky = ctx.createLinearGradient(0, 0, 0, 88);
+    sky.addColorStop(0, '#bcdcf0');
+    sky.addColorStop(1, '#e2f0f2');
+    ctx.fillStyle = sky;
     ctx.fillRect(0, 0, 480, 88);
-    ctx.fillStyle = C.water;
+    const river = ctx.createLinearGradient(0, 88, 0, 206);
+    river.addColorStop(0, C.waterLite);
+    river.addColorStop(0.3, C.water);
+    river.addColorStop(1, C.waterDeep);
+    ctx.fillStyle = river;
     ctx.fillRect(0, 88, 480, 118);
     ctx.strokeStyle = 'rgba(255,255,255,.32)';
     ctx.lineWidth = 2;
@@ -155,25 +164,57 @@ export function openBridge(game) {
       ctx.lineTo(340 + Math.cos(ph) * 10, y + 6);
       ctx.stroke();
     }
-    // banks
-    ctx.fillStyle = C.sand;
-    ctx.beginPath();
-    ctx.moveTo(0, 66);
-    ctx.lineTo(X0 + 4, 72);
-    ctx.lineTo(X0 + 4, 206);
-    ctx.lineTo(0, 206);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(480, 66);
-    ctx.lineTo(X1 - 4, 72);
-    ctx.lineTo(X1 - 4, 206);
-    ctx.lineTo(480, 206);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = C.grass;
-    ctx.fillRect(0, 54, X0 + 4, 14);
-    ctx.fillRect(X1 - 4, 54, 480 - X1 + 4, 14);
+    // banks, in two layers: sand on top of the darker earth underneath it,
+    // with stones set in the cut face the way a riverbank really shows them
+    const bank = (dir, edgeX) => {
+      const outer = dir < 0 ? 0 : 480;
+      ctx.fillStyle = dusk(C.sand, 0.3);
+      ctx.beginPath();
+      ctx.moveTo(outer, 66);
+      ctx.lineTo(edgeX, 72);
+      ctx.lineTo(edgeX, 206);
+      ctx.lineTo(outer, 206);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = C.sand;
+      ctx.beginPath();
+      ctx.moveTo(outer, 66);
+      ctx.lineTo(edgeX, 72);
+      ctx.lineTo(edgeX, 124);
+      ctx.lineTo(outer, 118);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(70,52,34,.18)'; // the shade in the cut face
+      ctx.fillRect(dir < 0 ? edgeX - 8 : edgeX, 72, 8, 134);
+      ctx.fillStyle = 'rgba(150,140,120,.5)'; // stones in the earth
+      for (let i = 0; i < 7; i++) {
+        const sx = outer + dir * -1 * (10 + ((i * 37) % 44));
+        ctx.beginPath();
+        ctx.ellipse(sx, 132 + ((i * 29) % 64), 4.4, 3, (i % 3) - 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+    bank(-1, X0 + 4);
+    bank(1, X1 - 4);
+    // grass along the top of each bank, with blades over the lip of it
+    for (const [gx, gw] of [
+      [0, X0 + 4],
+      [X1 - 4, 480 - X1 + 4],
+    ]) {
+      ctx.fillStyle = C.grass;
+      ctx.fillRect(gx, 54, gw, 14);
+      ctx.fillStyle = lite(C.grass, 0.3);
+      ctx.fillRect(gx, 54, gw, 4);
+      ctx.strokeStyle = C.grassDark;
+      ctx.lineWidth = 1.6;
+      for (let i = 0; i < gw / 14; i++) {
+        const bx = gx + 5 + i * 14;
+        ctx.beginPath();
+        ctx.moveTo(bx, 55);
+        ctx.lineTo(bx + 1.6, 49);
+        ctx.stroke();
+      }
+    }
 
     const load = test ? Math.min(1, test.t * 1.4) : 0.25;
 
@@ -187,11 +228,28 @@ export function openBridge(game) {
         ctx.globalAlpha = 1;
         continue;
       }
-      ctx.fillStyle = C.stone;
-      rr(ctx, px(i) - 12, DECK + 4, 24, 62, 5);
+      // a pier of stones somebody stacked, lit on one side, standing in its
+      // own little disturbance of the water
+      ctx.fillStyle = 'rgba(30,60,80,.22)';
+      ctx.beginPath();
+      ctx.ellipse(px(i), DECK + 66, 17, 4, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = C.stoneDark;
-      for (let r = 0; r < 4; r++) (rr(ctx, px(i) - 11, DECK + 8 + r * 15, 22, 4, 2), ctx.fill());
+      rr(ctx, px(i) - 12, DECK + 4, 24, 62, 5);
+      ctx.fill();
+      ctx.save();
+      rr(ctx, px(i) - 12, DECK + 4, 24, 62, 5);
+      ctx.clip();
+      for (let r = 0; r < 4; r++) {
+        for (let k = 0; k < 2; k++) {
+          ctx.fillStyle = (r + k) % 2 ? C.stone : lite(C.stone, 0.22);
+          rr(ctx, px(i) - 13 + k * 12 + (r % 2) * 6, DECK + 6 + r * 15, 11, 13, 3);
+          ctx.fill();
+        }
+      }
+      ctx.fillStyle = 'rgba(70,52,34,.16)';
+      ctx.fillRect(px(i) + 4, DECK + 4, 8, 62);
+      ctx.restore();
     }
 
     // deck
@@ -201,18 +259,33 @@ export function openBridge(game) {
         bx = px(s.b);
       const broke = test?.broke === s.a;
       const sag = broke ? 60 * Math.min(1, (test.t - 0.5) * 2) : sagOf(s.d, load);
-      ctx.strokeStyle = broke ? '#8a5c30' : C.wood;
-      ctx.lineWidth = 10;
+      // the beam: a dark underside, the timber itself, and the sun along the
+      // top edge — three strokes, so a beam has a top and a bottom to it
+      const beam = broke ? '#8a5c30' : C.wood;
       ctx.lineCap = 'round';
+      ctx.strokeStyle = dusk(beam, 0.28);
+      ctx.lineWidth = 11;
+      ctx.beginPath();
+      ctx.moveTo(ax, DECK + 1);
+      ctx.quadraticCurveTo((ax + bx) / 2, DECK + sag * 2 + 1, bx, DECK + 1);
+      ctx.stroke();
+      ctx.strokeStyle = beam;
+      ctx.lineWidth = 9;
       ctx.beginPath();
       ctx.moveTo(ax, DECK);
       ctx.quadraticCurveTo((ax + bx) / 2, DECK + sag * 2, bx, DECK);
       ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,.18)';
+      ctx.strokeStyle = lite(beam, 0.34);
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(ax, DECK - 2);
-      ctx.quadraticCurveTo((ax + bx) / 2, DECK + sag * 2 - 2, bx, DECK - 2);
+      ctx.moveTo(ax, DECK - 2.6);
+      ctx.quadraticCurveTo((ax + bx) / 2, DECK + sag * 2 - 2.6, bx, DECK - 2.6);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(90,60,32,.28)'; // one line of grain down it
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(ax + 4, DECK + 1.4);
+      ctx.quadraticCurveTo((ax + bx) / 2, DECK + sag * 2 + 1.4, bx - 4, DECK + 1.4);
       ctx.stroke();
       if (!test) {
         ctx.fillStyle = s.d >= 4 ? '#c05b4d' : s.d === 3 ? '#c88a2f' : 'rgba(67,55,42,.55)';
@@ -224,11 +297,18 @@ export function openBridge(game) {
     }
 
     // the abutment posts
-    ctx.fillStyle = C.woodDark;
-    rr(ctx, X0 - 8, DECK - 4, 12, 26, 3);
-    ctx.fill();
-    rr(ctx, X1 - 4, DECK - 4, 12, 26, 3);
-    ctx.fill();
+    for (const ax of [X0 - 8, X1 - 4]) {
+      ctx.fillStyle = C.woodDark;
+      rr(ctx, ax, DECK - 4, 12, 26, 3);
+      ctx.fill();
+      ctx.fillStyle = lite(C.woodDark, 0.26);
+      rr(ctx, ax, DECK - 4, 4.6, 26, 2.4);
+      ctx.fill();
+      ctx.fillStyle = dusk(C.woodDark, 0.24); // the sawn top of the post
+      ctx.beginPath();
+      ctx.ellipse(ax + 6, DECK - 4, 6, 1.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // the volunteer
     if (test) {

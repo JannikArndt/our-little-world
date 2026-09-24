@@ -555,7 +555,7 @@ export class Renderer {
     }
 
     // 5. the paths people have worn between the doors of this village
-    paintPaths(c, w, this.pathStyle);
+    paintPaths(c, w);
 
     // 6. small things that make it look lived in
     for (let y = 0; y < GH; y++)

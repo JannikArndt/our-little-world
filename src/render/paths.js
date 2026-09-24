@@ -1,11 +1,16 @@
-// A path is not a kind of ground. It is where people walk — out of one door,
-// past the well, in at another — and the ground gives way under them. So the
-// paths in this village are worked out rather than painted on: the doors are
-// joined up, each pair of them routed with the very same A* a villager uses,
-// and the earth wears in proportion to how many of those journeys come this
-// way. The trunk through the middle carries everybody, so it is wide and
-// worn bare; the spur to one back door carries one person, so it is a thin
-// line with the grass still closing over it.
+// There are two ways the ground goes bare in this village, and they must not
+// look the same, because one of them costs stone.
+//
+// A **track** is worn by feet and is free. The doors are joined up, each join
+// routed with the very same A* a villager walks, and the earth gives way in
+// proportion to how many journeys come that way: the trunk past the well
+// carries everybody, the spur to one back door carries one person.
+//
+// A **road** is laid by hand out of `road.build`, a stone for every two
+// tiles, and everybody re-plans onto it because it is half the work to walk.
+// So it is drawn as the made thing it is — broad, bare, firm at the edge —
+// and a track is a thin line with the grass still closing over it. Paying a
+// stone has to show, or it buys nothing anybody can see.
 //
 // Nothing here is snapped to the tile grid. A tile is where the walking is
 // allowed, not what the path looks like, which is why the shape that comes
@@ -148,6 +153,95 @@ export function pathNetwork(w) {
 }
 
 /**
+ * The road somebody laid, as lines to draw rather than as a set of squares.
+ *
+ * Two tiles that touch only at a corner count as joined, because a walker
+ * really does step that way — the pathfinder goes eight ways — and a road
+ * laid on a slope steps diagonally all the time. The spine of a run is its
+ * longest way through; whatever is left over hangs off that spine as a
+ * branch, so a T-junction keeps its stub instead of losing it.
+ */
+export function roadRuns(w) {
+  const on = (x, y) => inBounds(x, y) && w.terrain[idx(x, y)] === T.ROAD;
+  const next = (x, y) => {
+    const out = [];
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ])
+      if (on(x + dx, y + dy)) out.push([x + dx, y + dy]);
+    for (const [dx, dy] of [
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1],
+    ])
+      // only where there is no way round through a square side
+      if (on(x + dx, y + dy) && !on(x + dx, y) && !on(x, y + dy)) out.push([x + dx, y + dy]);
+    return out;
+  };
+  /** Every tile reachable from here, and the step each was reached by. */
+  const walk = (from, only) => {
+    const back = new Map([[idx(from[0], from[1]), -1]]);
+    const order = [from];
+    for (let i = 0; i < order.length; i++) {
+      const [x, y] = order[i];
+      for (const [nx, ny] of next(x, y)) {
+        const k = idx(nx, ny);
+        if (back.has(k) || (only && !only.has(k))) continue;
+        back.set(k, idx(x, y));
+        order.push([nx, ny]);
+      }
+    }
+    return { back, order };
+  };
+  const lineTo = (back, at) => {
+    const pts = [];
+    for (let k = at; k >= 0; k = back.get(k))
+      pts.push({ x: (k % GW) + 0.5, y: Math.floor(k / GW) + 0.5 });
+    return pts.reverse();
+  };
+
+  const left = new Set();
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) if (on(x, y)) left.add(idx(x, y));
+
+  const runs = [];
+  while (left.size) {
+    const first = left.values().next().value;
+    const here = walk([first % GW, Math.floor(first / GW)]);
+    const whole = new Set(here.order.map(([x, y]) => idx(x, y)));
+    for (const k of whole) left.delete(k);
+    // the two ends furthest apart are the road's spine; the rest branches off
+    const far = here.order[here.order.length - 1];
+    const ends = walk(far, whole);
+    const other = ends.order[ends.order.length - 1];
+    const done = new Set();
+    const add = pts => {
+      for (const p of pts) done.add(idx(p.x - 0.5, p.y - 0.5));
+      runs.push(pts.map(p => ({ x: p.x * TILE, y: p.y * TILE })));
+    };
+    add(lineTo(ends.back, idx(other[0], other[1])));
+    // anything the spine missed is joined back onto it the short way
+    let guard = 0;
+    while (guard++ < 40) {
+      const stray = [...whole].find(k => !done.has(k));
+      if (stray == null) break;
+      const out = walk([stray % GW, Math.floor(stray / GW)], whole);
+      const meet = out.order.find(([x, y]) => done.has(idx(x, y)));
+      add(lineTo(out.back, meet ? idx(meet[0], meet[1]) : idx(stray % GW, Math.floor(stray / GW))));
+    }
+  }
+  // one tile on its own is still a stone somebody spent, so it still draws
+  return runs.map((pts, i) => ({
+    pts: smooth(pts.length > 1 ? pts : [pts[0], { x: pts[0].x + 0.01, y: pts[0].y }], 3),
+    use: 1,
+    seed: (i * 53) % 100,
+  }));
+}
+
+/**
  * The two sides of a path, as a shape to fill. `wide` says how far out from
  * the middle at each point, so a path can breathe in and out along its length
  * instead of running at one width like a pipe.
@@ -219,40 +313,23 @@ function tufts(c, side, out, seed) {
 }
 
 /** The styles a draft can be in. `paint` takes the one to use. */
-export const STYLES = {
-  // the village as it walks: a wide worn trunk, thin spurs, grass closing in
-  walked: { wide: [5, 13], verge: 1.3, bare: 1.12, worn: 0.48, tuft: 1 },
-  // the same, drawn narrower, with more of the grass left standing
-  faint: { wide: [3.6, 9], verge: 1.4, bare: 1.16, worn: 0.42, tuft: 1.25 },
-  // broader and barer, for a village that has been here longer
-  worn: { wide: [6.5, 17], verge: 1.24, bare: 1.1, worn: 0.54, tuft: 0.8 },
-};
+/**
+ * What each kind of ground looks like. `wide` is the half-width from the
+ * quietest way to the busiest; `verge` how far the grass gives up beyond it;
+ * `worn` how much of the middle is trodden bare; `tuft` how far the grass
+ * leans back in over the edge.
+ */
+const TRACK = { wide: [3.6, 9], verge: 1.42, bare: 1.16, worn: 0.42, tuft: 1.3, grit: 0.5 };
+const ROAD = { wide: [11, 11], verge: 1.16, bare: 1.07, worn: 0.62, tuft: 0.45, grit: 1.2 };
 
 /**
- * Paint the village's paths into the terrain. Band by band across the whole
- * network rather than path by path, so where two paths run together they
- * blend into one piece of worn ground instead of leaving a seam.
+ * One kind of ground, painted band by band across the whole network rather
+ * than line by line, so where two ways run together they blend into one
+ * piece of worn earth instead of leaving a seam down the middle.
  */
-export function paintPaths(c, w, styleName) {
-  const S = STYLES[styleName] ?? STYLES.walked;
-  const net = pathNetwork(w);
+function paintKind(c, net, S) {
   if (!net.length) return;
-
-  // A road somebody laid is a path made wider on purpose, not a second kind
-  // of ground — so where a path runs over one, it broadens out.
-  const paved = (x, y) => {
-    const tx = Math.floor(x / TILE),
-      ty = Math.floor(y / TILE);
-    return inBounds(tx, ty) && w.terrain[idx(tx, ty)] === T.ROAD ? 1.42 : 1;
-  };
-  const wideAt = p => t => {
-    const i = Math.min(p.pts.length - 1, Math.round(t * (p.pts.length - 1)));
-    return (
-      (S.wide[0] + (S.wide[1] - S.wide[0]) * p.use) *
-      wander(t, p.seed) *
-      paved(p.pts[i].x, p.pts[i].y)
-    );
-  };
+  const wideAt = p => t => (S.wide[0] + (S.wide[1] - S.wide[0]) * p.use) * wander(t, p.seed);
   const half = (p, scale) => {
     const base = wideAt(p);
     return t => base(t) * scale;
@@ -313,7 +390,8 @@ export function paintPaths(c, w, styleName) {
   const wide = wideAt;
   for (const p of net) {
     const n = p.pts.length;
-    for (let i = 3; i < n - 3; i += 5) {
+    const every = Math.max(2, Math.round(5 / S.grit));
+    for (let i = 3; i < n - 3; i += every) {
       const t = i / (n - 1);
       const k = Math.abs(Math.sin(i * 7.1 + p.seed * 3.7)) % 1;
       const a = p.pts[i - 1],
@@ -336,4 +414,14 @@ export function paintPaths(c, w, styleName) {
     tufts(c, sides.L, -S.tuft, p.seed);
     tufts(c, sides.R, S.tuft, p.seed + 11);
   }
+}
+
+/**
+ * The village's ground, in the order it settled: the tracks feet wore, then
+ * the roads laid over the top of them. A road drawn second is a road you can
+ * see you paid for.
+ */
+export function paintPaths(c, w) {
+  paintKind(c, pathNetwork(w), TRACK);
+  paintKind(c, roadRuns(w), ROAD);
 }

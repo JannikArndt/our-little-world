@@ -5,9 +5,9 @@
 import test from 'node:test';
 import assert from 'node:assert';
 
-import { TILE } from '../src/core/grid.js';
+import { TILE, T, idx } from '../src/core/grid.js';
 import { createWorld } from '../src/core/world.js';
-import { pathNetwork } from '../src/render/paths.js';
+import { pathNetwork, roadRuns } from '../src/render/paths.js';
 
 /** A village with everything standing, which is when it has the most doors. */
 function village(seed) {
@@ -55,4 +55,35 @@ test('a village with nowhere to walk to has no paths', () => {
   const w = village(6);
   for (const b of w.buildings) b.state = 'site';
   assert.deepEqual(pathNetwork(w), [], 'nothing is built, so nobody has worn anything in');
+});
+
+test('a road you paid a stone for is a road you can see', () => {
+  // the regression this catches: paths were worked out from the doors, and a
+  // road laid anywhere nobody happened to walk took the stone and drew nothing
+  const w = village(7);
+  const far = [
+    [34, 3],
+    [35, 3],
+    [36, 3],
+  ];
+  for (const [x, y] of far) w.terrain[idx(x, y)] = T.ROAD;
+  const runs = roadRuns(w);
+  for (const [x, y] of far) {
+    const mid = { x: x * TILE + TILE / 2, y: y * TILE + TILE / 2 };
+    assert.ok(
+      runs.some(r => r.pts.some(p => near(p, mid, TILE))),
+      `nothing is drawn over the road tile at ${x},${y}`,
+    );
+  }
+});
+
+test('a single tile of road is still drawn', () => {
+  const w = village(8);
+  w.terrain[idx(33, 8)] = T.ROAD;
+  const runs = roadRuns(w);
+  const mid = { x: 33 * TILE + TILE / 2, y: 8 * TILE + TILE / 2 };
+  assert.ok(
+    runs.some(r => r.pts.some(p => near(p, mid, TILE))),
+    'one tile on its own is still a stone somebody spent',
+  );
 });

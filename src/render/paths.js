@@ -124,6 +124,25 @@ function smooth(pts, rounds) {
   return p;
 }
 
+/** The stretches of a line that are not on a paved tile. */
+function offRoad(w, pts) {
+  const paved = p => {
+    const tx = Math.floor(p.x / TILE),
+      ty = Math.floor(p.y / TILE);
+    return inBounds(tx, ty) && w.terrain[idx(tx, ty)] === T.ROAD;
+  };
+  const runs = [];
+  let run = [];
+  for (const p of pts) {
+    if (paved(p)) {
+      if (run.length > 1) runs.push(run);
+      run = [];
+    } else run.push(p);
+  }
+  if (run.length > 1) runs.push(run);
+  return runs;
+}
+
 /**
  * The village's paths: a curve per join, with `use` from 0 to 1 saying how
  * much of the village walks it. Pure, and nothing to do with a canvas, so a
@@ -147,7 +166,12 @@ export function pathNetwork(w) {
     const raw = [{ x: A.x, y: A.y }];
     for (const t of tiles) raw.push({ x: t.x * TILE + TILE / 2, y: t.y * TILE + TILE / 2 });
     raw.push({ x: B.x, y: B.y });
-    out.push({ pts: smooth(raw, 3), use: crossing[e] / most, seed: (e * 37) % 100 });
+    // Where the way is paved, nobody wears the ground: the road is what you
+    // walk on. Drawing a track along a road as well was what made a laid road
+    // look like a different thing each time — a track re-routes onto a new
+    // road the moment it is laid, and then both were drawn on the same ground.
+    for (const run of offRoad(w, smooth(raw, 3)))
+      out.push({ pts: run, use: crossing[e] / most, seed: (e * 37) % 100 });
   });
   return out;
 }
@@ -337,46 +361,71 @@ const ROAD = {
 };
 
 /**
- * Setts: the stone somebody paid for, laid in courses that follow the road
- * round its bends rather than sitting on the world's grid. Every other course
- * is set half a stone over, the way a wall is built, and the mortar between
- * them is the dark ground already laid down underneath. Clipped to the road,
- * so no stone ever ends up out on the grass.
+ * The stone somebody paid for, laid in **basket weave**: a square of two
+ * bricks lying along the road, then a square of two lying across it, turn and
+ * turn about. It is a pattern a person chooses rather than one that falls out
+ * of a grid, which is the point — a road is the one piece of ground in this
+ * village that somebody sat down and made.
+ *
+ * It is set out along the road's own length and width rather than the world's
+ * x and y, so the weave turns every bend with the road and never looks like
+ * it was stamped on from above. Clipped to the road, so no brick ends up out
+ * on the grass, and the dark earth underneath shows between them as mortar.
  */
-function setts(c, net, shape, wideAt) {
+function bricks(c, net, shape, wideAt) {
+  const U = 2.3; // half a brick: they are 2U long and U across
   c.save();
   c.clip(shape);
-  for (const p of net) {
-    const n = p.pts.length;
-    let course = 0;
-    for (let i = 1; i < n - 1; i += 2, course++) {
-      const t = i / (n - 1);
-      const a = p.pts[i - 1],
-        b = p.pts[i + 1],
-        len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  // shortest first, so at a junction the main road's weave is the one laid
+  // last and the stub gives way to it rather than the other way round
+  const order = [...net].sort((a, b) => a.pts.length - b.pts.length);
+  for (const p of order) {
+    // step by real distance, or the weave would stretch where the line bends
+    const run = [0];
+    for (let i = 1; i < p.pts.length; i++)
+      run.push(run[i - 1] + Math.hypot(p.pts[i].x - p.pts[i - 1].x, p.pts[i].y - p.pts[i - 1].y));
+    const total = run[run.length - 1];
+    if (total < U) continue;
+    let at = 1;
+    for (let s = U; s < total - U; s += 2 * U) {
+      while (at < run.length - 1 && run[at] < s) at++;
+      const a = p.pts[Math.max(0, at - 1)],
+        b = p.pts[at];
+      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
       const ux = (b.x - a.x) / len,
         uy = (b.y - a.y) / len;
-      const half = wideAt(p)(t);
-      const across = Math.max(2, Math.round(half / 3.2));
-      const step = half / across;
-      for (let j = -across; j <= across; j++) {
-        const off = (j + (course % 2 ? 0.5 : 0)) * step;
-        if (Math.abs(off) > half - 0.6) continue;
-        const k = Math.abs(Math.sin(i * 3.1 + j * 7.7 + p.seed * 5.3)) % 1;
-        c.save();
-        c.translate(p.pts[i].x - uy * off, p.pts[i].y + ux * off);
-        c.rotate(Math.atan2(uy, ux) + (k - 0.5) * 0.18);
-        const w = 5.4 + k * 1.2,
-          h = step * 0.84 + k * 0.5;
-        // the stone, then the same stone again a shade down and to the right:
-        // what is left showing on the upper left is the sun on its edge
-        c.fillStyle = lite(k > 0.6 ? C.stone : C.stoneDark, 0.3);
-        rr(c, -w / 2, -h / 2, w, h, 1.3);
-        c.fill();
-        c.fillStyle = k > 0.72 ? C.stone : k > 0.36 ? mix(C.stone, C.stoneDark, 0.5) : C.stoneDark;
-        rr(c, -w / 2 + 0.5, -h / 2 + 0.6, w - 0.5, h - 0.6, 1.3);
-        c.fill();
-        c.restore();
+      const f = (s - run[at - 1]) / (run[at] - run[at - 1] || 1);
+      const px = a.x + (b.x - a.x) * f,
+        py = a.y + (b.y - a.y) * f;
+      const half = wideAt(p)(s / total);
+      const square = Math.round(s / (2 * U));
+      for (let j = -Math.ceil(half / (2 * U)); j <= Math.ceil(half / (2 * U)); j++) {
+        const across = j * 2 * U + U;
+        if (Math.abs(across) > half + U) continue;
+        const along = (square + j) % 2 === 0;
+        // two bricks to a square: side by side one way, end to end the other
+        for (const k of [-0.5, 0.5]) {
+          const ds = along ? 0 : k * U,
+            dt = along ? k * U : 0;
+          const cx = px + ux * ds - uy * (across + dt),
+            cy = py + uy * ds + ux * (across + dt);
+          const g = Math.abs(Math.sin(square * 5.1 + j * 9.7 + (k + 1) * 3.3 + p.seed)) % 1;
+          c.save();
+          c.translate(cx, cy);
+          c.rotate(Math.atan2(uy, ux));
+          const w = along ? 2 * U - 0.5 : U - 0.5,
+            h = along ? U - 0.5 : 2 * U - 0.5;
+          // the brick, then the same brick again a shade down and to the
+          // right: what stays showing on the upper left is the sun on its edge
+          c.fillStyle = lite(g > 0.55 ? C.stone : C.stoneDark, 0.34);
+          rr(c, -w / 2, -h / 2, w, h, 0.7);
+          c.fill();
+          c.fillStyle =
+            g > 0.7 ? C.stone : g > 0.35 ? mix(C.stone, C.stoneDark, 0.55) : C.stoneDark;
+          rr(c, -w / 2 + 0.45, -h / 2 + 0.5, w - 0.45, h - 0.5, 0.7);
+          c.fill();
+          c.restore();
+        }
       }
     }
   }
@@ -412,11 +461,11 @@ function paintKind(c, net, S) {
 
   // the grass giving up, then the earth showing through, then what is
   // underfoot: bare earth on a track, the stone somebody laid on a road
-  band(S.verge, mix(C.grass, S.stone ? C.stoneDark : C.roadDark, 0.5), 0.55);
-  band(S.bare, mix(C.grass, S.stone ? C.stone : C.road, 0.82), 0.92);
-  band(1, S.stone ? mix(C.stoneDark, C.soil, 0.45) : C.road, 1);
-  if (S.stone) setts(c, net, shape(1), wideAt);
-  else band(S.worn, lite(C.road, 0.18), 0.8);
+  band(S.verge, mix(C.grass, S.stone ? C.stoneDark : C.sand, 0.55), 0.5);
+  band(S.bare, mix(C.grass, S.stone ? C.stone : C.sand, 0.85), 0.92);
+  band(1, S.stone ? mix(C.stoneDark, C.soil, 0.45) : C.sand, 1);
+  if (S.stone) bricks(c, net, shape(1), wideAt);
+  else band(S.worn, mix(C.sand, C.road, 0.5), 0.55);
 
   // the doorstep: everybody who comes out of a door stands here first
   if (!S.stone) {
@@ -426,7 +475,7 @@ function paintKind(c, net, S) {
         steps.ellipse(end.x, end.y + 2, 13, 6.5, 0, 0, 7);
     c.save();
     c.globalAlpha = 0.5;
-    c.fillStyle = mix(C.road, C.roadDark, 0.3);
+    c.fillStyle = mix(C.sand, C.road, 0.55);
     c.fill(steps);
     c.restore();
   }
@@ -435,7 +484,7 @@ function paintKind(c, net, S) {
   // below the grass either side of it — the same light as everything else
   c.save();
   c.globalAlpha = S.stone ? 0.24 : 0.16;
-  c.strokeStyle = dusk(S.stone ? C.stoneDark : C.road, 0.4);
+  c.strokeStyle = dusk(S.stone ? C.stoneDark : C.sand, 0.3);
   c.lineWidth = S.stone ? 2.8 : 2.2;
   c.lineCap = 'round';
   c.beginPath();
@@ -460,7 +509,7 @@ function paintKind(c, net, S) {
         const off = (k - 0.5) * 2 * wideAt(p)(t) * 0.5;
         const gx = p.pts[i].x - ((b.y - a.y) / len) * off,
           gy = p.pts[i].y + ((b.x - a.x) / len) * off;
-        c.fillStyle = k > 0.84 ? lite(C.road, 0.4) : dusk(C.road, 0.22);
+        c.fillStyle = k > 0.84 ? lite(C.sand, 0.3) : dusk(C.sand, 0.18);
         c.beginPath();
         c.ellipse(gx, gy, 0.7 + k * 0.7, 0.6 + k * 0.5, k * 3, 0, 7);
         c.fill();

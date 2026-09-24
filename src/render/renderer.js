@@ -21,6 +21,7 @@ const DAY_LIGHT = [
 const rgba = c =>
   'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + c[3] + ')';
 import * as art from './art.js';
+import { paintPaths } from './paths.js';
 
 const C = art.C;
 
@@ -195,53 +196,6 @@ function tileNoise(x, y) {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-/**
- * Every road tile joined to its neighbours, as lines to stroke: this is what
- * makes a road one path rather than a patch of ground per tile. Two tiles that
- * touch only at a corner are joined too, because a walker steps that way (the
- * pathfinder goes eight ways) and leaving them apart is what made a road read
- * as a scatter of separate puddles.
- *
- * `ends` counts the ways off each tile, which is how the ruts know a narrow
- * path from a wide trodden yard. Exported, and pure, so `tests/roads.test.mjs`
- * can ask whether a village's road really comes out in one piece rather than
- * writing the rule down a second time.
- */
-export function roadLegs(w) {
-  const on = (x, y) => x >= 0 && y >= 0 && x < GW && y < GH && w.terrain[idx(x, y)] === T.ROAD;
-  // nobody ever wore a path in that ran exactly down the middle
-  const rx = (x, y) => x * TILE + TILE / 2 + (tileNoise(x + 3, y + 17) - 0.5) * 2.4;
-  const ry = (x, y) => y * TILE + TILE / 2 + (tileNoise(x + 29, y + 5) - 0.5) * 2.4;
-  const legs = [];
-  const ends = new Map();
-  const join = (x1, y1, x2, y2) => {
-    const a = idx(x1, y1),
-      b = idx(x2, y2);
-    ends.set(a, (ends.get(a) ?? 0) + 1);
-    ends.set(b, (ends.get(b) ?? 0) + 1);
-    legs.push({ x1: rx(x1, y1), y1: ry(x1, y1), x2: rx(x2, y2), y2: ry(x2, y2), a, b });
-  };
-  for (let y = 0; y < GH; y++)
-    for (let x = 0; x < GW; x++) {
-      if (!on(x, y)) continue;
-      // east and south only, so each pair of neighbours is joined exactly once
-      if (on(x + 1, y)) join(x, y, x + 1, y);
-      if (on(x, y + 1)) join(x, y, x, y + 1);
-      // and a corner step, where there is no way round through a square side
-      if (on(x + 1, y + 1) && !on(x + 1, y) && !on(x, y + 1)) join(x, y, x + 1, y + 1);
-      if (on(x - 1, y + 1) && !on(x - 1, y) && !on(x, y + 1)) join(x, y, x - 1, y + 1);
-    }
-  // a tile with nothing beside it at all still wants ground under it
-  for (let y = 0; y < GH; y++)
-    for (let x = 0; x < GW; x++)
-      if (on(x, y) && !ends.has(idx(x, y))) {
-        const ax = rx(x, y),
-          ay = ry(x, y);
-        legs.push({ x1: ax, y1: ay, x2: ax + 0.01, y2: ay, a: idx(x, y), b: idx(x, y) });
-      }
-  return { legs, ends };
-}
-
 // The closest you may get, as the size one tile ends up on the glass. Four
 // times the size it is drawn is close enough to tap a sheep's nose and far
 // enough that the village is still a village.
@@ -350,6 +304,13 @@ export class Renderer {
   terrainStamp(w) {
     let s = 0;
     for (let i = 0; i < w.terrain.length; i++) s += w.terrain[i] * (i + 1);
+    // the paths are worked out from the doors, so a building going up is a
+    // reason to paint the ground again — a new house arrives with a path to it
+    let n = 0;
+    for (const b of w.buildings ?? []) {
+      n++;
+      if (b.state === 'built') s += (b.x * 61 + b.y * 7 + n) * 9973;
+    }
     return s;
   }
 
@@ -593,96 +554,8 @@ export class Renderer {
         }
     }
 
-    // 5. roads: a path is one continuous thing, so rather than a patch of
-    //    ground per tile, every road tile is joined to its neighbours and the
-    //    whole network stroked in one go — corners turn, junctions meet, and
-    //    two tiles that touch only at a corner are joined rather than left
-    //    looking like two separate puddles. Ruts run *along* a path where it
-    //    is narrow enough for a cart to keep to one line; a wide trodden yard
-    //    has none, because nothing keeps to a line there.
-    const onGrass = (x, y) =>
-      x >= 0 && y >= 0 && x < GW && y < GH && w.terrain[idx(x, y)] === T.GRASS;
-    const onRoad = (x, y) =>
-      x >= 0 && y >= 0 && x < GW && y < GH && w.terrain[idx(x, y)] === T.ROAD;
-    const { legs, ends } = roadLegs(w);
-    const walk = (width, colour, dx, dy, only) => {
-      c.lineWidth = width;
-      c.lineCap = 'round';
-      c.lineJoin = 'round';
-      c.strokeStyle = colour;
-      c.beginPath();
-      for (const l of legs) {
-        if (only && !only(l)) continue;
-        c.moveTo(l.x1 + dx, l.y1 + dy);
-        c.lineTo(l.x2 + dx, l.y2 + dy);
-      }
-      c.stroke();
-    };
-    walk(TILE * 1.3, C.roadDark, 0, 0); // the shoulder, where the grass gives way
-    walk(TILE * 1.14, art.lite(C.road, 0.3), 0, 0); // a rim of sun on the upper-left edge,
-    walk(TILE * 1.14, C.road, 0.9, 0.9); // left behind when the surface sits down-right
-    // the ruts, running along the path rather than across it
-    const narrow = l => (ends.get(l.a) ?? 0) <= 2 && (ends.get(l.b) ?? 0) <= 2;
-    c.lineWidth = 2.4;
-    c.strokeStyle = 'rgba(150,120,80,.22)';
-    for (const side of [-1, 1]) {
-      c.beginPath();
-      for (const l of legs) {
-        if (!narrow(l)) continue;
-        const dx = l.x2 - l.x1,
-          dy = l.y2 - l.y1,
-          len = Math.hypot(dx, dy) || 1,
-          ox = (-dy / len) * TILE * 0.18 * side,
-          oy = (dx / len) * TILE * 0.18 * side;
-        c.moveTo(l.x1 + ox + 0.9, l.y1 + oy + 0.9);
-        c.lineTo(l.x2 + ox + 0.9, l.y2 + oy + 0.9);
-      }
-      c.stroke();
-    }
-    for (let y = 0; y < GH; y++)
-      for (let x = 0; x < GW; x++) {
-        if (!onRoad(x, y)) continue;
-        const n = tileNoise(x, y + 5),
-          m = tileNoise(x + 7, y);
-        // the stones that never got walked in
-        c.fillStyle = C.roadDark;
-        for (let i = 0; i < 5; i++)
-          c.fillRect(
-            x * TILE + ((n * 733 + i * 173) % TILE),
-            y * TILE + ((m * 419 + i * 251) % TILE),
-            1.8,
-            1.8,
-          );
-        // and a few paler bits of grit that catch the light
-        c.fillStyle = 'rgba(255,245,215,.3)';
-        for (let i = 0; i < 3; i++)
-          c.fillRect(
-            x * TILE + ((m * 593 + i * 137) % TILE),
-            y * TILE + ((n * 311 + i * 197) % TILE),
-            1.4,
-            1.4,
-          );
-        // grass taking the verge back, a bite at a time
-        for (let s = 0; s < 4; s++) {
-          const sx = s === 2 ? -1 : s === 3 ? 1 : 0,
-            sy = s === 0 ? -1 : s === 1 ? 1 : 0;
-          if (!onGrass(x + sx, y + sy)) continue;
-          const k = tileNoise(x + s * 13, y + s * 7);
-          if (k < 0.5) continue;
-          c.fillStyle = k > 0.8 ? C.grassLite : C.grass;
-          c.beginPath();
-          c.ellipse(
-            x * TILE + TILE / 2 + sx * TILE * 0.62 + (sy ? (k - 0.5) * TILE * 0.8 : 0),
-            y * TILE + TILE / 2 + sy * TILE * 0.62 + (sx ? (k - 0.5) * TILE * 0.8 : 0),
-            3.4 + k * 3.2,
-            2.6 + k * 2.6,
-            k * 3,
-            0,
-            Math.PI * 2,
-          );
-          c.fill();
-        }
-      }
+    // 5. the paths people have worn between the doors of this village
+    paintPaths(c, w, this.pathStyle);
 
     // 6. small things that make it look lived in
     for (let y = 0; y < GH; y++)

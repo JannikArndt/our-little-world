@@ -124,21 +124,43 @@ function smooth(pts, rounds) {
   return p;
 }
 
-/** The stretches of a line that are not on a paved tile. */
+/**
+ * The stretches of a line that are not on a paved tile.
+ *
+ * A stretch that was cut is carried a little way *under* the paving before it
+ * stops. A ribbon ends in a round cap, and a cap that stopped dead on the edge
+ * of a road showed as a half-circle of sand sticking out of the brickwork;
+ * run it under the road and the road, drawn afterwards, covers it.
+ */
 function offRoad(w, pts) {
   const paved = p => {
     const tx = Math.floor(p.x / TILE),
       ty = Math.floor(p.y / TILE);
     return inBounds(tx, ty) && w.terrain[idx(tx, ty)] === T.ROAD;
   };
+  const UNDER = 15; // far enough in that the cap is out of sight
+  const carry = (run, from, to) => {
+    const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+    run.push({
+      x: to.x + ((to.x - from.x) / len) * UNDER,
+      y: to.y + ((to.y - from.y) / len) * UNDER,
+    });
+  };
   const runs = [];
   let run = [];
-  for (const p of pts) {
-    if (paved(p)) {
+  pts.forEach((p, i) => {
+    if (!paved(p)) {
+      // coming out from under the paving, start back inside it
+      if (!run.length && i > 0) carry(run, p, pts[i - 1]);
+      run.push(p);
+      return;
+    }
+    if (run.length) {
+      carry(run, run[run.length - 1], p);
       if (run.length > 1) runs.push(run);
-      run = [];
-    } else run.push(p);
-  }
+    }
+    run = [];
+  });
   if (run.length > 1) runs.push(run);
   return runs;
 }
@@ -351,14 +373,66 @@ function tufts(c, side, out, seed) {
  */
 const TRACK = { wide: [3.6, 9], verge: 1.42, bare: 1.16, worn: 0.42, tuft: 1.3, grit: 0.5 };
 const ROAD = {
-  wide: [11, 11],
-  verge: 1.18,
-  bare: 1.06,
+  // a road's own shape comes from the tiles, so `reach` is how far the paving
+  // spreads from the middle of one — far enough to cover it and meet the next
+  reach: 13,
+  wide: [15, 15],
+  verge: 1.3,
+  bare: 1.1,
   worn: 0.62,
-  tuft: 0.3,
+  tuft: 0,
   grit: 0,
   stone: true,
 };
+
+/**
+ * The shape a road really covers: every tile somebody paved, joined to its
+ * neighbours. A capsule between each pair of touching tiles and a disc on
+ * each tile, all added to one `Path2D` and filled in one go — so the outline
+ * is the union of the lot, rounded on the outside corners and solid on the
+ * inside ones.
+ *
+ * This is not the same thing as the spine. A spine is a line *through* a
+ * road and is what the brickwork is laid along; drawing the road itself as a
+ * ribbon of fixed width along that line could not cover what a player had
+ * actually painted, and left the grass showing through in bites — which is
+ * what made a wide road look like a string of separate pieces.
+ */
+export function roadShape(w, reach) {
+  const on = (x, y) => inBounds(x, y) && w.terrain[idx(x, y)] === T.ROAD;
+  const path = new Path2D();
+  const mid = (x, y) => ({ x: x * TILE + TILE / 2, y: y * TILE + TILE / 2 });
+  for (let y = 0; y < GH; y++)
+    for (let x = 0; x < GW; x++) {
+      if (!on(x, y)) continue;
+      const a = mid(x, y);
+      // wound the same way round as the capsules below, or a non-zero fill
+      // takes the overlap back out again and the road disappears
+      path.moveTo(a.x + reach, a.y);
+      path.arc(a.x, a.y, reach, 0, Math.PI * 2, true);
+      // east and south only, so each pair of neighbours is joined once
+      for (const [dx, dy] of [
+        [1, 0],
+        [0, 1],
+        [1, 1],
+        [-1, 1],
+      ]) {
+        if (!on(x + dx, y + dy)) continue;
+        // a corner step only counts when there is no way round a square side
+        if (dx && dy && (on(x + dx, y) || on(x, y + dy))) continue;
+        const b = mid(x + dx, y + dy);
+        const len = Math.hypot(b.x - a.x, b.y - a.y);
+        const nx = (-(b.y - a.y) / len) * reach,
+          ny = ((b.x - a.x) / len) * reach;
+        path.moveTo(a.x + nx, a.y + ny);
+        path.lineTo(b.x + nx, b.y + ny);
+        path.lineTo(b.x - nx, b.y - ny);
+        path.lineTo(a.x - nx, a.y - ny);
+        path.closePath();
+      }
+    }
+  return path;
+}
 
 /**
  * The stone somebody paid for, laid in **basket weave**: a square of two
@@ -438,7 +512,7 @@ function bricks(c, net, shape, wideAt) {
  * which at half opacity drew a chequerboard of tile-sized blocks wherever two
  * runs met. One fill, and two ways that run together are one piece of ground.
  */
-function paintKind(c, net, S) {
+function paintKind(c, net, S, solid) {
   if (!net.length) return;
   const wideAt = p => t => (S.wide[0] + (S.wide[1] - S.wide[0]) * p.use) * wander(t, p.seed);
   const half = (p, scale) => {
@@ -446,7 +520,9 @@ function paintKind(c, net, S) {
     return t => base(t) * scale;
   };
   const sidesAt = scale => net.map(p => ribbon(p.pts, half(p, scale))).filter(Boolean);
+  // a road knows its own shape from the tiles; a track's is its ribbons
   const shape = scale => {
+    if (solid) return solid(scale);
     const all = new Path2D();
     for (const r of sidesAt(scale)) all.addPath(r.path);
     return all;
@@ -487,11 +563,14 @@ function paintKind(c, net, S) {
   c.strokeStyle = dusk(S.stone ? C.stoneDark : C.sand, 0.3);
   c.lineWidth = S.stone ? 2.8 : 2.2;
   c.lineCap = 'round';
-  c.beginPath();
-  for (const r of sidesAt(1)) {
-    r.R.forEach((q, i) => (i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)));
+  if (solid) c.stroke(solid(1));
+  else {
+    c.beginPath();
+    for (const r of sidesAt(1)) {
+      r.R.forEach((q, i) => (i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)));
+    }
+    c.stroke();
   }
-  c.stroke();
   c.restore();
 
   // stones trodden into a track — kept well inside the edge, because grit
@@ -517,6 +596,7 @@ function paintKind(c, net, S) {
     }
 
   // and the grass leaning in over both edges
+  if (solid) return;
   for (const p of net) {
     const r = ribbon(p.pts, half(p, S.bare));
     if (!r) continue;
@@ -532,5 +612,6 @@ function paintKind(c, net, S) {
  */
 export function paintPaths(c, w) {
   paintKind(c, pathNetwork(w), TRACK);
-  paintKind(c, roadRuns(w), ROAD);
+  // the runs say which way the brickwork runs; the tiles say where the road is
+  paintKind(c, roadRuns(w), ROAD, scale => roadShape(w, ROAD.reach * scale));
 }

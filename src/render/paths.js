@@ -18,7 +18,7 @@
 
 import { GW, GH, TILE, T, idx, inBounds } from '../core/grid.js';
 import { findPath } from '../core/pathfind.js';
-import { C, mix, lite, dusk } from './art.js';
+import { C, rr, mix, lite, dusk } from './art.js';
 
 /** Somebody comes out of the middle of the front wall. */
 function doorOf(b) {
@@ -245,10 +245,16 @@ export function roadRuns(w) {
  * The two sides of a path, as a shape to fill. `wide` says how far out from
  * the middle at each point, so a path can breathe in and out along its length
  * instead of running at one width like a pipe.
+ *
+ * It builds a `Path2D` rather than drawing, because the whole network has to
+ * be filled in **one** go. Filling line by line composited every overlap
+ * twice, and at half opacity that showed up as a chequerboard of tile-sized
+ * blocks wherever two runs met — the shape was right and the painting was
+ * what looked wrong.
  */
-function ribbon(c, pts, wide) {
+function ribbon(pts, wide) {
   const n = pts.length;
-  if (n < 2) return;
+  if (n < 2) return null;
   const L = [],
     R = [],
     H = [];
@@ -269,15 +275,15 @@ function ribbon(c, pts, wide) {
     L.push({ x: pts[i].x - uy * h, y: pts[i].y + ux * h });
     R.push({ x: pts[i].x + uy * h, y: pts[i].y - ux * h });
   }
-  c.beginPath();
-  c.moveTo(L[0].x, L[0].y);
-  for (let i = 1; i < n; i++) c.lineTo(L[i].x, L[i].y);
+  const path = new Path2D();
+  path.moveTo(L[0].x, L[0].y);
+  for (let i = 1; i < n; i++) path.lineTo(L[i].x, L[i].y);
   // round off both ends, so a path stops at a door rather than being cut off
-  c.arc(pts[n - 1].x, pts[n - 1].y, H[n - 1], head1 + Math.PI / 2, head1 - Math.PI / 2, true);
-  for (let i = n - 1; i >= 0; i--) c.lineTo(R[i].x, R[i].y);
-  c.arc(pts[0].x, pts[0].y, H[0], head0 - Math.PI / 2, head0 + Math.PI / 2, true);
-  c.closePath();
-  return { L, R, H };
+  path.arc(pts[n - 1].x, pts[n - 1].y, H[n - 1], head1 + Math.PI / 2, head1 - Math.PI / 2, true);
+  for (let i = n - 1; i >= 0; i--) path.lineTo(R[i].x, R[i].y);
+  path.arc(pts[0].x, pts[0].y, H[0], head0 - Math.PI / 2, head0 + Math.PI / 2, true);
+  path.closePath();
+  return { path, L, R, H };
 }
 
 /** A smooth wander along the length of a path, so no two stretches match. */
@@ -320,12 +326,68 @@ function tufts(c, side, out, seed) {
  * leans back in over the edge.
  */
 const TRACK = { wide: [3.6, 9], verge: 1.42, bare: 1.16, worn: 0.42, tuft: 1.3, grit: 0.5 };
-const ROAD = { wide: [11, 11], verge: 1.16, bare: 1.07, worn: 0.62, tuft: 0.45, grit: 1.2 };
+const ROAD = {
+  wide: [11, 11],
+  verge: 1.18,
+  bare: 1.06,
+  worn: 0.62,
+  tuft: 0.3,
+  grit: 0,
+  stone: true,
+};
 
 /**
- * One kind of ground, painted band by band across the whole network rather
- * than line by line, so where two ways run together they blend into one
- * piece of worn earth instead of leaving a seam down the middle.
+ * Setts: the stone somebody paid for, laid in courses that follow the road
+ * round its bends rather than sitting on the world's grid. Every other course
+ * is set half a stone over, the way a wall is built, and the mortar between
+ * them is the dark ground already laid down underneath. Clipped to the road,
+ * so no stone ever ends up out on the grass.
+ */
+function setts(c, net, shape, wideAt) {
+  c.save();
+  c.clip(shape);
+  for (const p of net) {
+    const n = p.pts.length;
+    let course = 0;
+    for (let i = 1; i < n - 1; i += 2, course++) {
+      const t = i / (n - 1);
+      const a = p.pts[i - 1],
+        b = p.pts[i + 1],
+        len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      const ux = (b.x - a.x) / len,
+        uy = (b.y - a.y) / len;
+      const half = wideAt(p)(t);
+      const across = Math.max(2, Math.round(half / 3.2));
+      const step = half / across;
+      for (let j = -across; j <= across; j++) {
+        const off = (j + (course % 2 ? 0.5 : 0)) * step;
+        if (Math.abs(off) > half - 0.6) continue;
+        const k = Math.abs(Math.sin(i * 3.1 + j * 7.7 + p.seed * 5.3)) % 1;
+        c.save();
+        c.translate(p.pts[i].x - uy * off, p.pts[i].y + ux * off);
+        c.rotate(Math.atan2(uy, ux) + (k - 0.5) * 0.18);
+        const w = 5.4 + k * 1.2,
+          h = step * 0.84 + k * 0.5;
+        // the stone, then the same stone again a shade down and to the right:
+        // what is left showing on the upper left is the sun on its edge
+        c.fillStyle = lite(k > 0.6 ? C.stone : C.stoneDark, 0.3);
+        rr(c, -w / 2, -h / 2, w, h, 1.3);
+        c.fill();
+        c.fillStyle = k > 0.72 ? C.stone : k > 0.36 ? mix(C.stone, C.stoneDark, 0.5) : C.stoneDark;
+        rr(c, -w / 2 + 0.5, -h / 2 + 0.6, w - 0.5, h - 0.6, 1.3);
+        c.fill();
+        c.restore();
+      }
+    }
+  }
+  c.restore();
+}
+
+/**
+ * One kind of ground. Each band is built up across the **whole** network and
+ * filled once, because filling line by line composited every overlap twice —
+ * which at half opacity drew a chequerboard of tile-sized blocks wherever two
+ * runs met. One fill, and two ways that run together are one piece of ground.
  */
 function paintKind(c, net, S) {
   if (!net.length) return;
@@ -334,85 +396,83 @@ function paintKind(c, net, S) {
     const base = wideAt(p);
     return t => base(t) * scale;
   };
+  const sidesAt = scale => net.map(p => ribbon(p.pts, half(p, scale))).filter(Boolean);
+  const shape = scale => {
+    const all = new Path2D();
+    for (const r of sidesAt(scale)) all.addPath(r.path);
+    return all;
+  };
   const band = (scale, colour, alpha) => {
     c.save();
     c.globalAlpha = alpha;
     c.fillStyle = colour;
-    for (const p of net) {
-      ribbon(c, p.pts, half(p, scale));
-      c.fill();
-    }
+    c.fill(shape(scale));
     c.restore();
   };
 
-  // the grass giving up, then the earth showing through, then the middle worn
-  // bare by everybody who has ever gone this way
-  band(S.verge, mix(C.grass, C.roadDark, 0.5), 0.55);
-  band(S.bare, mix(C.grass, C.road, 0.82), 0.92);
-  band(1, C.road, 1);
-  band(S.worn, lite(C.road, 0.18), 0.8);
+  // the grass giving up, then the earth showing through, then what is
+  // underfoot: bare earth on a track, the stone somebody laid on a road
+  band(S.verge, mix(C.grass, S.stone ? C.stoneDark : C.roadDark, 0.5), 0.55);
+  band(S.bare, mix(C.grass, S.stone ? C.stone : C.road, 0.82), 0.92);
+  band(1, S.stone ? mix(C.stoneDark, C.soil, 0.45) : C.road, 1);
+  if (S.stone) setts(c, net, shape(1), wideAt);
+  else band(S.worn, lite(C.road, 0.18), 0.8);
 
   // the doorstep: everybody who comes out of a door stands here first
-  c.save();
-  c.fillStyle = mix(C.road, C.roadDark, 0.3);
-  for (const p of net) {
-    for (const end of [p.pts[0], p.pts[p.pts.length - 1]]) {
-      c.globalAlpha = 0.5;
-      c.beginPath();
-      c.ellipse(end.x, end.y + 2, 13, 6.5, 0, 0, 7);
-      c.fill();
-    }
+  if (!S.stone) {
+    const steps = new Path2D();
+    for (const p of net)
+      for (const end of [p.pts[0], p.pts[p.pts.length - 1]])
+        steps.ellipse(end.x, end.y + 2, 13, 6.5, 0, 0, 7);
+    c.save();
+    c.globalAlpha = 0.5;
+    c.fillStyle = mix(C.road, C.roadDark, 0.3);
+    c.fill(steps);
+    c.restore();
   }
-  c.restore();
 
-  // a thread of shade along the lower edge, because the path sits a little
+  // a thread of shade along the lower edge, because the ground sits a little
   // below the grass either side of it — the same light as everything else
   c.save();
-  c.globalAlpha = 0.16;
-  c.strokeStyle = dusk(C.road, 0.4);
-  c.lineWidth = 2.2;
+  c.globalAlpha = S.stone ? 0.24 : 0.16;
+  c.strokeStyle = dusk(S.stone ? C.stoneDark : C.road, 0.4);
+  c.lineWidth = S.stone ? 2.8 : 2.2;
   c.lineCap = 'round';
-  for (const p of net) {
-    const sides = ribbon(c, p.pts, half(p, 1));
-    if (!sides) continue;
-    c.beginPath();
-    for (let i = 0; i < sides.R.length; i++) {
-      const q = sides.R[i];
-      if (i === 0) c.moveTo(q.x, q.y);
-      else c.lineTo(q.x, q.y);
-    }
-    c.stroke();
+  c.beginPath();
+  for (const r of sidesAt(1)) {
+    r.R.forEach((q, i) => (i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)));
   }
+  c.stroke();
   c.restore();
 
-  // stones trodden into the middle — kept well inside the edge, because grit
+  // stones trodden into a track — kept well inside the edge, because grit
   // scattered out over the grass reads as snow rather than as a path
-  const wide = wideAt;
-  for (const p of net) {
-    const n = p.pts.length;
-    const every = Math.max(2, Math.round(5 / S.grit));
-    for (let i = 3; i < n - 3; i += every) {
-      const t = i / (n - 1);
-      const k = Math.abs(Math.sin(i * 7.1 + p.seed * 3.7)) % 1;
-      const a = p.pts[i - 1],
-        b = p.pts[i + 1],
-        len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-      const off = (k - 0.5) * 2 * wide(p)(t) * 0.5;
-      const gx = p.pts[i].x - ((b.y - a.y) / len) * off,
-        gy = p.pts[i].y + ((b.x - a.x) / len) * off;
-      c.fillStyle = k > 0.84 ? lite(C.road, 0.4) : dusk(C.road, 0.22);
-      c.beginPath();
-      c.ellipse(gx, gy, 0.7 + k * 0.7, 0.6 + k * 0.5, k * 3, 0, 7);
-      c.fill();
+  if (!S.stone)
+    for (const p of net) {
+      const n = p.pts.length;
+      const every = Math.max(2, Math.round(5 / S.grit));
+      for (let i = 3; i < n - 3; i += every) {
+        const t = i / (n - 1);
+        const k = Math.abs(Math.sin(i * 7.1 + p.seed * 3.7)) % 1;
+        const a = p.pts[i - 1],
+          b = p.pts[i + 1],
+          len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        const off = (k - 0.5) * 2 * wideAt(p)(t) * 0.5;
+        const gx = p.pts[i].x - ((b.y - a.y) / len) * off,
+          gy = p.pts[i].y + ((b.x - a.x) / len) * off;
+        c.fillStyle = k > 0.84 ? lite(C.road, 0.4) : dusk(C.road, 0.22);
+        c.beginPath();
+        c.ellipse(gx, gy, 0.7 + k * 0.7, 0.6 + k * 0.5, k * 3, 0, 7);
+        c.fill();
+      }
     }
-  }
 
   // and the grass leaning in over both edges
   for (const p of net) {
-    const sides = ribbon(c, p.pts, half(p, S.bare));
-    if (!sides) continue;
-    tufts(c, sides.L, -S.tuft, p.seed);
-    tufts(c, sides.R, S.tuft, p.seed + 11);
+    const r = ribbon(p.pts, half(p, S.bare));
+    if (!r) continue;
+    tufts(c, r.L, -S.tuft, p.seed);
+    tufts(c, r.R, S.tuft, p.seed + 11);
   }
 }
 

@@ -19,8 +19,17 @@ export function roadMode(game) {
   const put = (x, y) => {
     if (!inBounds(x, y) || seen[key(x, y)]) return;
     const t = tileAt(game.world, x, y);
-    if (t === T.WATER || t === T.ROAD || t === T.BRIDGE) return;
-    if (!walkable(game.world, x, y)) return;
+    // Say why, rather than quietly doing nothing. A road already laid is
+    // invisible under a building that was put up over it, and a tree you
+    // have not felled yet looks like ordinary ground to a finger.
+    if (t === T.ROAD || t === T.BRIDGE) {
+      mode.hint = tr('road.already');
+      return;
+    }
+    if (t === T.WATER || !walkable(game.world, x, y)) {
+      mode.hint = tr('road.inTheWay');
+      return;
+    }
     if (Math.ceil((tiles.length + 1) / 2) > has()) {
       mode.hint = tr('road.noMore');
       return;

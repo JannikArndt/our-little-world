@@ -21,6 +21,7 @@ const DAY_LIGHT = [
 const rgba = c =>
   'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + c[3] + ')';
 import * as art from './art.js';
+import { paintPaths } from './paths.js';
 
 const C = art.C;
 
@@ -303,6 +304,13 @@ export class Renderer {
   terrainStamp(w) {
     let s = 0;
     for (let i = 0; i < w.terrain.length; i++) s += w.terrain[i] * (i + 1);
+    // the paths are worked out from the doors, so a building going up is a
+    // reason to paint the ground again — a new house arrives with a path to it
+    let n = 0;
+    for (const b of w.buildings ?? []) {
+      n++;
+      if (b.state === 'built') s += (b.x * 61 + b.y * 7 + n) * 9973;
+    }
     return s;
   }
 
@@ -546,67 +554,8 @@ export class Renderer {
         }
     }
 
-    // 5. roads: overlapping rounded patches make a path, not a row of squares,
-    //    with two ruts worn down the middle and grass creeping in at the edges
-    c.fillStyle = C.roadDark;
-    for (let y = 0; y < GH; y++)
-      for (let x = 0; x < GW; x++) {
-        if (w.terrain[idx(x, y)] !== T.ROAD) continue;
-        c.beginPath();
-        c.ellipse(
-          x * TILE + TILE / 2,
-          y * TILE + TILE / 2,
-          TILE * 0.64,
-          TILE * 0.6,
-          0,
-          0,
-          Math.PI * 2,
-        );
-        c.fill();
-      }
-    c.fillStyle = C.road;
-    for (let y = 0; y < GH; y++)
-      for (let x = 0; x < GW; x++) {
-        if (w.terrain[idx(x, y)] !== T.ROAD) continue;
-        c.beginPath();
-        c.ellipse(
-          x * TILE + TILE / 2,
-          y * TILE + TILE / 2 - 0.8,
-          TILE * 0.58,
-          TILE * 0.54,
-          0,
-          0,
-          Math.PI * 2,
-        );
-        c.fill();
-      }
-    for (let y = 0; y < GH; y++)
-      for (let x = 0; x < GW; x++) {
-        if (w.terrain[idx(x, y)] !== T.ROAD) continue;
-        const n = tileNoise(x, y + 5),
-          m = tileNoise(x + 7, y);
-        // the ruts, where a cart has been this way more than once
-        c.fillStyle = 'rgba(150,120,80,.2)';
-        c.fillRect(x * TILE, y * TILE + 6, TILE, 2.4);
-        c.fillRect(x * TILE, y * TILE + 16, TILE, 2.4);
-        c.fillStyle = C.roadDark;
-        for (let i = 0; i < 5; i++)
-          c.fillRect(
-            x * TILE + ((n * 733 + i * 173) % TILE),
-            y * TILE + ((m * 419 + i * 251) % TILE),
-            1.8,
-            1.8,
-          );
-        // and a few paler bits of grit that catch the light
-        c.fillStyle = 'rgba(255,245,215,.3)';
-        for (let i = 0; i < 3; i++)
-          c.fillRect(
-            x * TILE + ((m * 593 + i * 137) % TILE),
-            y * TILE + ((n * 311 + i * 197) % TILE),
-            1.4,
-            1.4,
-          );
-      }
+    // 5. the paths people have worn between the doors of this village
+    paintPaths(c, w);
 
     // 6. small things that make it look lived in
     for (let y = 0; y < GH; y++)

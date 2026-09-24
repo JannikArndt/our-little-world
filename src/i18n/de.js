@@ -563,6 +563,8 @@ export const de = {
   'road.steps_one': '<b>1</b> Schritt Weg',
   'road.steps_other': '<b>{n}</b> Schritte Weg',
   'road.noMore': 'Mehr Steine hast du nicht.',
+  'road.already': 'Hier ist schon ein Weg.',
+  'road.inTheWay': 'Da steht etwas im Weg.',
   'road.lay': 'Anlegen',
   'herd.title': '🐑 Wohin soll {name}?',
   'herd.say': 'Tipp eine Stelle in der Welt an — dann läuft sie hin, wenn sie hinkommt.',

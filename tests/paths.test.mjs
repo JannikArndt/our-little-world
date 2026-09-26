@@ -57,6 +57,25 @@ test('a village with nowhere to walk to has no paths', () => {
   assert.deepEqual(pathNetwork(w), [], 'nothing is built, so nobody has worn anything in');
 });
 
+test('a track runs door to door and never just stops', () => {
+  // The regression: a track was cut wherever it met paving, and the round cap
+  // it ended in showed as a half-circle of sand out on the grass, because the
+  // road was painted as a shape that did not reach the corners of the tiles
+  // the cutting was done against. Nothing is cut now; it narrows away.
+  const w = village(7);
+  const steps = w.buildings
+    .filter(b => b.state === 'built' && b.type !== 'fence' && b.w != null)
+    .map(b => ({ x: (b.x + b.w / 2) * TILE, y: (b.y + b.h) * TILE }));
+  const net = pathNetwork(w);
+  assert.ok(net.length > 0, 'the village has paths at all');
+  for (const p of net)
+    for (const end of [p.pts[0], p.pts.at(-1)])
+      assert.ok(
+        steps.some(d => near(end, d, 2)),
+        `a track stops in the open at ${Math.round(end.x)},${Math.round(end.y)}`,
+      );
+});
+
 test('a road you paid a stone for is a road you can see', () => {
   // the regression this catches: paths were worked out from the doors, and a
   // road laid anywhere nobody happened to walk took the stone and drew nothing

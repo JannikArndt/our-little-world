@@ -565,6 +565,7 @@ export const de = {
   'road.noMore': 'Mehr Steine hast du nicht.',
   'road.already': 'Hier ist schon ein Weg.',
   'road.inTheWay': 'Da steht etwas im Weg.',
+  'road.tapAgain': 'Tipp ein Feld nochmal an, dann ist es wieder weg.',
   'road.lay': 'Anlegen',
   'herd.title': '🐑 Wohin soll {name}?',
   'herd.say': 'Tipp eine Stelle in der Welt an — dann läuft sie hin, wenn sie hinkommt.',

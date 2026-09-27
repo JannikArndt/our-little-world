@@ -564,6 +564,7 @@ export const en = {
   'road.noMore': 'That is all the stone you have.',
   'road.already': 'There is a road here already.',
   'road.inTheWay': 'Something is standing in the way there.',
+  'road.tapAgain': 'Tap a square again to take it away.',
   'road.lay': 'Lay it',
   'herd.title': '🐑 Where should {name} go?',
   'herd.say': 'Tap a spot in the world and she will walk there — if she can get to it.',

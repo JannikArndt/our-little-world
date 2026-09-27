@@ -4,9 +4,23 @@
 // never has to exist in both before it can ship. Reached from the 📜 history,
 // which is where somebody curious would look anyway.
 
-export const VERSION = '3.0';
+export const VERSION = '3.1';
 
 export const CHANGELOG = [
+  {
+    v: '3.1',
+    date: '2026-09-27',
+    en: [
+      'The village has made its own paths. Wherever people walk from one door to the next the grass has given way — a thin line where one person goes, wide and bare where everybody does — and the paths bend round the houses the way a real path bends, instead of running in straight lines with the corners knocked off.',
+      'A road you lay yourself is a different thing altogether. Your stones become proper brickwork, laid in a basket pattern that follows every bend, and it covers exactly the squares you paid for. Where a worn path meets it the path simply thins away and gives up, because the road is what you walk on.',
+      'And nothing is settled until you say so. While you are planning a road you can tap a square a second time and it is gone again — change your mind as often as you like before a single stone goes down.',
+    ],
+    de: [
+      'Das Dorf hat sich seine eigenen Wege getreten. Überall, wo jemand von einer Tür zur nächsten geht, ist das Gras zur Seite gegangen — ein schmaler Strich, wo einer läuft, breit und blank, wo alle laufen — und die Wege machen einen Bogen um die Häuser, so wie echte Wege das tun, statt geradeaus mit abgeschliffenen Ecken.',
+      'Ein Weg, den du selbst anlegst, ist jetzt etwas ganz anderes. Aus deinen Steinen wird richtiges Pflaster im Flechtmuster, das jede Kurve mitmacht, und es deckt genau die Felder ab, für die du bezahlt hast. Wo ein getretener Pfad darauf trifft, wird er einfach dünner und hört auf — auf dem Pflaster läuft man ja.',
+      'Und nichts ist entschieden, bevor du es sagst. Solange du einen Weg planst, kannst du ein Feld noch einmal antippen, dann ist es wieder weg — du kannst es dir so oft anders überlegen, wie du magst, bevor ein einziger Stein liegt.',
+    ],
+  },
   {
     v: '3.0',
     date: '2026-09-22',

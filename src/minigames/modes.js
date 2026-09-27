@@ -15,12 +15,24 @@ export function roadMode(game) {
   const cost = () => Math.ceil(tiles.length / 2);
   const key = (x, y) => x + ',' + y;
   const seen = {};
+  // where the finger was a moment ago, and the square a tap would take back
+  let from = null;
+  let undo = null;
 
   const put = (x, y) => {
     if (!inBounds(x, y) || seen[key(x, y)]) return;
     const t = tileAt(game.world, x, y);
-    if (t === T.WATER || t === T.ROAD || t === T.BRIDGE) return;
-    if (!walkable(game.world, x, y)) return;
+    // Say why, rather than quietly doing nothing. A road already laid is
+    // invisible under a building that was put up over it, and a tree you
+    // have not felled yet looks like ordinary ground to a finger.
+    if (t === T.ROAD || t === T.BRIDGE) {
+      mode.hint = tr('road.already');
+      return;
+    }
+    if (t === T.WATER || !walkable(game.world, x, y)) {
+      mode.hint = tr('road.inTheWay');
+      return;
+    }
     if (Math.ceil((tiles.length + 1) / 2) > has()) {
       mode.hint = tr('road.noMore');
       return;
@@ -30,16 +42,31 @@ export function roadMode(game) {
     mode.hint = null;
   };
 
+  /** Taking one back. Nothing has been built yet, so nothing is undone. */
+  const drop = (x, y) => {
+    const k = key(x, y);
+    if (!seen[k]) return;
+    delete seen[k];
+    const at = tiles.findIndex(t => t.x === x && t.y === y);
+    if (at >= 0) tiles.splice(at, 1);
+    mode.hint = null;
+  };
+
   // A finger moves faster than the tile it is over, so fill in the tiles
-  // between the last one and this one. No other restriction: draw anywhere.
+  // between the one it was over a moment ago and this one. No other
+  // restriction: draw anywhere.
+  //
+  // It is where the finger was, not the end of the list, because a finger
+  // that comes down on a square already planned adds nothing — and a line
+  // drawn from wherever the list happened to end would lay road out of
+  // nowhere.
   const add = (x, y) => {
-    const last = tiles[tiles.length - 1];
-    if (last) {
-      const steps = Math.max(Math.abs(x - last.x), Math.abs(y - last.y));
+    if (from) {
+      const steps = Math.max(Math.abs(x - from.x), Math.abs(y - from.y));
       for (let i = 1; i < steps; i++)
         put(
-          Math.round(last.x + (x - last.x) * (i / steps)),
-          Math.round(last.y + (y - last.y) * (i / steps)),
+          Math.round(from.x + (x - from.x) * (i / steps)),
+          Math.round(from.y + (y - from.y) * (i / steps)),
         );
     }
     put(x, y);
@@ -51,8 +78,12 @@ export function roadMode(game) {
     hint: null,
     say() {
       if (!tiles.length) return tr('road.draw');
+      // either why the last touch did nothing, or — when it all went fine —
+      // that a square is not final until the road is laid
       return (
-        trn('road.steps', tiles.length, { n: tiles.length }) + (mode.hint ? ' — ' + mode.hint : '')
+        trn('road.steps', tiles.length, { n: tiles.length }) +
+        ' — ' +
+        (mode.hint ?? tr('road.tapAgain'))
       );
     },
     // The same counted picture the panels use: one stone per stone.
@@ -61,12 +92,24 @@ export function roadMode(game) {
       return [{ icon: '🪨', need: cost(), have: has() }];
     },
     down(tx, ty) {
-      add(tx, ty);
+      from = { x: tx, y: ty };
+      // A square already planned is taken back instead — but only once the
+      // finger lifts without having gone anywhere, or a line that crossed
+      // its own path would rub itself out as it was being drawn.
+      undo = seen[key(tx, ty)] ? { x: tx, y: ty } : null;
+      if (!undo) put(tx, ty);
     },
     drag(tx, ty) {
+      if (from && tx === from.x && ty === from.y) return;
+      undo = null;
       add(tx, ty);
+      from = { x: tx, y: ty };
     },
-    up() {},
+    up() {
+      if (undo) drop(undo.x, undo.y);
+      undo = null;
+      from = null;
+    },
     overlay(ctx) {
       ctx.save();
       for (const t of tiles) {
@@ -100,6 +143,7 @@ export function roadMode(game) {
         fn() {
           tiles.length = 0;
           for (const k in seen) delete seen[k];
+          mode.hint = null;
         },
       },
       {

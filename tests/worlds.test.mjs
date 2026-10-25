@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Worlds, free, publicView } from '../server/worlds.mjs';
@@ -199,6 +199,26 @@ test('a stranger who only knows the name cannot touch the saved world', () => {
   assert.equal(joined.role, 'B');
   assert.equal(
     s.putSnapshot(world.name, { device: 'a-stranger', tick: 1, world: '{"tick":1}' }).ok,
+    true,
+  );
+});
+
+test('the stats ledger is never a world, and no world can take its name', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'olw-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  // stats.json is the ledger, and it is valid JSON, so it used to load as a village
+  await writeFile(join(dir, 'stats.json'), JSON.stringify({ days: {}, best: {} }));
+  const worlds = await new Worlds({ dir }).load();
+  assert.equal(worlds.get('stats'), null);
+  assert.ok(!worlds.open({ limit: 50 }).some(w => w.name === 'stats'), 'the lobby lists "stats"');
+  assert.equal(cleanName('Stats'), '');
+  const made = worlds.create({ device: 'kid', role: 'A', name: 'stats' });
+  assert.notEqual(made.world.name, 'stats');
+  assert.equal(worlds.join('stats', { device: 'x' }), null);
+  await worlds.close();
+  // the ledger is still the ledger
+  assert.deepEqual(
+    Object.keys(JSON.parse(await readFile(join(dir, 'stats.json'), 'utf8'))).includes('days'),
     true,
   );
 });

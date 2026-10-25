@@ -118,6 +118,15 @@ export function prettyName(name) {
 }
 
 /**
+ * Names no world may have. A world is a file called <name>.json in the data
+ * directory, and that directory also holds the stats ledger, stats.json — a
+ * world called "stats" would have loaded the ledger as a village (the lobby
+ * listed one on 2026-10-25) and then overwritten it. Add a name here for every
+ * other file the server keeps beside the worlds.
+ */
+export const RESERVED_NAMES = ['stats'];
+
+/**
  * What a name is allowed to be, wherever it came from — a link, a text field,
  * an old ?room= bookmark. Lower case letters, digits and dashes; '' if there
  * is nothing usable left.
@@ -131,5 +140,5 @@ export function cleanName(text) {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 32);
-  return n;
+  return RESERVED_NAMES.includes(n) ? '' : n;
 }

@@ -152,7 +152,8 @@ export class Worlds {
   create(opts) {
     const o = opts || {};
     const t = this.now();
-    const name = o.name && !this.worlds.has(o.name) ? o.name : randomName(this.worlds);
+    const usable = o.name && cleanName(o.name) === o.name && !this.worlds.has(o.name);
+    const name = usable ? o.name : randomName(this.worlds);
     const roles = o.roles?.length ? o.roles.slice() : DEFAULT_ROLES.slice();
     const w = {
       name,

@@ -10,12 +10,13 @@
     "check": "prettier --check . && eslint . && node --test tests/*.test.mjs",
     "fix": "prettier --write . && eslint . --fix",
     "verify": "node tools/verify.mjs",
-    "deployed": "node tools/deployed.mjs",
-    "build-id": "node server/buildid.mjs",
-    "shipped": "node tools/shipped.mjs"
+    "live": "node tools/live.mjs",
+    "logs": "node tools/logs.mjs",
+    "ship": "node tools/ship.mjs",
+    "build-id": "node server/buildid.mjs"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=24"
   },
   "devDependencies": {
     "eslint": "^10.10.0",

@@ -245,7 +245,7 @@ test('what is served, what is hashed and what ships all know about the map', () 
   const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
   assert.match(serve, /'\/map\.html'/, 'a browser may not fetch map.html — PUBLIC_FILES');
   assert.match(serve, /=== '\/map'/, 'nothing rewrites /map to /map.html');
-  assert.match(build, /'map\.html'/, 'map.html is not in the build hash — SERVED');
+  assert.match(build, /'map\.html'/, 'map.html is not in the build hash — INPUTS');
   assert.match(docker, /COPY map\.html/, 'map.html does not ship — the Dockerfile COPY list');
 });
 

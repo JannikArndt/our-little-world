@@ -14,8 +14,16 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 
-/** Everything the deployed thing is made of: the page, and what serves it. */
-const SERVED = [
+/**
+ * Everything the deployed thing is made of: the page, and what serves it.
+ * The Dockerfile and package.json are in it because a new base image, or the
+ * "type" the server's .js modules rely on, is a new build. Tests and tooling
+ * are not. The Dockerfile's COPY lines must name exactly these
+ * (tests/deploy-contract.test.mjs checks).
+ */
+export const INPUTS = [
+  'Dockerfile',
+  'package.json',
   'index.html',
   'stats.html',
   'map.html',
@@ -40,7 +48,7 @@ function walk(dir, out) {
 export function buildId(root) {
   const base = root || ROOT;
   const files = [];
-  for (const part of SERVED) walk(join(base, part), files);
+  for (const part of INPUTS) walk(join(base, part), files);
   const h = createHash('sha1');
   for (const f of files) {
     h.update(relative(base, f).split('\\').join('/'));

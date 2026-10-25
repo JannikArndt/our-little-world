@@ -1,79 +1,98 @@
-name: Deploy to CapRover
+# CapRover, dev in front of prod. Template: app-conventions skill.
+#
+# push to main       -> verify -> deploy-dev (+ live check) -> deploy-prod (+ live check)
+# workflow_dispatch  -> verify -> deploy-dev of the dispatched ref; prod only when that ref is main
+#                       (dependabot-merge.yml dispatches main, since a merge made with the
+#                       workflow token does not trigger the push event)
+# pull request       -> verify only
+name: Deploy
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # try any branch on dev
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-
+          cache: npm
       - run: npm ci
-
       - run: npx playwright install --with-deps chromium
-
-      # the same gate as a local push: format, lint, unit tests, and the
-      # whole browser play-through. Never a copy of its steps inlined here —
-      # that is how local and CI drift apart.
+      # the same gate as a local push: format, lint, unit tests, and the whole
+      # browser play-through. Never a copy of its steps inlined here — that is
+      # how local and CI drift apart.
       - run: npm run verify
 
   deploy-dev:
     needs: verify
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      # checkout leaves the workspace at the git root on a real branch — main
-      # for a push, or whichever branch this run was dispatched from — which
-      # is all the CapRover CLI needs: it tars that branch and the server
-      # builds the Dockerfile named by captain-definition. Pinned, and the
-      # token rides in an env var rather than an argument — a CLI argument
-      # sits in plain sight of anything else running in the same step.
-      - name: Deploy to dev
-        run: |
-          npm install -g caprover@2.4.4
-          caprover deploy \
-            --caproverUrl ${{ secrets.CAPROVER_SERVER }} \
-            --appName ${{ secrets.CAPROVER_APP_DEV }} \
-            --branch ${{ github.ref_name }}
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Deploy to CapRover (dev)
         env:
+          CAPROVER_URL: https://captain.timpanini.com
+          CAPROVER_APP: ${{ secrets.CAPROVER_APP_DEV }}
           CAPROVER_APP_TOKEN: ${{ secrets.CAPROVER_APP_TOKEN_DEV }}
-
-      # dev is the gate prod never used to get: catch a CapRover-side failure
-      # (a bad image, a crash on boot) here, before a player ever sees it.
-      - name: Confirm dev is serving this build
-        run: npm run deployed -- --wait=300
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          if [ -z "$CAPROVER_APP" ] || [ -z "$CAPROVER_APP_TOKEN" ]; then
+            echo "::error::Set the CAPROVER_APP_DEV and CAPROVER_APP_TOKEN_DEV repository secrets"
+            exit 1
+          fi
+          npx --yes caprover@2.4.4 deploy -u "$CAPROVER_URL" -a "$CAPROVER_APP" -b "$BRANCH" < /dev/null
+      # dev catches a CapRover-side failure (a bad image, a crash on boot)
+      # before a player sees it; prod does not start until dev serves this build.
+      - name: Confirm the new build is live on dev
         env:
-          DEPLOY_URL: https://ourlittleworld-dev.timpanini.com
+          APP_URL: ${{ vars.APP_URL_DEV }}
+        run: node tools/live.mjs --wait --url "${APP_URL:-https://ourlittleworld-dev.timpanini.com}"
 
   deploy-prod:
     needs: deploy-dev
-    # deploy-dev now takes whichever branch a run was dispatched from — prod
-    # never should. This is the one gate that keeps a manual dispatch of a
-    # branch that isn't main from ever reaching it; a real push to main is
-    # the only event that satisfies both this and the on.push.branches filter.
-    if: github.event_name == 'push'
+    # The one gate that keeps a manual dispatch of a branch away from prod.
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Deploy to prod
-        run: |
-          npm install -g caprover@2.4.4
-          caprover deploy \
-            --caproverUrl ${{ secrets.CAPROVER_SERVER }} \
-            --appName ${{ secrets.CAPROVER_APP }} \
-            --branch main
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Deploy to CapRover (prod)
         env:
+          CAPROVER_URL: https://captain.timpanini.com
+          CAPROVER_APP: ${{ secrets.CAPROVER_APP }}
           CAPROVER_APP_TOKEN: ${{ secrets.CAPROVER_APP_TOKEN }}
-
-      - name: Confirm prod is serving this build
-        run: npm run deployed -- --wait=300
+        run: |
+          if [ -z "$CAPROVER_APP" ] || [ -z "$CAPROVER_APP_TOKEN" ]; then
+            echo "::error::Set the CAPROVER_APP and CAPROVER_APP_TOKEN repository secrets"
+            exit 1
+          fi
+          npx --yes caprover@2.4.4 deploy -u "$CAPROVER_URL" -a "$CAPROVER_APP" -b main < /dev/null
+      - name: Confirm the new build is live on prod
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: node tools/live.mjs --wait --url "${APP_URL:-https://ourlittleworld.timpanini.com}"

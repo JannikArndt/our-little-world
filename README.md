@@ -127,7 +127,7 @@ server/
 tests/           simulation, schema, guide, i18n, relay, session, worlds, stats,
                  actions, map
 tools/           verify.mjs and what it runs: smoke, german, lobby, stats, map;
-                 deployed.mjs, icons.mjs, and look.mjs for a quick screenshot
+                 live.mjs, ship.mjs, logs.mjs, icons.mjs, and look.mjs for a quick screenshot
 ```
 
 Two rules keep it honest:
@@ -151,8 +151,8 @@ action, so a wobbly bridge test never travels over the network.
 - changes and deployments must never break an existing game
 - Runtime: see `server/` and `Dockerfile`. Runs on port 8080 and requires websocket support.
 - `.github/workflows/deploy.yml` runs on every push to `main`: it runs the full `npm run verify` first and only deploys if that passes, so a broken push leaves the last good build serving the people playing
-- to deploy to caprover, five repository secrets are needed: `CAPROVER_SERVER`, and per app `CAPROVER_APP`/`CAPROVER_APP_TOKEN` (prod) and `CAPROVER_APP_DEV`/`CAPROVER_APP_TOKEN_DEV` (dev)
-- caprover must define a **persistent directory** mapped to `/app/data` for each app (otherwise a redeploy forgets which worlds exist and what was in them)
+- to deploy to caprover, four repository secrets are needed (the server URL is in the workflow): per app `CAPROVER_APP`/`CAPROVER_APP_TOKEN` (prod) and `CAPROVER_APP_DEV`/`CAPROVER_APP_TOKEN_DEV` (dev)
+- caprover must define a **persistent directory** mapped to `/app/data` for each app, one volume per app (`ourlittleworld-data`, `ourlittleworld-dev-data`; never shared) (otherwise a redeploy forgets which worlds exist and what was in them)
 
 #### Environment variables worth knowing about
 
@@ -181,8 +181,9 @@ A running server answers `/version` with the version, the world schema, and a
 live?" has an answer rather than an assumption:
 
 ```
-npm run deployed                       # https://ourlittleworld.timpanini.com
-npm run deployed -- https://mine/      # or anywhere else
+npm run live                           # https://ourlittleworld.timpanini.com
+npm run live -- --url https://mine/    # or anywhere else
+npm run live -- --wait                 # right after a push
 ```
 
 It compares the live hash with the working tree's and waits for them to match.
@@ -236,7 +237,8 @@ npm run check           # seconds: format, lint, unit tests
 npm run fix             # apply what check can apply
 npm run verify -- quick # ~1 min: check + a shortened play-through
 npm run verify          # ~5 min: everything, incl. German, the lobby and /stats
-npm run deployed        # after pushing: is that code actually live?
+npm run live            # after pushing: is that code actually live?
+npm run ship            # clean tree -> verify -> push main -> live --wait
 ```
 
 The tests exist to stop whoever is changing the code from slipping, and to keep

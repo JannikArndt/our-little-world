@@ -1,12 +1,16 @@
 // Everything that has to pass before a push, in one command.
 //
-//   npm run verify          format + lint + unit tests, the play-through, German, the lobby, /stats
-//   npm run verify -- quick just check and a shortened play-through
+//   npm run verify          format + lint + unit tests, the play-through, German, the lobby, /stats, /map
+//                           — what CI runs, and the bar before a push
+//   npm run verify -- quick just check and a shortened play-through (the inner loop, not the bar)
 //   npm run verify -- only=german   one pass on its own, against a fresh server
 //
 // `only=` is for the middle of a fix: a failing pass can be run again in its
 // own minute instead of sitting through the other four. It is never the gate —
 // it says so at the end, so a run of one is never mistaken for a run of all.
+//
+// The last line is always `VERIFY: PASS` or `VERIFY: FAIL (<passes>)`; a
+// quick or single-pass run adds "not the push bar" to a PASS.
 //
 // It brings up its own server on a free port and takes it down again, so no
 // stray server is left listening and nothing has to be killed by hand — a
@@ -135,10 +139,14 @@ const alone = chosen.filter(st => st[2] !== 'smoke' && st[2] !== 'german' && st[
 const first = chosen.filter(st => st[2] === 'check');
 
 let ok = true;
+const failed = [];
 if (first.length) {
   console.log('\n──── ' + first[0][0] + ' ────');
   ok = await first[0][1]();
-  if (!ok) console.error('\n' + first[0][0] + ': FAILED');
+  if (!ok) {
+    failed.push(first[0][2]);
+    console.error('\n' + first[0][0] + ': FAILED');
+  }
 }
 if (ok && together.length) {
   console.log('\n──── ' + together.map(st => st[0]).join('  +  ') + ' ────');
@@ -146,15 +154,17 @@ if (ok && together.length) {
   results.forEach((passed, i) => {
     if (!passed) {
       ok = false;
+      failed.push(together[i][2]);
       console.error('\n' + together[i][0] + ': FAILED');
     }
   });
 }
-for (const [name, go] of ok ? alone : []) {
+for (const [name, go, key] of ok ? alone : []) {
   console.log('\n──── ' + name + ' ────');
   const passed = await go();
   if (!passed) {
     ok = false;
+    failed.push(key);
     console.error('\n' + name + ': FAILED');
     break;
   }
@@ -164,14 +174,11 @@ stop();
 // One last line, always in the same shape, so whoever is reading this at the
 // end of five minutes can find it without scrolling — and so a run of one pass
 // can never be mistaken for the gate.
+const partial = only ? 'only=' + only : quick ? 'quick' : '';
 console.log(
   '\n' +
     (ok
-      ? only
-        ? 'verify (' + only + ' only): all good — this is NOT the gate, run the full one'
-        : quick
-          ? 'quick verify: all good (run the full one before pushing)'
-          : 'verify: all good'
-      : 'verify: something is broken'),
+      ? 'VERIFY: PASS' + (partial ? ' (' + partial + ' — not the push bar)' : '')
+      : 'VERIFY: FAIL (' + failed.join(' ') + ')'),
 );
 process.exit(ok ? 0 : 1);

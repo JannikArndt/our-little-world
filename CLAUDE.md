@@ -145,13 +145,27 @@ One command while working, one gate before shipping. Everything is an npm
 script so there is nothing to remember and nothing to look up.
 
 ```
+npm start          # the server, as in production (DATA_DIR defaults to ./data)
+npm test           # the unit tests alone (check runs them too)
 npm run check      # seconds:  format + lint + unit tests. After every edit.
 npm run verify -- quick   # ~1 min: check + a shortened play-through in a browser
 npm run verify     # ~5 min: everything, incl. German, the lobby, /stats and /map
 npm run verify -- only=german   # one pass on its own, for the middle of a fix
-npm run shipped    # one question, answered now: is what is here what is live?
-npm run deployed   # only when you want to sit and wait for a push to land
+npm run live       # one question, answered now: is what is here what is live?
+npm run live -- --wait    # only when you want to sit and wait for a push to land
+npm run ship       # clean tree -> verify -> push main -> live --wait
+npm run logs       # the running container's log (needs CAPROVER_URL, CAPROVER_PASSWORD)
 ```
+
+| command | last line |
+|---|---|
+| `npm run verify` | `VERIFY: PASS` / `VERIFY: FAIL (check smoke …)`; a `quick` or `only=` run says "not the push bar" |
+| `npm run live` | `LIVE: <build>` / `NOT LIVE: want <a>, <url> serves <b>` |
+| `npm run ship` | `LIVE: <build>` / `SHIP: FAIL (…)` |
+
+**The bar for a push is `npm run verify`, the whole of it.** `quick` and
+`only=` are for the middle of the work, never for the push. CI runs the same
+command again as the gate.
 
 - **`npm run check`** is the inner loop: Prettier in check mode, ESLint, and
   `node --test`. If it is red, nothing else matters yet. Run it after every
@@ -161,17 +175,15 @@ npm run deployed   # only when you want to sit and wait for a push to land
   into a behaviour change.
 - **`npm run verify -- quick`** adds the browser play-through with every
   assertion, minus the screenshots, the second browser, the three screen sizes,
-  German, the lobby, the stats page and the map. **This is the bar for a push**, and it
-  is meant to be — see the next line.
+  German, the lobby, the stats page and the map. It is the inner loop: a minute
+  instead of five. **It is not the bar for a push.**
 - **`npm run verify`** is everything — the unit tests, the play-through, German,
-  the lobby, `/stats` and `/map` — and **it is what CI runs, so do not sit
-  through it here as well.** The one exception is a branch: `deploy.yml` fires
-  on a push to `main` and on a manual dispatch, so work on a session branch gets
-  no gate but the one you run. The gate exists so that a push costs a minute
-  rather than five: run `verify -- quick`, push, and let CI be the gate it was
-  built to be. Running it in both places doubles the wait and catches nothing
-  twice. Run the whole thing locally only when CI has gone red and you need the
-  failure in front of you, and then reach for `only=` first.
+  the lobby, `/stats` and `/map` — and **it is the bar for a push**; CI runs the
+  same command as the gate. A branch gets no CI gate on push (`deploy.yml` fires
+  on `main` and on a manual dispatch, plus pull requests), so there the gate is
+  only the one you ran. Once `verify` is green, push and do not wait on CI at
+  your desk: ask `npm run live` later. When CI goes red and you need the failure
+  in front of you, reach for `only=` first.
 
 - **`npm run verify -- only=<pass>`** runs one of `check`, `smoke`, `german`,
   `lobby`, `stats`, `map` against a fresh server and nothing else. It is for the
@@ -180,15 +192,13 @@ npm run deployed   # only when you want to sit and wait for a push to land
   gate**.
 
 Every run ends with one line in the same shape, so it can be found without
-reading the five minutes above it: `verify: all good`, or
-`verify: something is broken`. The play-through and the German pass run at the
+reading the five minutes above it: `VERIFY: PASS`, or `VERIFY: FAIL (<passes>)`. The play-through and the German pass run at the
 same time, because they take a minute off each other and share nothing; the
 lobby, `/stats` and `/map` come after, one at a time, because the first two both
 read the world directory as a whole and would see each other's worlds.
 
-**On waiting.** Three habits cost whole afternoons and none of them buy
-anything: running the full gate here when CI is about to run it anyway; polling
-a deploy with a quarter of an hour of dots when `npm run shipped` answers in one
+**On waiting.** Two habits cost whole afternoons and buy nothing: polling a
+deploy with a quarter of an hour of dots when `npm run live` answers in one
 second; and re-running every pass to see whether a one-line fix took, when
 `only=` runs the one that failed. Push small, ask later, and let the gate work.
 
@@ -233,7 +243,7 @@ So **deciding when to push is part of the job, not a question to hand over.**
 
 Push to `main` when all of these are true:
 
-1. `npm run verify` is green in full.
+1. `npm run verify` is green in full (not `quick`, not `only=`).
 2. The change is complete — not a spike, not half a refactor, not a feature
    with one language's strings missing.
 3. What is live afterwards is better than what is live now, for somebody who
@@ -281,37 +291,40 @@ fourth is still being written.
 - **A green workflow only means CapRover accepted the deploy.** To know the new
   code is being served, ask the site: `GET /version` answers
   `{ version, schema, build, startedAt }`, where `build` is a hash of every file
-  that ships (`server/buildid.mjs`, also `npm run build-id`). `npm run deployed`
-  compares the live `build` with the working tree's. **`npm run shipped` asks
-  once and answers immediately** — that is the one to reach for. `npm run
-  deployed` is the same question with a wait attached, for when you have just
-  pushed and intend to sit there; it waits up to half an hour because the gate
-  runs before either deploy does, and `dev` has to answer before `prod` even
-  starts. **A push is not finished until one of them says yes**, but "not
-  finished" does not mean "stand and watch".
-  It waits that long because a push now goes through the whole gate before it
-  deploys at all — installing, fetching a browser, five minutes of verify, a
-  deploy to `dev` and a wait for `dev`'s own `/version`, and only then a deploy
-  to `prod`. It waited three minutes once, which was right when a push went
-  straight to one app with no gate, and which quietly meant it could never say
-  yes again once the gate existed.
+  that ships (`server/buildid.mjs`, also `npm run build-id`). **`npm run live`
+  asks once and answers immediately** — the one to reach for — comparing the
+  live `build` with the working tree's. `npm run live -- --wait` is the same
+  question with a wait attached (up to ten minutes), for when you have just
+  pushed and intend to sit there; CI runs it after each deploy. **A push is not
+  finished until one of them says `LIVE: <build>`**, but "not finished" does not
+  mean "stand and watch". A push goes through the whole gate before it deploys
+  at all — installing, fetching a browser, five minutes of verify, a deploy to
+  `dev` and a wait for `dev`'s own `/version`, and only then a deploy to `prod`
+  — so right after a push `live` says NOT LIVE for ten minutes or so, and
+  that is normal.
 - **A push is not finished when the command returns, either.** Check the
   workflow run: a red gate means nothing deployed and the old build is still
   what people are playing. Saying "pushed" is not saying "live", and only the
   site can settle which.
-- The site is <https://ourlittleworld.timpanini.com>, and `npm run deployed`
+- The site is <https://ourlittleworld.timpanini.com>, and `npm run live`
   knows that address by default; `dev` is
   <https://ourlittleworld-dev.timpanini.com>, reached with
-  `npm run deployed -- https://ourlittleworld-dev.timpanini.com` or
-  `DEPLOY_URL=https://ourlittleworld-dev.timpanini.com npm run deployed`. If a
+  `npm run live -- --url https://ourlittleworld-dev.timpanini.com`. If a
   sandbox will not let a session reach either, check the workflow run instead
   and say plainly that the deployment itself was not verified from here — do
   not call it live. And check the host before assuming it: this one was
   guessed wrong once, from a truncated address bar.
-- Only what ships is hashed — the page, `src`, `styles`, `server`, `icons`. A
-  change to the tests, the tooling or the docs leaves the build id alone, which
-  is right: nothing a player downloads changed, and `npm run deployed` will
-  still say yes.
+- **Each app has its own volume**, `<app>-data` at `/app/data`: `dev` and `prod`
+  used to share one (CapRover volume names are global), and since 2026-10-25
+  they do not. Never point one at the other's.
+- Only what ships is hashed (`INPUTS` in `server/buildid.mjs`) — the page, `src`,
+  `styles`, `server`, `icons`, and the `Dockerfile` and `package.json`, so a new
+  base image counts as a new build. The image copies exactly that list and the
+  server hashes it at start; `tests/deploy-contract.test.mjs` keeps the
+  Dockerfile's `COPY` lines, `.dockerignore`, the digest pins, the workflows'
+  SHA pins and timeouts, and the npm scripts named here in step. A change to the
+  tests, the tooling or the docs leaves the build id alone, which is right:
+  nothing a player downloads changed, and `npm run live` will still say yes.
 - The same id is written into the page it serves (`<meta name="olw-build">`),
   so a copy on somebody's screen knows whether it is still the one being served.
   `src/core/fresh.js` asks whenever the app comes back to the front and on a
@@ -547,11 +560,8 @@ upgrade goes through `api.mjs`'s checks.
   (<https://raw.githubusercontent.com/caprover/caprover/master/template/server-block-conf.ejs>,
   fetched to confirm this) — so enabling it is safe there once the "nothing
   else sits in front of CapRover's nginx" precondition is confirmed
-  separately. **Currently on for `dev`, not yet for `prod`** — the deployer
-  flips prod once dev is confirmed working; the boot log's `rate limits:` line
-  (`server/serve.mjs`, above) is the live source of truth for which is
-  currently true on a given running instance, since this note will not update
-  itself.
+  separately. The boot log's `rate limits:` line (`server/serve.mjs`, above)
+  is the source of truth for which mode a running instance is in.
 - **`MAX_BODY` (1 MB)** is enforced incrementally as chunks arrive, with an
   immediate `req.destroy()` past the limit — never buffered unbounded first.
 - **Every route checks its own method**; a wrong verb is a `405`, not a
@@ -577,6 +587,11 @@ upgrade goes through `api.mjs`'s checks.
   *"a heartbeat claims a spot for a device that never managed to join."*
 - **`leave()` only ever removes a slot whose device matches** — always did;
   a mismatched device is a no-op, not an error.
+- **A world is a file named `<name>.json`, and `stats.json` is the ledger beside
+  them.** `RESERVED_NAMES` in `src/core/names.js` keeps `cleanName()` from ever
+  returning `stats`, so the loader skips the ledger, nobody can join it and no
+  world can be created under that name (it was listed in the public lobby on
+  2026-10-25). Add every other file the server keeps in `DATA_DIR` there too.
 - **`MAX_SNAPSHOT` (512 KB)** caps a single write; a real world is ~10 KB.
 - **Defense in depth on the filesystem, unreachable today, kept anyway:**
   `flush()` refuses to write a file for any name that is not already
@@ -630,16 +645,17 @@ upgrade goes through `api.mjs`'s checks.
 Three lists exist and they are not the same thing, which is worth naming
 explicitly because conflating them once was an easy mistake to nearly make:
 
-1. **The Dockerfile's `COPY` list** — what physically ships in the image
-   (includes `package.json`).
-2. **`buildid.mjs`'s `SERVED`** — what the `/version` build hash is computed
+1. **The Dockerfile's `COPY` list** — what physically ships in the image.
+   It is exactly `INPUTS`, below, and a test holds it there.
+2. **`buildid.mjs`'s `INPUTS`** — what the `/version` build hash is computed
    over (includes `server/`, because a change there changes what is running,
-   even though a browser never fetches it directly).
+   even though a browser never fetches it directly, and the `Dockerfile` and
+   `package.json`, because a new base image is a new build).
 3. **`serve.mjs`'s `PUBLIC_FILES`/`PUBLIC_DIRS`** — what a browser may actually
    request over HTTP (excludes both `server/` and `package.json`).
 
 A file can appear in any subset of the three. `server/*.mjs` is in the first
-two and not the third; `package.json` is in the first only. Adding something
+two and not the third; so are `package.json` and the `Dockerfile`. Adding something
 new that should be public needs the third list, specifically — being in the
 build hash does not make a thing servable.
 
@@ -652,21 +668,29 @@ so the next page cannot be half-added.
 - **GitHub Actions are pinned to commit SHAs**, not mutable tags (`actions/
   checkout@3d3c42e…` with the tag it corresponds to in a comment), and the
   **Dockerfile's base image is pinned by digest**
-  (`node:24-alpine@sha256:50c8e8ca…`) — both verified against the real
-  registries when pinned, not taken from a rendered webpage.
+  (`node:24-alpine@sha256:06d7adf3…`) — both verified against the real
+  registries when pinned, not taken from a rendered webpage. Dependabot moves
+  both pins weekly.
 - **`caprover` is pinned to an exact version** in `deploy.yml` and its deploy
   token travels as the `CAPROVER_APP_TOKEN` environment variable, never a CLI
   argument — an argument sits in plain sight of anything else that runs in the
   same step; an env var does not.
 - **`deploy-dev` deploys `github.ref_name`** — whichever branch a run was
   dispatched from — so a branch can be tested on dev without touching `main`.
-  **`deploy-prod` only runs `if: github.event_name == 'push'`**, which,
-  combined with the existing `on.push.branches: [main]` filter, is the one
-  gate that keeps a manual dispatch of anything but `main` from ever reaching
-  production.
+  **`deploy-prod` only runs for a push, or for a dispatch of `main`**
+  (`github.ref == 'refs/heads/main'`; `dependabot-merge.yml` dispatches `main`
+  because a merge made with the workflow token does not fire the push event),
+  which is the one gate that keeps a manual dispatch of any other branch from
+  ever reaching production. Every workflow has `permissions: contents: read`,
+  a `concurrency` group and a `timeout-minutes` on every job; the server URL is
+  written into the workflow (there is no `CAPROVER_SERVER` secret), and the
+  deploy step checks the secrets are set and closes stdin, because the CLI
+  otherwise prompts, crashes and exits 0.
 - **`.github/dependabot.yml`** watches `npm`, `docker`, and `github-actions`
-  weekly — including the two pins above, so they get proposed bumps instead of
-  quietly going stale.
+  weekly, grouped, majors ignored — including the two pins above, so they get
+  proposed bumps instead of quietly going stale. **`dependabot-merge.yml`**
+  runs `npm run verify` on those pull requests, merges them when green and
+  dispatches the deploy. A major (Node, ESLint) is a deliberate change by hand.
 
 ### If something fundamental just broke, check here
 

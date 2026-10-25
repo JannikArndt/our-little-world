@@ -1,21 +1,36 @@
+# Weekly updates for everything pinned by hand. Template from the
+# app-conventions skill; keep only the ecosystems the repo has.
+# Majors never come from here: a new Node LTS line or framework major is
+# moved on purpose. So every PR this opens may merge itself once the checks
+# pass (.github/workflows/dependabot-merge.yml).
 version: 2
 updates:
-  # devDependencies only — nothing here ships (see CLAUDE.md), but a stale
-  # tool in CI is still worth knowing about.
-  - package-ecosystem: npm
-    directory: /
-    schedule:
-      interval: weekly
-
-  # the base image in the Dockerfile, pinned by digest on purpose — this is
-  # how that pin gets a proposed update instead of quietly going stale.
-  - package-ecosystem: docker
-    directory: /
-    schedule:
-      interval: weekly
-
-  # the checkout/setup-node SHAs in deploy.yml.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: docker # only with a Dockerfile
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: npm # only with a package.json
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ['*']
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
